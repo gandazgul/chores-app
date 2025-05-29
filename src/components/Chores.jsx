@@ -11,9 +11,8 @@ import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
 
-// Assuming App.less might contain styles relevant here, or a new Chores.less would be created.
 // For now, let's assume App.less is global enough or specific styles will be moved.
-import '../App.less'; // Adjusted path
+import './Chores.less'; // Import specific styles
 
 library.add(faPaperPlane);
 

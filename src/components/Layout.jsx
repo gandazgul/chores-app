@@ -1,7 +1,6 @@
 import { createSignal, createEffect, onCleanup, Show } from 'solid-js';
 import { auth } from '../utils/firebaseConfig'; // Adjusted path
-// We might need App.less if header/footer styles are there, or a specific Layout.less
-import '../App.less'; // Adjusted path
+import './Layout.less'; // Import specific styles
 
 function Layout(props) {
     const [showProfileMenu, setShowProfileMenu] = createSignal(false);

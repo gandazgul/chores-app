@@ -14,7 +14,7 @@ import { FontAwesomeIcon } from 'solid-fontawesome';
 // If faPlus was only for the old button, it can be removed here if not used elsewhere in Chores.
 import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'; 
 
-import './Chores.less';
+import './ChoresList.less';
 
 // Add icons to the library that are used directly in this component
 library.add(faChevronDown, faChevronRight);

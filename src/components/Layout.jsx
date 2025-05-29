@@ -1,8 +1,10 @@
-import { createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { createSignal, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
 import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
+import { useUser } from '../utils/UserContext'; // Import useUser
 import './Layout.less'; // Import specific styles
 
-function Layout(props) {
+function Layout(props) { // props might still contain children
+    const currentUser = useUser(); // Get the currentUser signal from context
     const [showProfileMenu, setShowProfileMenu] = createSignal(false);
 
     // Close profile menu if clicked outside
@@ -23,10 +25,10 @@ function Layout(props) {
             <header>
                 <div class="header-content">
                     <h1>Chores</h1>
-                    <Show when={props.currentUser()}>
+                    <Show when={currentUser()}>
                         <div class="profile-menu-container">
                             <img
-                                src={props.currentUser().user_metadata?.avatar_url || props.currentUser().user_metadata?.picture || 'https://via.placeholder.com/40'}
+                                src={currentUser()?.user_metadata?.avatar_url || currentUser()?.user_metadata?.picture || 'https://via.placeholder.com/40'}
                                 alt="Profile"
                                 class="profile-picture"
                                 onClick={() => setShowProfileMenu(!showProfileMenu())}

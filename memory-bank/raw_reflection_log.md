@@ -1,60 +1,25 @@
 ---
 Date: 2025-05-28
-TaskRef: "Replace Firebase with Supabase for Chores App"
+TaskRef: "Refactor currentUser prop drilling to Solid.js Context in Chores App"
 
 Learnings:
-- Supabase schema design:
-  - `chores` table with `id UUID PRIMARY KEY`, `user_id UUID FK to auth.users`, `title TEXT`, `description TEXT`, `priority INTEGER`, `done BOOLEAN`, `due_date TIMESTAMPTZ`, `remind_until_done BOOLEAN`, `recurrence JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`.
-  - `JSONB` is suitable for storing complex, variable recurrence rule objects (like rSchedule options).
-  - Auto-updating `updated_at` column using a PostgreSQL trigger function:
-    ```sql
-    CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        NEW.updated_at = now();
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER update_chores_updated_at
-    BEFORE UPDATE ON chores
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-    ```
-- Data Migration (Firestore to Supabase):
-  - Firestore Timestamps need conversion to ISO 8601 strings for `TIMESTAMPTZ` columns or direct `Date` objects for Supabase client.
-  - Recurrence objects (maps in Firestore) translate well to `JSONB` in Supabase. Ensure date strings within JSON are ISO 8601.
-  - `user_id` for direct SQL `INSERT`s into a table with a `NOT NULL` foreign key to `auth.users` must be a valid, existing user ID from the `auth.users` table. Placeholder UUIDs will fail FK constraints.
-- Supabase Auth (JavaScript client `@supabase/supabase-js`):
-  - Initialization: `createClient(supabaseUrl, supabaseAnonKey)`.
-  - Google OAuth: `supabase.auth.signInWithOAuth({ provider: 'google' })`.
-  - Get current session: `supabase.auth.getSession()`. Returns `{ data: { session }, error }`.
-  - Auth state listener: `supabase.auth.onAuthStateChange((event, session) => { ... })`. `session.user` contains user details.
-  - Sign out: `supabase.auth.signOut()`.
-  - User profile picture: `user.user_metadata?.avatar_url` or `user.user_metadata?.picture` (differs from Firebase's `user.photoURL`).
-- Supabase Database Client (JavaScript):
-  - Fetching data: `supabase.from('table_name').select('*').eq('column', 'value')`.
-  - Inserting data: `supabase.from('table_name').insert([{ column: 'value' }]).select()`. `.select()` returns the inserted row(s).
-  - Updating data: `supabase.from('table_name').update({ column: 'new_value' }).eq('id_column', 'id_value')`.
-  - Deleting data: `supabase.from('table_name').delete().eq('id_column', 'id_value')`.
-- SolidJS:
-  - Passing user state (e.g., `currentUser` signal) as props to child components.
-  - Using `onMount` for initial data fetching and setting up listeners.
-  - Using `createEffect` for reactive data fetching based on user state.
-  - `props.currentUser()` to access signal value passed as prop.
+- Successfully implemented Solid.js Context:
+  - Defined `UserContext = createContext()`.
+  - Created `UserProvider(props)` component that takes `currentUser` signal as a prop and provides it: `<UserContext.Provider value={props.currentUser}>`.
+  - Created `useUser()` custom hook: `const context = useContext(UserContext); return context;`.
+- `useUser()` returns the signal; invoke with `()` to get its value (e.g., `const user = currentUser();`).
+- Auto-formatters might add related imports (e.g., `useContext` alongside a custom hook like `useUser`). This needs to be considered for `SEARCH` blocks in `replace_in_file`.
+- Using optional chaining (e.g., `currentUser()?.user_metadata`) is good practice when dealing with potentially null objects from context.
 
 Difficulties:
-- Initial oversight on `user_id` for SQL `INSERT` statements: A placeholder UUID would violate foreign key constraints if it doesn't exist in `auth.users`. Corrected by requiring a valid existing `user_id`.
-- Ensuring `currentUser` prop was consistently passed to all components needing it (e.g., `Chores.jsx` from `App.jsx`).
+- `plan_mode_respond` tool: Forgot to wrap the response content within `<response>` tags, leading to a tool execution error. Corrected by adding the tags.
 
 Successes:
-- Successfully planned and executed the migration from Firebase to Supabase.
-- Designed a functional Supabase schema for the `chores` table.
-- Correctly refactored authentication and data management logic across multiple SolidJS components.
-- Handled data conversion between application representation and Supabase storage (dates, recurrence objects).
+- The refactoring plan to use Context was successfully implemented across `UserContext.jsx`, `App.jsx`, `Layout.jsx`, and `Chores.jsx`.
+- Using `read_file` for "recently modified" files before `replace_in_file` ensured `SEARCH` blocks were accurate and prevented potential errors.
 
 Improvements_Identified_For_Consolidation:
-- General pattern: When migrating DBs with FK constraints, ensure sample data inserts use valid FKs or temporarily disable constraints if appropriate (though less ideal for `user_id`).
-- Supabase: Common user data fields (like `user.id`, `user.user_metadata`).
-- Supabase: Standard CRUD operations syntax.
+- Pattern: Solid.js Context setup (`createContext`, Provider component, `useContext` or custom hook).
+- Reminder: Always verify tool parameter requirements, especially for tools like `plan_mode_respond` that have specific content structures.
+- Best Practice: Re-read files marked as "recently modified" before attempting `replace_in_file`.
 ---

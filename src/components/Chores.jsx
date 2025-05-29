@@ -1,4 +1,5 @@
-import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
+import { createSignal, createMemo, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
+import { useUser } from '../utils/UserContext'; // Import useUser
 import ChoresList from './ChoresList'; // Renamed from Chores
 import AddChoreModal from './AddChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
@@ -15,8 +16,9 @@ import './Chores.less'; // Import specific styles
 
 library.add(faPaperPlane);
 
-// Assuming currentUser is passed as a prop from App.jsx
-function Chores(props) {
+// currentUser will be accessed via context
+function Chores() { // Removed props
+    const currentUser = useUser(); // Get the currentUser signal from context
     const [chores, setChores] = createSignal([]);
     const [newChoreModalOpen, setNewChoreModalOpen] = createSignal(false);
     const [quickChoreTitle, setQuickChoreTitle] = createSignal('');
@@ -24,7 +26,7 @@ function Chores(props) {
     const [loadingChores, setLoadingChores] = createSignal(true);
     // currentUser will be passed as a prop or accessed via a global store if needed.
     // For this refactor, assuming currentUser is available (e.g., passed as prop or from context)
-    // const currentUser = () => auth.currentUser; // Replaced by props.currentUser
+    // const currentUserSignal = () => auth.currentUser; // Comment can be removed or updated
 
     // No longer need choresCollectionRef for Supabase in this way
     // const choresCollectionRef = collection(db, "chores"); 
@@ -65,7 +67,7 @@ function Chores(props) {
     };
 
     createEffect(async () => {
-        const user = props.currentUser(); // Use prop
+        const user = currentUser(); // Use context
         if (user && user.id) { // Supabase user object has `id`
             setLoadingChores(true);
             try {
@@ -153,7 +155,7 @@ function Chores(props) {
     }
 
     async function handleAddNewChore(newChoreFromModal) {
-        const user = props.currentUser(); // Use prop
+        const user = currentUser(); // Use context
         if (!user || !user.id) {
             console.error("User not logged in. Cannot add chore.");
             return;
@@ -204,7 +206,7 @@ function Chores(props) {
 
     async function handleQuickAddChore(e) {
         if (e) e.preventDefault();
-        const user = props.currentUser(); // Use prop
+        const user = currentUser(); // Use context
         if (!user || !user.id) {
             console.error("User not logged in. Cannot add chore.");
             return;

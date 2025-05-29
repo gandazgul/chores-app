@@ -3,6 +3,7 @@ import Chores from './components/Chores';
 import LoginPage from './components/LoginPage';
 import Layout from './components/Layout'; // Import the new Layout component
 import { supabase } from './utils/supabaseConfig'; // Import Supabase client
+import { UserProvider } from './utils/UserContext'; // Import UserProvider
 // Removed library import for fontawesome as it's not directly used here anymore
 
 import '@picocss/pico';
@@ -47,9 +48,11 @@ function App() {
         <div class="app">
             <Show when={!loadingAuth()} fallback={<p>Loading application...</p>}>
                 {currentUser() ? (
-                    <Layout currentUser={currentUser}> {/* Pass currentUser to Layout */}
-                        <Chores currentUser={currentUser} /> {/* Pass currentUser to Chores */}
-                    </Layout>
+                    <UserProvider currentUser={currentUser}>
+                        <Layout> {/* Remove currentUser prop */}
+                            <Chores /> {/* Remove currentUser prop */}
+                        </Layout>
+                    </UserProvider>
                 ) : (
                     <LoginPage />
                 )}

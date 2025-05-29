@@ -7,14 +7,14 @@ library.add(faPlus);
 
 // Styles are expected to be in App.less or a dedicated file imported elsewhere.
 
-function AddTaskFloatButton({ onClick }) {
+function AddChoreFloatButton({ onClick }) {
   return (
-    <div className="add-task-button-container">
-      <button onClick={onClick} aria-label="Add new task">
+    <div className="add-chore-button-container">
+      <button onClick={onClick} aria-label="Add new chore">
         <FontAwesomeIcon icon={faPlus} />
       </button>
     </div>
   );
 }
 
-export default AddTaskFloatButton;
+export default AddChoreFloatButton;

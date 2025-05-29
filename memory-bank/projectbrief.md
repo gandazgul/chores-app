@@ -1,6 +1,6 @@
 # Project Brief
 
-The goal of this project is to build a robust but simple Todo App focused on household chores with the key differentiating feature of contant reminders about chores until they are marked as done in the app.
+The goal of this project is to build a robust but simple Chore App focused on household chores with the key differentiating feature of contant reminders about chores until they are marked as done in the app.
 
 ## Core Requirements and Goals
 

@@ -13,7 +13,7 @@ library.add(faRepeat, faPlus, faMinus, faTrash);
  */
 
 /**
- * @typedef {Object} ChoreTask
+ * @typedef {Object} ChoreItem
  * @property {string} title - The title of the chore.
  * @property {string} description - The description of the chore.
  * @property {number} priority - The priority of the chore (e.g., 1-5, 1 is highest).
@@ -24,21 +24,21 @@ library.add(faRepeat, faPlus, faMinus, faTrash);
  */
 
 /**
- * Chore component to render a single task item.
+ * Chore component to render a single chore item.
  * @param {Object} props
- * @param {ChoreTask} props.task - The task object.
- * @param {Function} props.onTaskDone - Callback for when the task's done status changes.
- * @param {Function} props.onDeleteTask - Callback for deleting the task.
+ * @param {ChoreItem} props.chore - The chore object.
+ * @param {Function} props.onChoreDone - Callback for when the chore's done status changes.
+ * @param {Function} props.onDeleteChore - Callback for deleting the chore.
  */
 function Chore(props) {
     PropTypes.checkPropTypes(Chore.propTypes, props, 'prop', 'Chore');
 
-    const task = props.task;
+    const chore = props.chore;
 
     const classNames = {
         chore: true,
-        done: task.done,
-        [`priority-${task.priority}`]: true,
+        done: chore.done,
+        [`priority-${chore.priority}`]: true,
     };
     const [isDescriptionOpen, setIsDescriptionOpen] = createSignal(false);
 
@@ -49,11 +49,11 @@ function Chore(props) {
     let displayDate;
     let recurrenceTitle = 'Recurring';
 
-    if (task.recurrence) {
-        displayDate = getScheduleDisplayString(task.recurrence);
+    if (chore.recurrence) {
+        displayDate = getScheduleDisplayString(chore.recurrence);
         recurrenceTitle = displayDate; // Use the full display string for the title
-    } else if (task.dueDate) {
-        const effectiveDateAdapter = getEffectiveDueDate(task); // This will be StandardDateAdapter(task.dueDate)
+    } else if (chore.dueDate) {
+        const effectiveDateAdapter = getEffectiveDueDate(chore); // This will be StandardDateAdapter(chore.dueDate)
         if (effectiveDateAdapter && effectiveDateAdapter.date) {
             const d = effectiveDateAdapter.date;
             displayDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
@@ -66,7 +66,7 @@ function Chore(props) {
                 displayDate += ` ${hours}:${minutes} ${ampm}`;
             }
         } else {
-            displayDate = "No specific date"; // Should not happen if task.dueDate is valid
+            displayDate = "No specific date"; // Should not happen if chore.dueDate is valid
         }
     } else {
         displayDate = "No specific date";
@@ -77,14 +77,14 @@ function Chore(props) {
             <div class="chore-main-row">
                 <div class="chore-title-section">
                     <input type="checkbox"
-                        data-task-title={task.title}
-                        checked={task.done}
-                        onChange={props.onTaskDone} // Use passed handler
+                        data-chore-title={chore.title}
+                        checked={chore.done}
+                        onChange={props.onChoreDone} // Use passed handler
                     />
-                    <h3>{task.title}</h3>
+                    <h3>{chore.title}</h3>
                 </div>
                 <div class="chore-icons-section">
-                    {task.recurrence && (
+                    {chore.recurrence && (
                         <span class="icon-recurrence" title={recurrenceTitle}>
                             <FontAwesomeIcon icon={faRepeat} />
                         </span>
@@ -92,7 +92,7 @@ function Chore(props) {
                     <button onClick={toggleDescription} class="icon icon-toggle-description" title={isDescriptionOpen() ? "Collapse description" : "Expand description"}>
                         <FontAwesomeIcon icon={isDescriptionOpen() ? faMinus : faPlus} />
                     </button>
-                    <button onClick={() => props.onDeleteTask(task)} class="icon icon-delete-task" title="Delete task">
+                    <button onClick={() => props.onDeleteChore(chore)} class="icon icon-delete-chore" title="Delete chore">
                         <FontAwesomeIcon icon={faTrash} />
                     </button>
                 </div>
@@ -100,7 +100,7 @@ function Chore(props) {
             {isDescriptionOpen() && (
                 <>
                     <p class="list-item-meta">{displayDate}</p>
-                    <p class="chore-description">{task.description}</p>
+                    <p class="chore-description">{chore.description}</p>
                 </>
             )}
         </li>
@@ -108,7 +108,7 @@ function Chore(props) {
 }
 
 Chore.propTypes = {
-    task: PropTypes.shape({
+    chore: PropTypes.shape({
         title: PropTypes.string.isRequired,
         description: PropTypes.string,
         priority: PropTypes.number.isRequired,
@@ -118,8 +118,8 @@ Chore.propTypes = {
         // scheduleDisplay: PropTypes.string, // Removed
         recurrence: PropTypes.object, // Simplified for brevity, consider more detailed shape
     }).isRequired,
-    onTaskDone: PropTypes.func.isRequired,
-    onDeleteTask: PropTypes.func.isRequired,
+    onChoreDone: PropTypes.func.isRequired,
+    onDeleteChore: PropTypes.func.isRequired,
 };
 
 export default Chore;

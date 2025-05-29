@@ -15,15 +15,15 @@ function isSameDateAdapterDay(adapter1, adapter2) {
            adapter1.date.getDate() === adapter2.date.getDate();
 }
 
-function isTaskForToday(task) {
-    if (task.dueDate) { // task.dueDate is a JS Date
-        const dueDateAdapter = new StandardDateAdapter(task.dueDate);
+function isChoreForToday(chore) {
+    if (chore.dueDate) { // chore.dueDate is a JS Date
+        const dueDateAdapter = new StandardDateAdapter(chore.dueDate);
 
         return isSameDateAdapterDay(dueDateAdapter, todayStartAdapter);
     }
-    if (task.recurrence) {
-        // task.recurrence could be a Rule instance or an options object
-        const rule = task.recurrence instanceof Rule ? task.recurrence : new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+    if (chore.recurrence) {
+        // chore.recurrence could be a Rule instance or an options object
+        const rule = chore.recurrence instanceof Rule ? chore.recurrence : new Rule(chore.recurrence, { dateAdapter: StandardDateAdapter });
         // Ensure the rule has a start date to be valid for occurrence checks
         if (!rule.options.start) return false; 
         const occurrencesToday = rule.occurrences({
@@ -34,17 +34,17 @@ function isTaskForToday(task) {
         return !occurrencesToday.done;
     }
 
-    return true; // No due date or recurrence means it's a task for today
+    return true; // No due date or recurrence means it's a chore for today
 }
 
-function getEffectiveDueDate(task) {
-    if (task.dueDate) { // task.dueDate is a JS Date
-        return new StandardDateAdapter(task.dueDate);
+function getEffectiveDueDate(chore) {
+    if (chore.dueDate) { // chore.dueDate is a JS Date
+        return new StandardDateAdapter(chore.dueDate);
     }
 
-    if (task.recurrence) {
-        // task.recurrence could be a Rule instance or an options object
-        const rule = task.recurrence instanceof Rule ? task.recurrence : new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+    if (chore.recurrence) {
+        // chore.recurrence could be a Rule instance or an options object
+        const rule = chore.recurrence instanceof Rule ? chore.recurrence : new Rule(chore.recurrence, { dateAdapter: StandardDateAdapter });
         // Ensure the rule has a start date to be valid for occurrence checks
         if (!rule.options.start) return null;
         // Get the next occurrence from the start of today
@@ -56,7 +56,7 @@ function getEffectiveDueDate(task) {
     return null;
 }
 
-function taskSortFn(a, b) {
+function choreSortFn(a, b) {
     const aDueDateAdapter = getEffectiveDueDate(a);
     const bDueDateAdapter = getEffectiveDueDate(b);
 
@@ -193,22 +193,22 @@ function getScheduleDisplayString(recurrenceInput) {
     return displayString;
 }
 
-function getTaskDisplayDetails(task) {
+function getChoreDisplayDetails(chore) {
     let displayDate;
     let recurrenceTitle = 'Recurring'; // Default title
 
-    if (task.recurrence) {
-        // task.recurrence can be a Rule instance or an options object
-        const recurrenceValue = task.recurrence instanceof Rule ? task.recurrence.options : task.recurrence;
+    if (chore.recurrence) {
+        // chore.recurrence can be a Rule instance or an options object
+        const recurrenceValue = chore.recurrence instanceof Rule ? chore.recurrence.options : chore.recurrence;
         if (recurrenceValue && recurrenceValue.start) { // Ensure it's valid before trying to display
             displayDate = getScheduleDisplayString(recurrenceValue); // Pass options object
-            recurrenceTitle = displayDate || 'Recurring Task'; // Use the full display string for the title, or fallback
+            recurrenceTitle = displayDate || 'Recurring Chore'; // Use the full display string for the title, or fallback
         } else {
             displayDate = "Invalid recurrence data";
             recurrenceTitle = "Recurring (Error)";
         }
-    } else if (task.dueDate) {
-        const effectiveDateAdapter = getEffectiveDueDate(task); // This will be StandardDateAdapter(task.dueDate)
+    } else if (chore.dueDate) {
+        const effectiveDateAdapter = getEffectiveDueDate(chore); // This will be StandardDateAdapter(chore.dueDate)
         if (effectiveDateAdapter && effectiveDateAdapter.date) {
             const d = effectiveDateAdapter.date;
             displayDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
@@ -221,7 +221,7 @@ function getTaskDisplayDetails(task) {
                 displayDate += ` ${hours}:${minutes} ${ampm}`;
             }
         } else {
-            displayDate = "No specific date"; // Should not happen if task.dueDate is valid
+            displayDate = "No specific date"; // Should not happen if chore.dueDate is valid
         }
     } else {
         displayDate = "No specific date";
@@ -235,9 +235,9 @@ export {
     todayStartAdapter,
     todayEndAdapter,
     isSameDateAdapterDay,
-    isTaskForToday,
+    isChoreForToday,
     getEffectiveDueDate,
-    taskSortFn,
+    choreSortFn,
     getScheduleDisplayString,
-    getTaskDisplayDetails
+    getChoreDisplayDetails
 };

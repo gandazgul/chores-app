@@ -19,13 +19,13 @@ import './Chores.less';
 // Add icons to the library that are used directly in this component
 library.add(faChevronDown, faChevronRight);
 
-// Typedefs for ChoreTask and RScheduleRuleOptions can be kept if Chore component expects them
+// Typedefs for ChoreItem and RScheduleRuleOptions can be kept if Chore component expects them
 // or if they are useful for prop type definitions.
 /**
  * @typedef {import('@rschedule/core').RuleOptions} RScheduleRuleOptions
  */
 /**
- * @typedef {Object} ChoreTask
+ * @typedef {Object} ChoreItem
  * @property {string} title
  * @property {string} description
  * @property {number} priority
@@ -38,43 +38,43 @@ library.add(faChevronDown, faChevronRight);
 function Chores(props) {
     PropTypes.checkPropTypes(Chores.propTypes, props, 'prop', 'Chores');
 
-    const [showTodayTasks, setShowTodayTasks] = createSignal(true);
-    const [showAllTasks, setShowAllTasks] = createSignal(false);
+    const [showTodayChores, setShowTodayChores] = createSignal(true);
+    const [showAllChores, setShowAllChores] = createSignal(false);
 
-    const todayTasksList = createMemo(() => {
-        return props.tasks.filter(props.isTaskForToday).sort(props.taskSortFn);
+    const todayChoresList = createMemo(() => {
+        return props.chores.filter(props.isChoreForToday).sort(props.choreSortFn);
     });
 
-    const allTasksList = createMemo(() => {
-        return [...props.tasks].sort(props.taskSortFn);
+    const allChoresList = createMemo(() => {
+        return [...props.chores].sort(props.choreSortFn);
     });
 
     return (
         <div>
-            {/* AddTaskModal and the old add button are removed */}
+            {/* AddChoreModal and the old add button are removed */}
             <div class="collapsible-section">
-                <h2 onClick={() => setShowTodayTasks(!showTodayTasks())}>
-                    <FontAwesomeIcon icon={showTodayTasks() ? faChevronDown : faChevronRight} />
-                    &nbsp;Today's Tasks ({todayTasksList().length})
+                <h2 onClick={() => setShowTodayChores(!showTodayChores())}>
+                    <FontAwesomeIcon icon={showTodayChores() ? faChevronDown : faChevronRight} />
+                    &nbsp;Today's Chores ({todayChoresList().length})
                 </h2>
-                {showTodayTasks() && (
+                {showTodayChores() && (
                     <ul class="chores-list">
-                        <For each={todayTasksList()}>
-                            {(task) => <Chore task={task} onTaskDone={props.onTaskDone} onDeleteTask={props.onDeleteTask} />}
+                        <For each={todayChoresList()}>
+                            {(chore) => <Chore chore={chore} onChoreDone={props.onChoreDone} onDeleteChore={props.onDeleteChore} />}
                         </For>
                     </ul>
                 )}
             </div>
 
             <div class="collapsible-section">
-                <h2 onClick={() => setShowAllTasks(!showAllTasks())}>
-                    <FontAwesomeIcon icon={showAllTasks() ? faChevronDown : faChevronRight} />
-                    &nbsp;All Tasks ({allTasksList().length})
+                <h2 onClick={() => setShowAllChores(!showAllChores())}>
+                    <FontAwesomeIcon icon={showAllChores() ? faChevronDown : faChevronRight} />
+                    &nbsp;All Chores ({allChoresList().length})
                 </h2>
-                {showAllTasks() && (
+                {showAllChores() && (
                     <ul class="chores-list">
-                        <For each={allTasksList()}>
-                            {(task) => <Chore task={task} onTaskDone={props.onTaskDone} onDeleteTask={props.onDeleteTask} />}
+                        <For each={allChoresList()}>
+                            {(chore) => <Chore chore={chore} onChoreDone={props.onChoreDone} onDeleteChore={props.onDeleteChore} />}
                         </For>
                     </ul>
                 )}
@@ -84,11 +84,11 @@ function Chores(props) {
 }
 
 Chores.propTypes = {
-    tasks: PropTypes.arrayOf(PropTypes.object).isRequired,
-    onTaskDone: PropTypes.func.isRequired,
-    onDeleteTask: PropTypes.func.isRequired,
-    isTaskForToday: PropTypes.func.isRequired,
-    taskSortFn: PropTypes.func.isRequired,
+    chores: PropTypes.arrayOf(PropTypes.object).isRequired,
+    onChoreDone: PropTypes.func.isRequired,
+    onDeleteChore: PropTypes.func.isRequired,
+    isChoreForToday: PropTypes.func.isRequired,
+    choreSortFn: PropTypes.func.isRequired,
 };
 
 export default Chores;

@@ -1,12 +1,12 @@
 import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
 import Chores from './components/Chores';
-import AddTaskModal from './components/AddTaskModal';
-import AddTaskFloatButton from './components/AddTaskFloatButton';
+import AddChoreModal from './components/AddChoreModal';
+import AddChoreFloatButton from './components/AddChoreFloatButton';
 import LoginPage from './components/LoginPage'; // Import LoginPage
 import { auth } from './utils/firebaseConfig'; // Import auth from firebaseConfig
 import { onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged
-import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isTaskForToday, getEffectiveDueDate, taskSortFn } from './utils/scheduleUtils.js'; // Import utils
-import { initializeFuzzySearch, fuzzySearchTasks } from './utils/fuzzySearchUtils.js';
+import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isChoreForToday, getEffectiveDueDate, choreSortFn } from './utils/scheduleUtils.js'; // Import utils
+import { initializeFuzzySearch, fuzzySearchChores } from './utils/fuzzySearchUtils.js';
 import { StandardDateAdapter, Rule } from './rschedule.js'; // Rule is used in utils.js and now here
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
@@ -17,8 +17,8 @@ import './App.less'; // Import App.less
 
 library.add(faPaperPlane); // Add the paper plane icon to the library
 
-// Initial tasks data (lifted from Chores.jsx)
-const initialTasks = [
+// Initial chores data (lifted from Chores.jsx)
+const initialChores = [
     {
         title: 'Take out the trash (Recurring Weekly)',
         description: 'Take out the trash, it stinks!',
@@ -77,9 +77,9 @@ const initialTasks = [
 ];
 
 function App() {
-    const [tasks, setTasks] = createSignal(initialTasks);
-    const [newTaskModalOpen, setNewTaskModalOpen] = createSignal(false);
-    const [quickTaskTitle, setQuickTaskTitle] = createSignal('');
+    const [chores, setChores] = createSignal(initialChores);
+    const [newChoreModalOpen, setNewChoreModalOpen] = createSignal(false);
+    const [quickChoreTitle, setQuickChoreTitle] = createSignal('');
     const [fuse, setFuse] = createSignal(null);
     const [currentUser, setCurrentUser] = createSignal(null); // Signal for current user
     const [showProfileMenu, setShowProfileMenu] = createSignal(false); // New signal for profile menu visibility
@@ -107,76 +107,76 @@ function App() {
     });
 
     createEffect(() => {
-        // Ensure tasks() is accessed to trigger effect on change
-        const currentTasks = tasks();
-        setFuse(initializeFuzzySearch([...currentTasks], ['title', 'description']));
+        // Ensure chores() is accessed to trigger effect on change
+        const currentChores = chores();
+        setFuse(initializeFuzzySearch([...currentChores], ['title', 'description']));
     });
 
-    const displayedTasks = createMemo(() => {
-        const searchTerm = quickTaskTitle();
+    const displayedChores = createMemo(() => {
+        const searchTerm = quickChoreTitle();
         const currentFuse = fuse(); // Access fuse signal
         if (searchTerm.trim() === '' || !currentFuse) {
-            return tasks();
+            return chores();
         }
-        return fuzzySearchTasks(currentFuse, searchTerm);
+        return fuzzySearchChores(currentFuse, searchTerm);
     });
 
-    // Task manipulation functions
-    function handleTaskDone(e) {
-        const taskTitle = e.target.dataset.taskTitle;
-        setTasks((prevTasks) => prevTasks.map((task) => {
-            if (task.title === taskTitle) {
-                return { ...task, done: e.target.checked };
+    // Chore manipulation functions
+    function handleChoreDone(e) {
+        const choreTitle = e.target.dataset.choreTitle;
+        setChores((prevChores) => prevChores.map((chore) => {
+            if (chore.title === choreTitle) {
+                return { ...chore, done: e.target.checked };
             }
-            return task;
+            return chore;
         }));
     }
 
-    function handleDeleteTask(taskToDelete) {
-        setTasks((currentTasks) => currentTasks.filter(task => task.title !== taskToDelete.title));
+    function handleDeleteChore(choreToDelete) {
+        setChores((currentChores) => currentChores.filter(chore => chore.title !== choreToDelete.title));
     }
 
-    function handleAddNewTask(newTaskFromModal) {
-        const taskToAdd = {
-            title: newTaskFromModal.title,
-            description: newTaskFromModal.description,
-            priority: parseInt(newTaskFromModal.priority, 10),
+    function handleAddNewChore(newChoreFromModal) {
+        const choreToAdd = {
+            title: newChoreFromModal.title,
+            description: newChoreFromModal.description,
+            priority: parseInt(newChoreFromModal.priority, 10),
             done: false,
         };
 
-        if (newTaskFromModal.schedule) {
-            if (newTaskFromModal.schedule instanceof Rule) {
-                taskToAdd.recurrence = newTaskFromModal.schedule;
-            } else if (typeof newTaskFromModal.schedule === 'string' && newTaskFromModal.schedule.trim() !== '') {
-                taskToAdd.dueDate = new Date(newTaskFromModal.schedule);
+        if (newChoreFromModal.schedule) {
+            if (newChoreFromModal.schedule instanceof Rule) {
+                choreToAdd.recurrence = newChoreFromModal.schedule;
+            } else if (typeof newChoreFromModal.schedule === 'string' && newChoreFromModal.schedule.trim() !== '') {
+                choreToAdd.dueDate = new Date(newChoreFromModal.schedule);
             }
         }
         
-        setTasks((prevTasks) => [...prevTasks, taskToAdd]);
-        setNewTaskModalOpen(false); // Close modal after adding
+        setChores((prevChores) => [...prevChores, choreToAdd]);
+        setNewChoreModalOpen(false); // Close modal after adding
     }
 
     // Modal control functions
-    function handleAddTaskClick() {
-        setNewTaskModalOpen(true);
+    function handleAddChoreClick() {
+        setNewChoreModalOpen(true);
     }
 
-    function handleAddTaskClose() {
-        setNewTaskModalOpen(false);
+    function handleAddChoreClose() {
+        setNewChoreModalOpen(false);
     }
 
-    function handleQuickAddTask(e) {
+    function handleQuickAddChore(e) {
         if (e) e.preventDefault(); // Prevent default form submission
-        const title = quickTaskTitle().trim();
+        const title = quickChoreTitle().trim();
         if (title) {
-            const newTask = {
+            const newChore = {
                 title: title,
                 description: '', // Default empty description
                 priority: 4,    // Default low priority
                 done: false,
             };
-            setTasks((prevTasks) => [...prevTasks, newTask]);
-            setQuickTaskTitle(''); // Clear the input field
+            setChores((prevChores) => [...prevChores, newChore]);
+            setQuickChoreTitle(''); // Clear the input field
         }
     }
 
@@ -211,37 +211,37 @@ console.log('Current user:', currentUser()); // Log current user for debugging
                             <li>If you see something that has been done already, please mark it as done.</li>
                             <li>Reminders for chores will continuously be sent out until they are marked as done.</li>
                         </ul>
-                        <form onSubmit={handleQuickAddTask} class="quick-add-form">
+                        <form onSubmit={handleQuickAddChore} class="quick-add-form">
                             <input
                                 class="input"
                                 type="text"
-                                placeholder="Search tasks or add new and press Enter..."
-                                value={quickTaskTitle()}
-                                onInput={(e) => setQuickTaskTitle(e.target.value)}
-                                aria-label="Search tasks or add new task title"
+                                placeholder="Search chores or add new and press Enter..."
+                                value={quickChoreTitle()}
+                                onInput={(e) => setQuickChoreTitle(e.target.value)}
+                                aria-label="Search chores or add new chore title"
                             />
-                            <button type="submit" class="outline submit" title="Add task">
+                            <button type="submit" class="outline submit" title="Add chore">
                                 <FontAwesomeIcon icon={faPaperPlane} />
                             </button>
                         </form>
                         <Chores
-                            tasks={displayedTasks()}
-                            onTaskDone={handleTaskDone}
-                            onDeleteTask={handleDeleteTask}
+                            chores={displayedChores()}
+                            onChoreDone={handleChoreDone}
+                            onDeleteChore={handleDeleteChore}
                             // Utility functions needed by Chores for filtering/sorting
-                            isTaskForToday={isTaskForToday}
-                            taskSortFn={taskSortFn}
+                            isChoreForToday={isChoreForToday}
+                            choreSortFn={choreSortFn}
                         />
                     </main>
                     <footer>
                         <p>© {new Date().getFullYear()} Chores</p>
                     </footer>
-                    <AddTaskModal
-                        open={newTaskModalOpen}
-                        onClose={handleAddTaskClose}
-                        onAddNewTask={handleAddNewTask}
+                    <AddChoreModal
+                        open={newChoreModalOpen}
+                        onClose={handleAddChoreClose}
+                        onAddNewChore={handleAddNewChore}
                     />
-                    <AddTaskFloatButton onClick={handleAddTaskClick} />
+                    <AddChoreFloatButton onClick={handleAddChoreClick} />
                 </>
             ) : (
                 <LoginPage />

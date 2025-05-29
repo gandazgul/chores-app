@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import { Rule, StandardDateAdapter } from "../rschedule.js";
 import { Show, createSignal, onMount, onCleanup } from "solid-js"; // For conditional rendering and lifecycle
-import './AddTaskModal.less'; // Import the Less file
+import './AddChoreModal.less'; // Import the Less file
 
-function AddTaskModal(props) {
-    PropTypes.checkPropTypes(AddTaskModal.propTypes, props, 'prop', 'AddTaskModal');
-    const { open = () => false, onClose, onAddNewTask } = props;
+function AddChoreModal(props) {
+    PropTypes.checkPropTypes(AddChoreModal.propTypes, props, 'prop', 'AddChoreModal');
+    const { open = () => false, onClose, onAddNewChore } = props;
 
     // Signals for conditional UI
     const [isRecurring, setIsRecurring] = createSignal(false);
@@ -15,8 +15,8 @@ function AddTaskModal(props) {
     let isRecurringCheckboxElement;
 
     onMount(() => {
-        isRecurringCheckboxElement = document.getElementById('task-is-recurring');
-        frequencySelectElement = document.getElementById('task-recurrence-frequency');
+        isRecurringCheckboxElement = document.getElementById('chore-is-recurring');
+        frequencySelectElement = document.getElementById('chore-recurrence-frequency');
 
         if (isRecurringCheckboxElement) {
             isRecurringCheckboxElement.addEventListener('change', handleIsRecurringChange);
@@ -59,7 +59,7 @@ function AddTaskModal(props) {
         const weekdays = [];
         const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
         days.forEach(day => {
-            const checkbox = document.getElementById(`task-weekday-${day.toLowerCase()}`);
+            const checkbox = document.getElementById(`chore-weekday-${day.toLowerCase()}`);
             if (checkbox && checkbox.checked) {
                 weekdays.push(day);
             }
@@ -67,18 +67,18 @@ function AddTaskModal(props) {
         return weekdays;
     }
 
-    function handleAddNewTask() {
-        const title = document.getElementById('task-title').value;
-        const description = document.getElementById('task-description').value;
-        const priority = document.getElementById('task-priority').value;
-        const scheduleInput = document.getElementById('task-schedule').value;
+    function handleAddNewChore() {
+        const title = document.getElementById('chore-title').value;
+        const description = document.getElementById('chore-description').value;
+        const priority = document.getElementById('chore-priority').value;
+        const scheduleInput = document.getElementById('chore-schedule').value;
         
         let scheduleObject = scheduleInput; // Default to the date string
 
         if (isRecurring() && scheduleInput) {
             const recurrenceFrequencyValue = selectedFrequency();
             // Ensure interval input exists and has a value, otherwise default to 1
-            const intervalElement = document.getElementById('task-recurrence-interval');
+            const intervalElement = document.getElementById('chore-recurrence-interval');
             const recurrenceInterval = intervalElement && intervalElement.value ? parseInt(intervalElement.value, 10) : 1;
 
             const startDate = new StandardDateAdapter(new Date(scheduleInput));
@@ -94,13 +94,13 @@ function AddTaskModal(props) {
                     options.byDayOfWeek = selectedDays;
                 }
             } else if (recurrenceFrequencyValue === "MONTHLY") {
-                const monthDayInput = document.getElementById('task-month-day');
+                const monthDayInput = document.getElementById('chore-month-day');
                 if (monthDayInput && monthDayInput.value) {
                     options.byMonthDay = [parseInt(monthDayInput.value, 10)];
                 }
             } else if (recurrenceFrequencyValue === "YEARLY") {
-                const yearMonthInput = document.getElementById('task-year-month');
-                const yearDayInput = document.getElementById('task-year-day');
+                const yearMonthInput = document.getElementById('chore-year-month');
+                const yearDayInput = document.getElementById('chore-year-day');
                 if (yearMonthInput && yearMonthInput.value) {
                     options.byMonth = [parseInt(yearMonthInput.value, 10)];
                 }
@@ -112,7 +112,7 @@ function AddTaskModal(props) {
             scheduleObject = new Rule(options, { dateAdapter: StandardDateAdapter });
         }
 
-        onAddNewTask({
+        onAddNewChore({
             title,
             description,
             priority,
@@ -126,27 +126,27 @@ function AddTaskModal(props) {
                 <header>
                     <button aria-label="Close" rel="prev" onClick={onClose}></button>
                     <p>
-                        <strong>🗓️ New Task</strong>
+                        <strong>🗓️ New Chore</strong>
                     </p>
                 </header>
                 <form class="compact-modal-form" onSubmit={(e) => e.preventDefault()}>
-                    <label htmlFor="task-title">Title</label>
-                    <input type="text" id="task-title" name="task-title" />
-                    <label htmlFor="task-description">Description</label>
-                    <textarea id="task-description" name="task-description" />
-                    <label htmlFor="task-priority">Priority</label>
-                    <select id="task-priority" name="task-priority">
+                    <label htmlFor="chore-title">Title</label>
+                    <input type="text" id="chore-title" name="chore-title" />
+                    <label htmlFor="chore-description">Description</label>
+                    <textarea id="chore-description" name="chore-description" />
+                    <label htmlFor="chore-priority">Priority</label>
+                    <select id="chore-priority" name="chore-priority">
                         <option value="1">Low</option>
                         <option value="2">Medium</option>
                         <option value="3">High</option>
                     </select>
-                    <label htmlFor="task-schedule">{isRecurring() ? 'Start Date' : 'Due Date'}</label>
-                    <input type="datetime-local" id="task-schedule" name="task-schedule" />
+                    <label htmlFor="chore-schedule">{isRecurring() ? 'Start Date' : 'Due Date'}</label>
+                    <input type="datetime-local" id="chore-schedule" name="chore-schedule" />
 
                     <div class="form-group">
-                        <label for="task-is-recurring" style="display: inline-block; margin-right: 10px;">
-                            <input type="checkbox" id="task-is-recurring" name="task-is-recurring" checked={isRecurring()} onChange={handleIsRecurringChange} />
-                            Is this task recurring?
+                        <label for="chore-is-recurring" style="display: inline-block; margin-right: 10px;">
+                            <input type="checkbox" id="chore-is-recurring" name="chore-is-recurring" checked={isRecurring()} onChange={handleIsRecurringChange} />
+                            Is this chore recurring?
                         </label>
                     </div>
 
@@ -154,8 +154,8 @@ function AddTaskModal(props) {
                         <fieldset style="border: 1px solid #ccc; padding: 10px; margin-top:10px;">
                             <legend>Recurrence Options</legend>
                             
-                            <label htmlFor="task-recurrence-frequency">Frequency</label>
-                            <select id="task-recurrence-frequency" name="task-recurrence-frequency" onChange={handleFrequencyChange} value={selectedFrequency()}>
+                            <label htmlFor="chore-recurrence-frequency">Frequency</label>
+                            <select id="chore-recurrence-frequency" name="chore-recurrence-frequency" onChange={handleFrequencyChange} value={selectedFrequency()}>
                                 <option value="DAILY">Daily</option>
                                 <option value="WEEKLY">Weekly</option>
                                 <option value="MONTHLY">Monthly</option>
@@ -163,8 +163,8 @@ function AddTaskModal(props) {
                             </select>
 
                             <div class="form-group repeat-every-group">
-                                <label htmlFor="task-recurrence-interval">Repeat Every</label>
-                                <input type="number" id="task-recurrence-interval" name="task-recurrence-interval" defaultValue="1" min="1" />
+                                <label htmlFor="chore-recurrence-interval">Repeat Every</label>
+                                <input type="number" id="chore-recurrence-interval" name="chore-recurrence-interval" defaultValue="1" min="1" />
                                 <span class="repeat-unit-label"> ({selectedFrequency().toLowerCase() === 'daily' ? 'day(s)' : selectedFrequency().toLowerCase().slice(0, -2) + '(s)' })</span>
                             </div>
 
@@ -173,8 +173,8 @@ function AddTaskModal(props) {
                                     <label>On Days:</label>
                                     <div>
                                         {['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].map(day => (
-                                            <label for={`task-weekday-${day.toLowerCase()}`} style="margin-right: 10px; display: inline-block;">
-                                                <input type="checkbox" id={`task-weekday-${day.toLowerCase()}`} name="task-weekday" value={day} />
+                                            <label for={`chore-weekday-${day.toLowerCase()}`} style="margin-right: 10px; display: inline-block;">
+                                                <input type="checkbox" id={`chore-weekday-${day.toLowerCase()}`} name="chore-weekday" value={day} />
                                                 {day}
                                             </label>
                                         ))}
@@ -184,39 +184,39 @@ function AddTaskModal(props) {
 
                             <Show when={selectedFrequency() === 'MONTHLY'}>
                                 <div class="form-group">
-                                    <label htmlFor="task-month-day">Day of Month (1-31):</label>
-                                    <input type="number" id="task-month-day" name="task-month-day" min="1" max="31" />
+                                    <label htmlFor="chore-month-day">Day of Month (1-31):</label>
+                                    <input type="number" id="chore-month-day" name="chore-month-day" min="1" max="31" />
                                 </div>
                             </Show>
 
                             <Show when={selectedFrequency() === 'YEARLY'}>
                                 <div class="form-group">
-                                    <label htmlFor="task-year-month">Month:</label>
-                                    <select id="task-year-month" name="task-year-month">
+                                    <label htmlFor="chore-year-month">Month:</label>
+                                    <select id="chore-year-month" name="chore-year-month">
                                         {[...Array(12).keys()].map(i => (
                                             <option value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label htmlFor="task-year-day">Day of Month (1-31):</label>
-                                    <input type="number" id="task-year-day" name="task-year-day" min="1" max="31" />
+                                    <label htmlFor="chore-year-day">Day of Month (1-31):</label>
+                                    <input type="number" id="chore-year-day" name="chore-year-day" min="1" max="31" />
                                 </div>
                             </Show>
                         </fieldset>
                     </Show>
 
-                    <button type="submit" onClick={handleAddNewTask}>Add Task</button>
+                    <button type="submit" onClick={handleAddNewChore}>Add Chore</button>
                 </form>
             </article>
         </dialog>
     );
 }
 
-AddTaskModal.propTypes = {
+AddChoreModal.propTypes = {
     open: PropTypes.func,
     onClose: PropTypes.func.isRequired,
-    onAddNewTask: PropTypes.func.isRequired,
+    onAddNewChore: PropTypes.func.isRequired,
 };
 
-export default AddTaskModal;
+export default AddChoreModal;

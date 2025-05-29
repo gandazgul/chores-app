@@ -1,7 +1,10 @@
-import { createSignal, createMemo, createEffect } from 'solid-js';
+import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
 import Chores from './components/Chores';
 import AddTaskModal from './components/AddTaskModal';
 import AddTaskFloatButton from './components/AddTaskFloatButton';
+import LoginPage from './components/LoginPage'; // Import LoginPage
+import { auth } from './utils/firebaseConfig'; // Import auth from firebaseConfig
+import { onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged
 import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isTaskForToday, getEffectiveDueDate, taskSortFn } from './utils/scheduleUtils.js'; // Import utils
 import { initializeFuzzySearch, fuzzySearchTasks } from './utils/fuzzySearchUtils.js';
 import { StandardDateAdapter, Rule } from './rschedule.js'; // Rule is used in utils.js and now here
@@ -73,18 +76,35 @@ const initialTasks = [
     }
 ];
 
-const instructions = `
-    This is a list of chores that need to be done.
-    If you see something that needs to be done, please do it.
-    If you see something that has been done, please mark it as done.
-    Reminders for chores will continuously be sent out until they are marked as done.
-`;
-
 function App() {
     const [tasks, setTasks] = createSignal(initialTasks);
     const [newTaskModalOpen, setNewTaskModalOpen] = createSignal(false);
     const [quickTaskTitle, setQuickTaskTitle] = createSignal('');
     const [fuse, setFuse] = createSignal(null);
+    const [currentUser, setCurrentUser] = createSignal(null); // Signal for current user
+    const [showProfileMenu, setShowProfileMenu] = createSignal(false); // New signal for profile menu visibility
+
+    // Listen for auth state changes
+    createEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        // Cleanup subscription on component unmount
+        onCleanup(() => unsubscribe());
+    });
+
+    // Close profile menu if clicked outside
+    createEffect(() => {
+        if (showProfileMenu()) {
+            const handleClickOutside = (event) => {
+                if (!event.target.closest('.profile-menu-container')) {
+                    setShowProfileMenu(false);
+                }
+            };
+            document.addEventListener('click', handleClickOutside);
+            onCleanup(() => document.removeEventListener('click', handleClickOutside));
+        }
+    });
 
     createEffect(() => {
         // Ensure tasks() is accessed to trigger effect on change
@@ -160,44 +180,72 @@ function App() {
         }
     }
 
+console.log('Current user:', currentUser()); // Log current user for debugging
+
     return (
         <div class="app">
-            <header>
-                <h1>Chores</h1>
-            </header>
-            <main class="content container-fluid">
-                <p class="instructions">{instructions}</p>
-                <form onSubmit={handleQuickAddTask} class="quick-add-form">
-                    <input
-                        class="input"
-                        type="text"
-                        placeholder="Search tasks or add new and press Enter..."
-                        value={quickTaskTitle()}
-                        onInput={(e) => setQuickTaskTitle(e.target.value)}
-                        aria-label="Search tasks or add new task title"
+            {currentUser() ? (
+                <>
+                    <header>
+                        <div class="header-content">
+                            <h1>Chores</h1>
+                            <div class="profile-menu-container">
+                                <img
+                                    src={currentUser().photoURL || 'https://via.placeholder.com/40'} // Placeholder image
+                                    alt="Profile"
+                                    class="profile-picture"
+                                    onClick={() => setShowProfileMenu(!showProfileMenu())}
+                                />
+                                <Show when={showProfileMenu()}>
+                                    <div class="profile-menu">
+                                        <button onClick={() => auth.signOut()}>Logout</button>
+                                    </div>
+                                </Show>
+                            </div>
+                        </div>
+                    </header>
+                    <main class="content container-fluid">
+                        <ul class="instructions">
+                            <li>This is a list of chores split into ones that need to be done today and the rest.</li>
+                            <li>If you see something that you can do, assign it to youself and get it done.</li>
+                            <li>If you see something that has been done already, please mark it as done.</li>
+                            <li>Reminders for chores will continuously be sent out until they are marked as done.</li>
+                        </ul>
+                        <form onSubmit={handleQuickAddTask} class="quick-add-form">
+                            <input
+                                class="input"
+                                type="text"
+                                placeholder="Search tasks or add new and press Enter..."
+                                value={quickTaskTitle()}
+                                onInput={(e) => setQuickTaskTitle(e.target.value)}
+                                aria-label="Search tasks or add new task title"
+                            />
+                            <button type="submit" class="outline submit" title="Add task">
+                                <FontAwesomeIcon icon={faPaperPlane} />
+                            </button>
+                        </form>
+                        <Chores
+                            tasks={displayedTasks()}
+                            onTaskDone={handleTaskDone}
+                            onDeleteTask={handleDeleteTask}
+                            // Utility functions needed by Chores for filtering/sorting
+                            isTaskForToday={isTaskForToday}
+                            taskSortFn={taskSortFn}
+                        />
+                    </main>
+                    <footer>
+                        <p>© {new Date().getFullYear()} Chores</p>
+                    </footer>
+                    <AddTaskModal
+                        open={newTaskModalOpen}
+                        onClose={handleAddTaskClose}
+                        onAddNewTask={handleAddNewTask}
                     />
-                    <button type="submit" class="outline submit" title="Add task">
-                        <FontAwesomeIcon icon={faPaperPlane} />
-                    </button>
-                </form>
-                <Chores 
-                    tasks={displayedTasks()}
-                    onTaskDone={handleTaskDone} 
-                    onDeleteTask={handleDeleteTask}
-                    // Utility functions needed by Chores for filtering/sorting
-                    isTaskForToday={isTaskForToday}
-                    taskSortFn={taskSortFn}
-                />
-            </main>
-            <footer>
-                <p>© {new Date().getFullYear()} Chores</p>
-            </footer>
-            <AddTaskModal 
-                open={newTaskModalOpen} 
-                onClose={handleAddTaskClose} 
-                onAddNewTask={handleAddNewTask} 
-            />
-            <AddTaskFloatButton onClick={handleAddTaskClick} />
+                    <AddTaskFloatButton onClick={handleAddTaskClick} />
+                </>
+            ) : (
+                <LoginPage />
+            )}
         </div>
     )
 }

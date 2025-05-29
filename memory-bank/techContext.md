@@ -8,9 +8,9 @@
 
 ## Development Setup
 
-- **Run development server:** `npm run dev` or `pnpm dev`
-- **Build for production:** `npm run build` or `pnpm build`
-- **Preview production build:** `npm run preview` or `pnpm preview`
+- **Run development server:** `pnpm dev`
+- **Build for production:** `pnpm build`
+- **Preview production build:** `pnpm preview`
 
 ## Technical Constraints
 
@@ -28,6 +28,7 @@
 - `prop-types`: ^15.8.1 (Runtime type checking for React props and similar objects - likely used with SolidJS components)
 - `solid-fontawesome`: ^0.2.1 (FontAwesome icons for SolidJS)
 - `solid-js`: ^1.9.4 (Core SolidJS library)
+- `firebase`: ^11.8.1 (Backend services including Authentication)
 
 ### Development Dependencies
 - `less`: ^4.2.2
@@ -37,5 +38,18 @@
 ## Tool Usage Patterns
 
 *(To be defined)*
+
+## Authentication
+
+- **Provider:** Firebase Authentication
+- **Method:** Google Sign-In (Popup method)
+- **Configuration:** `src/utils/firebaseConfig.js` initializes Firebase and the Auth instance.
+- **UI Integration:**
+    - `src/components/LoginPage.jsx`: A SolidJS component that handles the Google Sign-In process.
+        - Displays a generic error message if authentication fails.
+    - `src/App.jsx`: The main SolidJS application component that:
+        - Listens for authentication state changes using `onAuthStateChanged` from Firebase.
+        - Conditionally renders `LoginPage.jsx` or the main application content based on user authentication status.
+        - Includes a logout button.
 
 This document covers the technical landscape of the project, including tools, technologies, and constraints.

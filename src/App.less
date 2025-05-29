@@ -6,12 +6,79 @@
   min-height: 100vh;
 
   header {
-    // Styles for header alignment will be added here
-    text-align: center; // Example, can be adjusted
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+    background-color: var(--pico-background-color);
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 960px;
+      /* Or your desired max width */
+      margin: 0 auto;
+      /* Center the content */
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: var(--pico-primary);
+    }
+
+    .profile-menu-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .profile-picture {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      object-fit: cover;
+      border: 2px solid var(--pico-primary);
+    }
+
+    .profile-menu {
+      position: absolute;
+      top: 50px;
+      /* Adjust as needed to position below the picture */
+      right: 0;
+      background-color: var(--pico-background-color);
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 0.25rem;
+      min-width: 120px;
+      z-index: 1000;
+      /* Ensure it's above other content */
+      padding: 0.5rem 0;
+
+      button {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--pico-color);
+
+        &:hover {
+          background-color: var(--pico-primary-hover);
+          color: var(--pico-primary-inverse);
+        }
+      }
+    }
   }
 
   .content {
     flex-grow: 1;
+    padding: var(--pico-spacing);
+  }
+
+  .instructions {
+    padding-left: var(--pico-spacing);
   }
 
   footer {

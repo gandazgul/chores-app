@@ -1,18 +1,20 @@
 import PropTypes from 'prop-types';
 import { createSignal, createMemo, For } from "solid-js";
-import cx from 'classnames';
 import AddTaskModal from './AddTaskModal';
+import Chore from './Chore'; // Import the new Chore component
+import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isTaskForToday, getEffectiveDueDate, taskSortFn } from './utils'; // Import utils
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from 'solid-fontawesome';
-import { faRepeat, faPlus, faMinus, faTrash, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
-
-import { Rule, StandardDateAdapter } from '../rschedule.js'; 
+import { faChevronDown, faChevronRight, faRepeat, faPlus, faMinus, faTrash } from '@fortawesome/free-solid-svg-icons'; 
+import { StandardDateAdapter } from '../rschedule.js'; // Rule is used in utils.js
 
 import './Chores.less';
 
-// Add icons to the library
-library.add(faRepeat, faPlus, faMinus, faTrash, faChevronDown, faChevronRight);
+// Add icons to the library (ensure all needed icons are added, some might be in Chore.jsx)
+// Icons used in Chores.jsx: faChevronDown, faChevronRight
+// Icons used in Chore.jsx: faRepeat, faPlus, faMinus, faTrash
+library.add(faChevronDown, faChevronRight, faRepeat, faPlus, faMinus, faTrash);
 
 /**
  * @typedef {import('@rschedule/core').RuleOptions} RScheduleRuleOptions
@@ -20,7 +22,7 @@ library.add(faRepeat, faPlus, faMinus, faTrash, faChevronDown, faChevronRight);
  */
 
 /**
- * @typedef {Object} Chore
+ * @typedef {Object} ChoreTask
  * @property {string} title - The title of the chore.
  * @property {string} description - The description of the chore.
  * @property {number} priority - The priority of the chore (e.g., 1-5, 1 is highest).
@@ -31,20 +33,8 @@ library.add(faRepeat, faPlus, faMinus, faTrash, faChevronDown, faChevronRight);
  * @property {RScheduleRuleOptions} [recurrence] - Recurrence options.
  */
 
-const jsToday = new Date(); // Standard JavaScript Date object for 'today'
-// Create StandardDateAdapter instances for the start and end of today for rSchedule operations
-const todayStartAdapter = new StandardDateAdapter(new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate()));
-const todayEndAdapter = new StandardDateAdapter(new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate(), 23, 59, 59, 999));
 
-// Helper function to compare if two StandardDateAdapter instances are on the same calendar day
-function isSameDateAdapterDay(adapter1, adapter2) {
-    if (!adapter1 || !adapter2 || !adapter1.date || !adapter2.date) return false;
-    return adapter1.date.getFullYear() === adapter2.date.getFullYear() &&
-           adapter1.date.getMonth() === adapter2.date.getMonth() &&
-           adapter1.date.getDate() === adapter2.date.getDate();
-}
-
-/** @type {Chore[]} */
+/** @type {ChoreTask[]} */
 const [tasks, setTasks] = createSignal([
     {
         title: 'Take out the trash (Recurring Weekly)',
@@ -81,7 +71,7 @@ const [tasks, setTasks] = createSignal([
         title: 'Morning Standup (Recurring Daily)',
         description: 'Quick sync with the team.',
         priority: 3,
-        recurrence: { // Uses 'start'
+        recurrence: {
             frequency: 'DAILY',
             start: new StandardDateAdapter(new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate(), 9, 0, 0)), 
             count: 10,
@@ -100,7 +90,7 @@ const [tasks, setTasks] = createSignal([
         title: 'Pay Bills (Recurring Monthly)',
         description: 'Monthly bills payment',
         priority: 1,
-        recurrence: { // Uses 'start'
+        recurrence: {
             frequency: 'MONTHLY',
             start: new StandardDateAdapter(new Date(2024, 0, 15, 10, 0, 0)), 
             byMonthDay: [15],
@@ -124,7 +114,7 @@ function Chores(props) {
 
     const [newTaskModalOpen, setNewTaskModalOpen] = createSignal(false);
     const [showTodayTasks, setShowTodayTasks] = createSignal(true);
-    const [showAllTasks, setShowAllTasks] = createSignal(true);
+    const [showAllTasks, setShowAllTasks] = createSignal(false);
 
     function handleDeleteTask(taskToDelete) {
         setTasks((currentTasks) => currentTasks.filter(task => task.title !== taskToDelete.title));
@@ -142,6 +132,7 @@ function Chores(props) {
         if (newTask.dueDate && !(newTask.dueDate instanceof Date)) {
             newTask.dueDate = new Date(newTask.dueDate); 
         }
+        // Ensure StandardDateAdapter is used if recurrence.start is provided as a string/date
         if (newTask.recurrence && newTask.recurrence.start && !(newTask.recurrence.start instanceof StandardDateAdapter)) {
             newTask.recurrence.start = new StandardDateAdapter( new Date(newTask.recurrence.start) );
         }
@@ -149,127 +140,22 @@ function Chores(props) {
         setNewTaskModalOpen(false);
     }
 
-    const isTaskForToday = (task) => {
-        if (task.dueDate) { // task.dueDate is a JS Date
-            const dueDateAdapter = new StandardDateAdapter(task.dueDate);
-            return isSameDateAdapterDay(dueDateAdapter, todayStartAdapter);
-        }
-        if (task.recurrence && task.recurrence.start) { // task.recurrence.start is an adapter
-            const rule = new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
-            const occurrencesToday = rule.occurrences({
-                start: todayStartAdapter, 
-                end: todayEndAdapter,     
-            }).next();
-            return !occurrencesToday.done;
-        }
-        return !task.dueDate && !task.recurrence;
-    };
-    
-    const getEffectiveDueDate = (task) => {
-        if (task.dueDate) { // task.dueDate is a JS Date
-            return new StandardDateAdapter(task.dueDate);
-        }
-        if (task.recurrence && task.recurrence.start) { // task.recurrence.start is an adapter
-            const rule = new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
-            const nextOccurrence = rule.occurrences({ start: todayStartAdapter }).next().value; 
-            return nextOccurrence ? nextOccurrence : null; // nextOccurrence is already an adapter
-        }
-        return null;
-    };
-
-    const taskSortFn = (a, b) => {
-        const aDueDateAdapter = getEffectiveDueDate(a); 
-        const bDueDateAdapter = getEffectiveDueDate(b); 
-
-        if (!aDueDateAdapter && bDueDateAdapter) return 1;
-        if (aDueDateAdapter && !bDueDateAdapter) return -1;
-        if (!aDueDateAdapter && !bDueDateAdapter) {
-             return a.priority - b.priority;
-        }
-
-        // Compare using valueOf() which should return milliseconds for chronological comparison
-        const сравнение = aDueDateAdapter.valueOf() - bDueDateAdapter.valueOf();
-        if (сравнение !== 0) return сравнение;
-
-        return a.priority - b.priority; // If dates are same, sort by priority
-    };
+    // isTaskForToday, getEffectiveDueDate, taskSortFn are now imported from utils.js
+    // renderTaskItem is now the Chore component
 
     const todayTasksList = createMemo(() => {
+        // isTaskForToday and taskSortFn are from utils.js
         return tasks().filter(isTaskForToday).sort(taskSortFn);
     });
 
     const allTasksList = createMemo(() => {
+        // taskSortFn is from utils.js
         return [...tasks()].sort(taskSortFn);
     });
 
-    const renderTaskItem = (task) => {
-        const classNames = {
-            chore: true,
-            done: task.done,
-            [`priority-${task.priority}`]: true,
-        };
-        const [isDescriptionOpen, setIsDescriptionOpen] = createSignal(false);
-        function toggleDescription() {
-            setIsDescriptionOpen(!isDescriptionOpen());
-        }
-
-        let displayDate = task.scheduleDisplay;
-        if (!displayDate) {
-            const effectiveDateAdapter = getEffectiveDueDate(task); 
-            if (effectiveDateAdapter && effectiveDateAdapter.date) { // Check .date for safety
-                const d = effectiveDateAdapter.date; // Get the underlying JS Date
-                displayDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-                if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-                    let hours = d.getHours();
-                    const minutes = d.getMinutes().toString().padStart(2, '0');
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12;
-                    hours = hours ? hours : 12; 
-                    displayDate += ` ${hours}:${minutes} ${ampm}`;
-                }
-            } else {
-                displayDate = "No specific date";
-            }
-        }
-      
-        return (
-            <li class={cx(classNames)}>
-                <div class="chore-main-row">
-                    <div class="chore-title-section">
-                        <input type="checkbox"
-                            data-task-title={task.title}
-                            checked={task.done}
-                            onChange={handleTaskDone}
-                        />
-                        <h3>{task.title}</h3>
-                    </div>
-                    <div class="chore-icons-section">
-                        {task.recurrence && (
-                            <span class="icon-recurrence" title={task.scheduleDisplay || 'Recurring'}>
-                                <FontAwesomeIcon icon={faRepeat} />
-                            </span>
-                        )}
-                        <button onClick={toggleDescription} class="icon icon-toggle-description" title={isDescriptionOpen() ? "Collapse description" : "Expand description"}>
-                            <FontAwesomeIcon icon={isDescriptionOpen() ? faMinus : faPlus} />
-                        </button>
-                        <button onClick={() => handleDeleteTask(task)} class="icon icon-delete-task" title="Delete task">
-                            <FontAwesomeIcon icon={faTrash} />
-                        </button>
-                    </div>
-                </div>
-                {isDescriptionOpen() && (
-                    <>
-                        <p class="list-item-meta">{displayDate}</p>
-                        <p class="chore-description">{task.description}</p>
-                    </>
-                )}
-            </li>
-        );
-    };
-
     return (
         <div>
-            <AddTaskModal open={newTaskModalOpen()} onClose={handleAddTaskClose} onAddNewTask={handleAddNewTask} />
+            <AddTaskModal open={newTaskModalOpen} onClose={handleAddTaskClose} onAddNewTask={handleAddNewTask} />
 
             <div class="collapsible-section">
                 <h2 onClick={() => setShowTodayTasks(!showTodayTasks())}>
@@ -279,7 +165,7 @@ function Chores(props) {
                 {showTodayTasks() && (
                     <ul class="chores-list">
                         <For each={todayTasksList()}>
-                            {(task) => renderTaskItem(task)}
+                            {(task) => <Chore task={task} onTaskDone={handleTaskDone} onDeleteTask={handleDeleteTask} />}
                         </For>
                     </ul>
                 )}
@@ -293,7 +179,7 @@ function Chores(props) {
                 {showAllTasks() && (
                     <ul class="chores-list">
                         <For each={allTasksList()}>
-                            {(task) => renderTaskItem(task)}
+                            {(task) => <Chore task={task} onTaskDone={handleTaskDone} onDeleteTask={handleDeleteTask} />}
                         </For>
                     </ul>
                 )}

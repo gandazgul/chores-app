@@ -1,0 +1,27 @@
+{
+  "name": "todo-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@picocss/pico": "^2.0.6",
+    "@rschedule/core": "^1.5.0",
+    "@rschedule/standard-date-adapter": "^1.5.0",
+    "classnames": "^2.5.1",
+    "prop-types": "^15.8.1",
+    "solid-fontawesome": "^0.2.1",
+    "solid-js": "^1.9.4"
+  },
+  "devDependencies": {
+    "less": "^4.2.2",
+    "vite": "^6.1.0",
+    "vite-plugin-solid": "^2.11.0"
+  }
+}

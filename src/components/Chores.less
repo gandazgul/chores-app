@@ -1,0 +1,143 @@
+button.round {
+    border-radius: 50%;
+    --pico-form-element-spacing-horizontal: 1.2rem;
+}
+
+.chores-list {
+    margin: 0;
+    padding: 0;
+
+    .chore {
+        list-style: none;
+        padding: 0.75rem 0.5rem; // Add some padding to each chore item
+        border-bottom: 1px solid #444; // Separator for dark mode
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &.done {
+            // text-decoration: line-through; // Handled by title styling if preferred
+            .chore-title-section h3 {
+                text-decoration: line-through;
+                opacity: 0.7;
+            }
+        }
+
+        .chore-main-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem; 
+        }
+
+        .chore-title-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; 
+            flex-grow: 1; 
+            
+            input[type="checkbox"] {
+                // Style checkbox if needed, for now rely on browser default
+                // For PicoCSS, it might already be styled.
+                // Making it slightly larger for easier clicking
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+
+            h3 {
+                margin: 0; // Remove default h3 margin
+                font-size: 1.1em;
+            }
+        }
+
+        .chore-icons-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; 
+            margin-left: 1rem; 
+
+            .icon-recurrence { // This is a span, not a button, so it won't use the .icon class directly
+                opacity: 0.8;
+                display: inline-flex; 
+                align-items: center;
+                svg {
+                    width: 16px; 
+                    height: 16px; 
+                }
+            }
+
+            // Common icon button styles
+            .icon {
+                background: none;
+                border: 1px solid transparent;
+                color: inherit; 
+                cursor: pointer;
+                padding: 0.25rem;
+                line-height: 1;
+                border-radius: 4px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+
+                svg {
+                    width: 16px;
+                    height: 16px;
+                }
+            }
+
+            .icon-toggle-description {
+                // Inherits from .icon
+                &:hover {
+                    border-color: #555; 
+                }
+            }
+
+            .icon-delete-task {
+                // Inherits from .icon
+                &:hover {
+                    color: #ff6b6b; // Light red for hover
+                    border-color: #ff6b6b;
+                }
+            }
+        }
+        
+        .list-item-meta {
+            font-size: 0.8em;
+            color: #aaa; 
+            margin-left: calc(1.25rem + 0.75rem); // Align with title (checkbox width + gap)
+            margin-bottom: 0.25rem;
+        }
+
+        .chore-description {
+            margin-left: calc(1.25rem + 0.75rem); // Align with title
+            font-size: 0.9em;
+            color: #ccc; 
+            padding-top: 0.25rem;
+        }
+    }
+}
+
+.collapsible-section {
+    margin-bottom: 1rem;
+
+    h2 {
+        cursor: pointer;
+        user-select: none; // Prevent text selection on click
+        font-size: 1.2em;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+
+        svg { // Style for the chevron icon
+            margin-right: 0.3em;
+            width: 1em; // Relative to h2 font size
+            height: 1em; // Relative to h2 font size
+        }
+    }
+
+    .chores-list { // Apply to lists within collapsible sections
+        // Potentially add some indentation or different styling if needed
+        // For now, it will inherit the global .chores-list styles
+    }
+}

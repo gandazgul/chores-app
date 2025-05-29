@@ -46,14 +46,14 @@ function Chore(props) {
         setIsDescriptionOpen(!isDescriptionOpen());
     }
 
-    let displayDate;
+    let displayDate = "No specific date"; // Default value
     let recurrenceTitle = 'Recurring';
 
     if (chore.recurrence) {
         displayDate = getScheduleDisplayString(chore.recurrence);
         recurrenceTitle = displayDate; // Use the full display string for the title
     } else if (chore.dueDate) {
-        const effectiveDateAdapter = getEffectiveDueDate(chore); // This will be StandardDateAdapter(chore.dueDate)
+        const effectiveDateAdapter = getEffectiveDueDate(chore);
         if (effectiveDateAdapter && effectiveDateAdapter.date) {
             const d = effectiveDateAdapter.date;
             displayDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
@@ -65,11 +65,7 @@ function Chore(props) {
                 hours = hours ? hours : 12; // Convert 0 to 12 for 12 AM/PM
                 displayDate += ` ${hours}:${minutes} ${ampm}`;
             }
-        } else {
-            displayDate = "No specific date"; // Should not happen if chore.dueDate is valid
         }
-    } else {
-        displayDate = "No specific date";
     }
 
     return (
@@ -77,11 +73,14 @@ function Chore(props) {
             <div class="chore-main-row">
                 <div class="chore-title-section">
                     <input type="checkbox"
-                        data-chore-id={chore.id} // Changed from data-chore-title
+                        data-chore-id={chore.id}
                         checked={chore.done}
-                        onChange={props.onChoreDone} // Use passed handler
+                        onChange={props.onChoreDone}
                     />
                     <h3>{chore.title}</h3>
+                    {chore.dueDate && !chore.recurrence && (
+                        <span class="chore-due-date" title="Due Date">{displayDate}</span>
+                    )}
                 </div>
                 <div class="chore-icons-section">
                     {chore.recurrence && (

@@ -29,7 +29,6 @@ library.add(faChevronDown, faChevronRight, faRepeat, faPlus, faMinus, faTrash);
  * @property {boolean} done - Whether the chore is done.
  * @property {Date} [dueDate] - Specific due date for non-recurring tasks (JS Date object).
  * @property {boolean} [remindUntilDone] - Whether to remind until the chore is done.
- * @property {string} [scheduleDisplay] - A calculated value to display the schedule in a friendly way.
  * @property {RScheduleRuleOptions} [recurrence] - Recurrence options.
  */
 
@@ -45,8 +44,7 @@ const [tasks, setTasks] = createSignal([
             frequency: 'WEEKLY',
             start: new StandardDateAdapter(new Date(2024, 0, 1, 8, 0, 0)), 
             byDayOfWeek: ['TU'],
-        },
-        scheduleDisplay: 'Every Tuesday at 8am'
+        }
     },
     {
         title: 'Feed the dogs (No Due Date)',
@@ -57,15 +55,13 @@ const [tasks, setTasks] = createSignal([
         title: 'Call John - Due Today',
         description: 'Discuss project updates.',
         priority: 1,
-        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate(), 14, 0, 0), // JS Date
-        scheduleDisplay: `Today at 2:00 PM`
+        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate(), 14, 0, 0) // JS Date
     },
     {
         title: 'Prepare presentation - Due Tomorrow',
         description: 'For the team meeting.',
         priority: 2,
-        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate() + 1, 10, 0, 0), // JS Date
-        scheduleDisplay: `Tomorrow at 10:00 AM`
+        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate() + 1, 10, 0, 0) // JS Date
     },
     {
         title: 'Morning Standup (Recurring Daily)',
@@ -75,16 +71,14 @@ const [tasks, setTasks] = createSignal([
             frequency: 'DAILY',
             start: new StandardDateAdapter(new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate(), 9, 0, 0)), 
             count: 10,
-        },
-        scheduleDisplay: 'Daily at 9am (next 10)'
+        }
     },
     {
         title: 'Water plants - Done',
         description: 'They were thirsty.',
         priority: 4,
         done: true,
-        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate() -1, 12, 0, 0), // JS Date
-        scheduleDisplay: 'Yesterday'
+        dueDate: new Date(jsToday.getFullYear(), jsToday.getMonth(), jsToday.getDate() -1, 12, 0, 0) // JS Date
     },
     {
         title: 'Pay Bills (Recurring Monthly)',
@@ -94,8 +88,7 @@ const [tasks, setTasks] = createSignal([
             frequency: 'MONTHLY',
             start: new StandardDateAdapter(new Date(2024, 0, 15, 10, 0, 0)), 
             byMonthDay: [15],
-        },
-        scheduleDisplay: 'Every 15th of the month'
+        }
     }
 ]);
 
@@ -128,15 +121,29 @@ function Chores(props) {
         setNewTaskModalOpen(false);
     }
 
-    function handleAddNewTask(newTask) {
-        if (newTask.dueDate && !(newTask.dueDate instanceof Date)) {
-            newTask.dueDate = new Date(newTask.dueDate); 
+    function handleAddNewTask(newTaskFromModal) {
+        // newTaskFromModal has { title, description, priority (string), schedule (string from datetime-local) }
+        const taskToAdd = {
+            title: newTaskFromModal.title,
+            description: newTaskFromModal.description,
+            priority: parseInt(newTaskFromModal.priority, 10), // Convert priority to number
+            done: false, // New tasks are not done by default
+        };
+
+        if (newTaskFromModal.schedule) { // Value from datetime-local input
+            taskToAdd.dueDate = new Date(newTaskFromModal.schedule);
         }
-        // Ensure StandardDateAdapter is used if recurrence.start is provided as a string/date
-        if (newTask.recurrence && newTask.recurrence.start && !(newTask.recurrence.start instanceof StandardDateAdapter)) {
-            newTask.recurrence.start = new StandardDateAdapter( new Date(newTask.recurrence.start) );
-        }
-        setTasks((prevTasks) => [...prevTasks, newTask]);
+
+        // Note: The current AddTaskModal does not support setting up recurrence.
+        // If it did, we would handle newTaskFromModal.recurrence here, e.g.:
+        // if (newTaskFromModal.recurrence && newTaskFromModal.recurrence.start && !(newTaskFromModal.recurrence.start instanceof StandardDateAdapter)) {
+        //     taskToAdd.recurrence = {
+        //         ...newTaskFromModal.recurrence,
+        //         start: new StandardDateAdapter(new Date(newTaskFromModal.recurrence.start))
+        //     };
+        // }
+        
+        setTasks((prevTasks) => [...prevTasks, taskToAdd]);
         setNewTaskModalOpen(false);
     }
 

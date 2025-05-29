@@ -38,7 +38,7 @@ function AddTaskModal(props) {
                         <option value="2">Medium</option>
                         <option value="3">High</option>
                     </select>
-                    <label htmlFor="task-schedule">Schedule</label>
+                    <label htmlFor="task-schedule">Due Date</label>
                     <input type="datetime-local" id="task-schedule" name="task-schedule" />
                     <button type="submit" onClick={handleAddNewTask}>Add Task</button>
                 </form>

@@ -3,7 +3,7 @@ import { createSignal } from "solid-js";
 import cx from 'classnames';
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faRepeat, faPlus, faMinus, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { getEffectiveDueDate } from './utils'; // Import helper
+import { getEffectiveDueDate, getScheduleDisplayString } from './utils'; // Import helpers
 
 // Note: library.add for these icons is already in Chores.jsx or App.jsx, ensure it's loaded globally.
 // If not, you might need to add:
@@ -23,7 +23,6 @@ import { getEffectiveDueDate } from './utils'; // Import helper
  * @property {boolean} done - Whether the chore is done.
  * @property {Date} [dueDate] - Specific due date for non-recurring tasks (JS Date object).
  * @property {boolean} [remindUntilDone] - Whether to remind until the chore is done.
- * @property {string} [scheduleDisplay] - A calculated value to display the schedule in a friendly way.
  * @property {RScheduleRuleOptions} [recurrence] - Recurrence options.
  */
 
@@ -50,23 +49,30 @@ function Chore(props) {
         setIsDescriptionOpen(!isDescriptionOpen());
     }
 
-    let displayDate = task.scheduleDisplay;
-    if (!displayDate) {
-        const effectiveDateAdapter = getEffectiveDueDate(task);
-        if (effectiveDateAdapter && effectiveDateAdapter.date) { // Check .date for safety
-            const d = effectiveDateAdapter.date; // Get the underlying JS Date
+    let displayDate;
+    let recurrenceTitle = 'Recurring';
+
+    if (task.recurrence) {
+        displayDate = getScheduleDisplayString(task.recurrence);
+        recurrenceTitle = displayDate; // Use the full display string for the title
+    } else if (task.dueDate) {
+        const effectiveDateAdapter = getEffectiveDueDate(task); // This will be StandardDateAdapter(task.dueDate)
+        if (effectiveDateAdapter && effectiveDateAdapter.date) {
+            const d = effectiveDateAdapter.date;
             displayDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
             if (d.getHours() !== 0 || d.getMinutes() !== 0) {
                 let hours = d.getHours();
                 const minutes = d.getMinutes().toString().padStart(2, '0');
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12;
-                hours = hours ? hours : 12;
+                hours = hours ? hours : 12; // Convert 0 to 12 for 12 AM/PM
                 displayDate += ` ${hours}:${minutes} ${ampm}`;
             }
         } else {
-            displayDate = "No specific date";
+            displayDate = "No specific date"; // Should not happen if task.dueDate is valid
         }
+    } else {
+        displayDate = "No specific date";
     }
 
     return (
@@ -82,7 +88,7 @@ function Chore(props) {
                 </div>
                 <div class="chore-icons-section">
                     {task.recurrence && (
-                        <span class="icon-recurrence" title={task.scheduleDisplay || 'Recurring'}>
+                        <span class="icon-recurrence" title={recurrenceTitle}>
                             <FontAwesomeIcon icon={faRepeat} />
                         </span>
                     )}
@@ -112,7 +118,7 @@ Chore.propTypes = {
         done: PropTypes.bool,
         dueDate: PropTypes.instanceOf(Date),
         remindUntilDone: PropTypes.bool,
-        scheduleDisplay: PropTypes.string,
+        // scheduleDisplay: PropTypes.string, // Removed
         recurrence: PropTypes.object, // Simplified for brevity, consider more detailed shape
     }).isRequired,
     onTaskDone: PropTypes.func.isRequired,

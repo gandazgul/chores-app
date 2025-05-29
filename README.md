@@ -1,4 +1,4 @@
-# Todo App
+# Chores App
 
 A simple and efficient application to manage your daily tasks and chores.
 
@@ -7,11 +7,10 @@ A simple and efficient application to manage your daily tasks and chores.
 - Add, edit, and delete tasks
 - Mark tasks as complete
 - User authentication
-- [Add more features as they are developed]
 
 ## Project Structure
 
-The project is built using [mention the main technologies, e.g., React, Vite, Firebase]. The main components are located in the `src/components` directory.
+The project is built using SolidJS, Vite, PicoCSS and Firebase. It uses pnpm as the package manager. The main components are located in the `src/components` directory.
 
 ## Installation
 
@@ -19,8 +18,8 @@ To get started with the project, clone the repository and install the dependenci
 
 ```bash
 git clone https://github.com/gandazgul/chores-app.git
-cd todo-app
-npm install # or pnpm install or yarn install
+cd chores-app
+pnpm install
 ```
 
 ## Usage
@@ -28,20 +27,20 @@ npm install # or pnpm install or yarn install
 ### Running the development server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 This will start the development server. Open [http://localhost:5173](http://localhost:5173) (or the port specified in your console) to view it in the browser.
 
 ### Building for production:
 
 ```bash
-npm run build
+pnpm build
 ```
 This command builds the app for production to the `dist` folder. It correctly bundles the application in production mode and optimizes the build for the best performance. The build is minified, and the filenames include hashes. Your app is ready to be deployed!
 
 ## Contributing
 
-We welcome contributions to the Todo App! If you'd like to contribute, please follow these guidelines:
+We welcome contributions to the Chores App! If you'd like to contribute, please follow these guidelines:
 
 ### Reporting Bugs
 
@@ -65,9 +64,4 @@ We welcome contributions to the Todo App! If you'd like to contribute, please fo
 
 ## License
 
-This project is licensed under the terms of the [LICENSE](LICENSE) file.
-
-## Learn More
-
-- Learn more about [mention main framework, e.g., SolidJS] on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs) (if applicable, or remove this line).
-- For deployment, refer to the [Vite deployment documentation](https://vite.dev/guide/static-deploy.html).
+This project is licensed under the terms of the MIT [LICENSE](LICENSE).

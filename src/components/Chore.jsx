@@ -3,7 +3,7 @@ import { createSignal } from "solid-js";
 import cx from 'classnames';
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faRepeat, faPlus, faMinus, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { getEffectiveDueDate, getScheduleDisplayString } from './utils'; // Import helpers
+import { getEffectiveDueDate, getScheduleDisplayString } from '../utils/scheduleUtils.js'; // Import helpers
 import { library } from '@fortawesome/fontawesome-svg-core';
 
 library.add(faRepeat, faPlus, faMinus, faTrash);

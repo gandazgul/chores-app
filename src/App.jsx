@@ -1,8 +1,9 @@
-import { createSignal } from 'solid-js';
+import { createSignal, createMemo, createEffect } from 'solid-js';
 import Chores from './components/Chores';
 import AddTaskModal from './components/AddTaskModal';
 import AddTaskFloatButton from './components/AddTaskFloatButton';
-import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isTaskForToday, getEffectiveDueDate, taskSortFn } from './components/utils'; // Import utils
+import { jsToday, todayStartAdapter, todayEndAdapter, isSameDateAdapterDay, isTaskForToday, getEffectiveDueDate, taskSortFn } from './utils/scheduleUtils.js'; // Import utils
+import { initializeFuzzySearch, fuzzySearchTasks } from './utils/fuzzySearchUtils.js';
 import { StandardDateAdapter, Rule } from './rschedule.js'; // Rule is used in utils.js and now here
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
@@ -83,8 +84,24 @@ function App() {
     const [tasks, setTasks] = createSignal(initialTasks);
     const [newTaskModalOpen, setNewTaskModalOpen] = createSignal(false);
     const [quickTaskTitle, setQuickTaskTitle] = createSignal('');
+    const [fuse, setFuse] = createSignal(null);
 
-    // Task manipulation functions (lifted from Chores.jsx)
+    createEffect(() => {
+        // Ensure tasks() is accessed to trigger effect on change
+        const currentTasks = tasks();
+        setFuse(initializeFuzzySearch([...currentTasks], ['title', 'description']));
+    });
+
+    const displayedTasks = createMemo(() => {
+        const searchTerm = quickTaskTitle();
+        const currentFuse = fuse(); // Access fuse signal
+        if (searchTerm.trim() === '' || !currentFuse) {
+            return tasks();
+        }
+        return fuzzySearchTasks(currentFuse, searchTerm);
+    });
+
+    // Task manipulation functions
     function handleTaskDone(e) {
         const taskTitle = e.target.dataset.taskTitle;
         setTasks((prevTasks) => prevTasks.map((task) => {
@@ -154,17 +171,17 @@ function App() {
                     <input
                         class="input"
                         type="text"
-                        placeholder="Add a new task and press Enter..."
+                        placeholder="Search tasks or add new and press Enter..."
                         value={quickTaskTitle()}
                         onInput={(e) => setQuickTaskTitle(e.target.value)}
-                        aria-label="New task title"
+                        aria-label="Search tasks or add new task title"
                     />
                     <button type="submit" class="outline submit" title="Add task">
                         <FontAwesomeIcon icon={faPaperPlane} />
                     </button>
                 </form>
                 <Chores 
-                    tasks={tasks()}
+                    tasks={displayedTasks()}
                     onTaskDone={handleTaskDone} 
                     onDeleteTask={handleDeleteTask}
                     // Utility functions needed by Chores for filtering/sorting

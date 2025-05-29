@@ -177,11 +177,13 @@ function getScheduleDisplayString(recurrenceInput) {
 
     if (count) {
         displayString += ` for ${count} occurrences`;
-    } else if (until) {
+    } 
+    else if (until) {
         // until is an Adapter instance, its `date` property is a JS Date
         if (until.date && typeof until.date.toLocaleDateString === 'function') {
             displayString += ` until ${until.date.toLocaleDateString()}`;
-        } else {
+        } 
+        else {
             // Fallback or error if until.date is not as expected
             console.warn('Unexpected "until" date format:', until);
             displayString += ' until an unspecified date';

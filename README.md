@@ -1,28 +1,73 @@
-## Usage
+# Todo App
+
+A simple and efficient application to manage your daily tasks and chores.
+
+## Features
+
+- Add, edit, and delete tasks
+- Mark tasks as complete
+- User authentication
+- [Add more features as they are developed]
+
+## Project Structure
+
+The project is built using [mention the main technologies, e.g., React, Vite, Firebase]. The main components are located in the `src/components` directory.
+
+## Installation
+
+To get started with the project, clone the repository and install the dependencies:
 
 ```bash
-$ npm install # or pnpm install or yarn install
+git clone https://github.com/gandazgul/chores-app.git
+cd todo-app
+npm install # or pnpm install or yarn install
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+## Usage
 
-## Available Scripts
+### Running the development server:
 
-In the project directory, you can run:
+```bash
+npm run dev
+```
+This will start the development server. Open [http://localhost:5173](http://localhost:5173) (or the port specified in your console) to view it in the browser.
 
-### `npm run dev`
+### Building for production:
 
-Runs the app in the development mode.<br>
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
+```bash
+npm run build
+```
+This command builds the app for production to the `dist` folder. It correctly bundles the application in production mode and optimizes the build for the best performance. The build is minified, and the filenames include hashes. Your app is ready to be deployed!
 
-### `npm run build`
+## Contributing
 
-Builds the app for production to the `dist` folder.<br>
-It correctly bundles Solid in production mode and optimizes the build for the best performance.
+We welcome contributions to the Todo App! If you'd like to contribute, please follow these guidelines:
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+### Reporting Bugs
 
-## Deployment
+- Check the existing issues to see if the bug has already been reported.
+- If not, open a new issue. Be sure to include a clear title, a detailed description of the bug, steps to reproduce it, and any relevant screenshots.
 
-Learn more about deploying your application with the [documentations](https://vite.dev/guide/static-deploy.html)
+### Suggesting Enhancements
+
+- Open a new issue to discuss your enhancement idea.
+- Provide a clear title and a detailed description of the proposed enhancement and its benefits.
+
+### Submitting Pull Requests
+
+1.  Fork the repository.
+2.  Create a new branch for your feature or bug fix: `git checkout -b feature/your-feature-name` or `git checkout -b fix/your-bug-fix-name`.
+3.  Make your changes and commit them with a clear and descriptive commit message.
+4.  Push your changes to your forked repository: `git push origin feature/your-feature-name`.
+5.  Open a pull request to the `main` branch of the original repository.
+6.  Ensure your PR description clearly explains the changes and why they are needed.
+7.  Link any relevant issues in your PR description.
+
+## License
+
+This project is licensed under the terms of the [LICENSE](LICENSE) file.
+
+## Learn More
+
+- Learn more about [mention main framework, e.g., SolidJS] on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs) (if applicable, or remove this line).
+- For deployment, refer to the [Vite deployment documentation](https://vite.dev/guide/static-deploy.html).

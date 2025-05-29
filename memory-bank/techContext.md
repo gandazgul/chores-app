@@ -39,6 +39,12 @@
 
 *(To be defined)*
 
+## Project Hosting
+
+- **Platform:** GitHub
+- **Repository URL:** https://github.com/gandazgul/chores-app.git
+- **Key Features:** Version control, issue tracking, collaboration, CI/CD (if configured).
+
 ## Authentication
 
 - **Provider:** Firebase Authentication

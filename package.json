@@ -1,6 +1,18 @@
 {
   "name": "chores-app",
   "description": "A chores app built with SolidJS and Firebase. It allows users to manage household chores, assign them to family members, and track completion. With constant reminders and fuzzy recurrence and due dates.",
+  "repository": "https://github.com/gandazgul/chores-app.git",
+  "author": "Carlos Ravelo <ravelo.carlos@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "solidjs",
+    "firebase",
+    "chores",
+    "household",
+    "management",
+    "reminders",
+    "fuzzy recurrence"
+  ],
   "private": true,
   "version": "1.0.0",
   "type": "module",

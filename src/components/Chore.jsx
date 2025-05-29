@@ -77,7 +77,7 @@ function Chore(props) {
             <div class="chore-main-row">
                 <div class="chore-title-section">
                     <input type="checkbox"
-                        data-chore-title={chore.title}
+                        data-chore-id={chore.id} // Changed from data-chore-title
                         checked={chore.done}
                         onChange={props.onChoreDone} // Use passed handler
                     />

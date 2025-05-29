@@ -1,0 +1,86 @@
+// Styles for AddTaskModal within .compact-modal-form
+dialog .compact-modal-form {
+    // Reduce overall spacing for a more compact form
+    --pico-form-element-spacing-vertical: 0.4rem; // Default 0.75rem
+    --pico-form-element-spacing-horizontal: 0.6rem; // Default 1rem
+    --pico-font-size: 0.95rem; // Slightly smaller font for compactness
+
+    label {
+        margin-bottom: 0.2rem; // Reduce space below labels
+        font-size: 0.9em; // Make labels a bit smaller
+    }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    input[type="number"],
+    textarea,
+    select {
+        padding: 0.3rem 0.5rem;
+        margin-bottom: 0.5rem; // Reduce space after inputs
+    }
+    
+    textarea {
+        min-height: 60px; // Reduce min-height for textarea
+    }
+
+    // Specific group for "Repeat Every" input and its unit label
+    .repeat-every-group {
+        display: flex;
+        align-items: center; // Vertically align label, input, and unit span
+        margin-bottom: 0.5rem; // Consistent margin for form groups
+
+        label {
+            margin-bottom: 0; // Remove bottom margin as it's part of a flex row
+            margin-right: 0.5rem; // Space between label and input
+            flex-shrink: 0; // Prevent label from shrinking
+        }
+
+        input[type="number"] {
+            margin-bottom: 0; // Input is part of the flex row
+            width: 70px; // Give a fixed width to the number input
+            text-align: right;
+            padding-right: 0.3rem; // Adjust padding for number input
+        }
+
+        .repeat-unit-label {
+            margin-left: 0.3rem; // Space between input and unit label
+            font-size: 0.9em;
+        }
+    }
+
+    // Adjust spacing for checkbox groups (e.g., weekly days)
+    .form-group {
+        margin-bottom: 0.5rem;
+        label { // General label within form-group
+             margin-bottom: 0.2rem;
+        }
+        div { // Container for checkboxes or other inputs
+            label { // Label for individual checkbox
+                font-size: 0.9em;
+                font-weight: normal; // Pico makes fieldset labels bold
+                margin-right: 0.5rem !important; // Ensure spacing between checkboxes
+                input[type="checkbox"] {
+                    margin-right: 0.2rem; // Space between checkbox and its text
+                }
+            }
+        }
+    }
+    
+    fieldset {
+        padding: 0.5rem 0.75rem !important; // Reduce padding of the fieldset
+        margin-top: 0.75rem !important; // Reduce top margin of fieldset
+        legend {
+            font-size: 0.95em; // Slightly smaller legend
+        }
+    }
+
+    // Ensure the "Is this task recurring?" checkbox label is aligned well
+    label[for="task-is-recurring"] {
+        display: flex !important; // Use flex for alignment
+        align-items: center;
+        margin-bottom: 0.5rem; // Space after this checkbox group
+        input[type="checkbox"] {
+            margin-right: 0.4rem; // Space between checkbox and text
+        }
+    }
+}

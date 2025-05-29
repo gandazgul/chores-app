@@ -1,0 +1,99 @@
+// Styles for App.jsx
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  header {
+    // Styles for header alignment will be added here
+    text-align: center; // Example, can be adjusted
+  }
+
+  .content {
+    flex-grow: 1;
+  }
+
+  footer {
+    // Styles to keep footer at the bottom will be added here
+    text-align: center; // Example, can be adjusted
+    padding: 1em;
+    // background-color: #f0f0f0; // Removed to inherit app background
+  }
+
+  .quick-add-form {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 1rem;
+
+    &:focus-within {
+      .input {
+        border-color: var(--pico-primary);
+        box-shadow: none
+      }
+
+      .submit {
+        border-color: var(--pico-primary);
+      }
+    }
+
+    .input {
+      flex-grow: 1;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border: 1px solid #ced4da;
+      border-right: none;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-top-left-radius: 0.25rem;
+      border-bottom-left-radius: 0.25rem;
+      min-width: 0;
+      outline: none;
+    }
+
+    .submit {
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--pico-primary);
+      color: var(--pico-primary-inverse);
+      border: 1px solid #ced4da;
+      border-left: none;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      border-top-right-radius: 0.25rem;
+      border-bottom-right-radius: 0.25rem;
+      cursor: pointer;
+      outline: none;
+      width: 56px;
+    }
+  }
+}
+
+.add-task-button-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000; // Ensure it's above other content
+
+  button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+
+    &:hover {
+      background-color: #0056b3;
+    }
+  }
+}

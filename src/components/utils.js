@@ -9,6 +9,7 @@ const todayEndAdapter = new StandardDateAdapter(new Date(jsToday.getFullYear(), 
 // Helper function to compare if two StandardDateAdapter instances are on the same calendar day
 function isSameDateAdapterDay(adapter1, adapter2) {
     if (!adapter1 || !adapter2 || !adapter1.date || !adapter2.date) return false;
+    
     return adapter1.date.getFullYear() === adapter2.date.getFullYear() &&
            adapter1.date.getMonth() === adapter2.date.getMonth() &&
            adapter1.date.getDate() === adapter2.date.getDate();
@@ -17,29 +18,41 @@ function isSameDateAdapterDay(adapter1, adapter2) {
 function isTaskForToday(task) {
     if (task.dueDate) { // task.dueDate is a JS Date
         const dueDateAdapter = new StandardDateAdapter(task.dueDate);
+
         return isSameDateAdapterDay(dueDateAdapter, todayStartAdapter);
     }
-    if (task.recurrence && task.recurrence.start) { // task.recurrence.start is an adapter
-        const rule = new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+    if (task.recurrence) {
+        // task.recurrence could be a Rule instance or an options object
+        const rule = task.recurrence instanceof Rule ? task.recurrence : new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+        // Ensure the rule has a start date to be valid for occurrence checks
+        if (!rule.options.start) return false; 
         const occurrencesToday = rule.occurrences({
             start: todayStartAdapter,
             end: todayEndAdapter,
         }).next();
+
         return !occurrencesToday.done;
     }
-    return !task.dueDate && !task.recurrence; // Tasks without due date or recurrence are not specifically "for today" unless manually marked or handled differently
+
+    return true; // No due date or recurrence means it's a task for today
 }
 
 function getEffectiveDueDate(task) {
     if (task.dueDate) { // task.dueDate is a JS Date
         return new StandardDateAdapter(task.dueDate);
     }
-    if (task.recurrence && task.recurrence.start) { // task.recurrence.start is an adapter
-        const rule = new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+
+    if (task.recurrence) {
+        // task.recurrence could be a Rule instance or an options object
+        const rule = task.recurrence instanceof Rule ? task.recurrence : new Rule(task.recurrence, { dateAdapter: StandardDateAdapter });
+        // Ensure the rule has a start date to be valid for occurrence checks
+        if (!rule.options.start) return null;
         // Get the next occurrence from the start of today
         const nextOccurrence = rule.occurrences({ start: todayStartAdapter }).next().value;
+
         return nextOccurrence ? nextOccurrence : null; // nextOccurrence is already an adapter
     }
+
     return null;
 }
 
@@ -102,11 +115,26 @@ function getOrdinalSuffix(day) {
     }
 }
 
-function getScheduleDisplayString(recurrence) {
-    if (!recurrence) return '';
+function getScheduleDisplayString(recurrenceInput) {
+    if (!recurrenceInput) return '';
 
-    const { frequency, interval = 1, byDay, byMonth, byMonthDay, count, until } = recurrence;
+    // recurrenceInput could be a Rule instance or an options object
+    const recurrenceOptions = recurrenceInput instanceof Rule ? recurrenceInput.options : recurrenceInput;
+    
+    // Ensure recurrenceOptions and its start property are valid
+    if (!recurrenceOptions || !recurrenceOptions.start) {
+        console.warn('Invalid recurrence options for display string:', recurrenceOptions);
+        return 'Invalid recurrence data';
+    }
+
+    const { frequency, interval = 1, byDayOfWeek, byMonth, byMonthDay, count, until } = recurrenceOptions;
     let displayString = '';
+
+    // Note: rSchedule Rule options use byDayOfWeek, not byDay.
+    // The sample data in Chores.jsx uses byDayOfWeek for 'TU', but the old getScheduleDisplayString used byDay.
+    // Correcting to use byDayOfWeek if present.
+    const daysOfWeek = byDayOfWeek || recurrenceOptions.byDay;
+
 
     switch (frequency) {
         case 'DAILY':
@@ -114,13 +142,16 @@ function getScheduleDisplayString(recurrence) {
             break;
         case 'WEEKLY':
             displayString = interval === 1 ? 'Every week' : `Every ${interval} weeks`;
-            if (byDay && byDay.length > 0) {
-                // Sort byDay according to typical week order (SU, MO, ..., SA)
-                const sortedByDay = [...byDay].sort((a, b) => {
+            if (daysOfWeek && daysOfWeek.length > 0) {
+                // Sort daysOfWeek according to typical week order (SU, MO, ..., SA)
+                // rSchedule byDayOfWeek can be a string like 'MO' or an array ['MO', 2] for "2nd Monday"
+                // For simplicity, this display function handles simple day strings.
+                const simpleDays = daysOfWeek.map(d => typeof d === 'string' ? d : d[0]);
+                const sortedDays = [...simpleDays].sort((a, b) => {
                     const order = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
                     return order.indexOf(a) - order.indexOf(b);
                 });
-                displayString += ' on ' + sortedByDay.map(day => dayMap[day]).join(', ');
+                displayString += ' on ' + sortedDays.map(day => dayMap[day]).join(', ');
             }
             break;
         case 'MONTHLY':
@@ -165,8 +196,15 @@ function getTaskDisplayDetails(task) {
     let recurrenceTitle = 'Recurring'; // Default title
 
     if (task.recurrence) {
-        displayDate = getScheduleDisplayString(task.recurrence);
-        recurrenceTitle = displayDate; // Use the full display string for the title
+        // task.recurrence can be a Rule instance or an options object
+        const recurrenceValue = task.recurrence instanceof Rule ? task.recurrence.options : task.recurrence;
+        if (recurrenceValue && recurrenceValue.start) { // Ensure it's valid before trying to display
+            displayDate = getScheduleDisplayString(recurrenceValue); // Pass options object
+            recurrenceTitle = displayDate || 'Recurring Task'; // Use the full display string for the title, or fallback
+        } else {
+            displayDate = "Invalid recurrence data";
+            recurrenceTitle = "Recurring (Error)";
+        }
     } else if (task.dueDate) {
         const effectiveDateAdapter = getEffectiveDueDate(task); // This will be StandardDateAdapter(task.dueDate)
         if (effectiveDateAdapter && effectiveDateAdapter.date) {

@@ -4,12 +4,9 @@ import cx from 'classnames';
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faRepeat, faPlus, faMinus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { getEffectiveDueDate, getScheduleDisplayString } from './utils'; // Import helpers
+import { library } from '@fortawesome/fontawesome-svg-core';
 
-// Note: library.add for these icons is already in Chores.jsx or App.jsx, ensure it's loaded globally.
-// If not, you might need to add:
-// import { library } from '@fortawesome/fontawesome-svg-core';
-// library.add(faRepeat, faPlus, faMinus, faTrash);
-
+library.add(faRepeat, faPlus, faMinus, faTrash);
 
 /**
  * @typedef {import('@rschedule/core').RuleOptions} RScheduleRuleOptions

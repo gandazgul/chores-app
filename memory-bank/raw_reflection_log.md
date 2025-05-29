@@ -1,28 +1,60 @@
 ---
-Date: 2025-05-27
-TaskRef: "Commit and push with an appropriate commit"
+Date: 2025-05-28
+TaskRef: "Replace Firebase with Supabase for Chores App"
 
 Learnings:
-- Identified PWA setup using `vite-plugin-pwa` by inspecting `vite.config.js` and untracked files like `public/` and `src/sw.js`.
-- Confirmed `vite.config.js` is the location for `vite-plugin-pwa` configuration, including manifest details and service worker strategy (`injectManifest`).
-- Recognized `public/` directory typically holds static PWA assets (icons, manifest files).
-- Recognized `src/sw.js` as the common location for the service worker source file when using `injectManifest`.
-- Confirmed that build output directories like `dev-dist/` are usually added to `.gitignore`.
-- The `memory-bank/raw_reflection_log.md` file itself is part of the project's tracking and should be included in commits.
-- User feedback: Commit messages should be more descriptive. Initial commit "feat: Implement PWA with vite-plugin-pwa and update dependencies" was not sufficient.
+- Supabase schema design:
+  - `chores` table with `id UUID PRIMARY KEY`, `user_id UUID FK to auth.users`, `title TEXT`, `description TEXT`, `priority INTEGER`, `done BOOLEAN`, `due_date TIMESTAMPTZ`, `remind_until_done BOOLEAN`, `recurrence JSONB`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`.
+  - `JSONB` is suitable for storing complex, variable recurrence rule objects (like rSchedule options).
+  - Auto-updating `updated_at` column using a PostgreSQL trigger function:
+    ```sql
+    CREATE OR REPLACE FUNCTION update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = now();
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER update_chores_updated_at
+    BEFORE UPDATE ON chores
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+    ```
+- Data Migration (Firestore to Supabase):
+  - Firestore Timestamps need conversion to ISO 8601 strings for `TIMESTAMPTZ` columns or direct `Date` objects for Supabase client.
+  - Recurrence objects (maps in Firestore) translate well to `JSONB` in Supabase. Ensure date strings within JSON are ISO 8601.
+  - `user_id` for direct SQL `INSERT`s into a table with a `NOT NULL` foreign key to `auth.users` must be a valid, existing user ID from the `auth.users` table. Placeholder UUIDs will fail FK constraints.
+- Supabase Auth (JavaScript client `@supabase/supabase-js`):
+  - Initialization: `createClient(supabaseUrl, supabaseAnonKey)`.
+  - Google OAuth: `supabase.auth.signInWithOAuth({ provider: 'google' })`.
+  - Get current session: `supabase.auth.getSession()`. Returns `{ data: { session }, error }`.
+  - Auth state listener: `supabase.auth.onAuthStateChange((event, session) => { ... })`. `session.user` contains user details.
+  - Sign out: `supabase.auth.signOut()`.
+  - User profile picture: `user.user_metadata?.avatar_url` or `user.user_metadata?.picture` (differs from Firebase's `user.photoURL`).
+- Supabase Database Client (JavaScript):
+  - Fetching data: `supabase.from('table_name').select('*').eq('column', 'value')`.
+  - Inserting data: `supabase.from('table_name').insert([{ column: 'value' }]).select()`. `.select()` returns the inserted row(s).
+  - Updating data: `supabase.from('table_name').update({ column: 'new_value' }).eq('id_column', 'id_value')`.
+  - Deleting data: `supabase.from('table_name').delete().eq('id_column', 'id_value')`.
+- SolidJS:
+  - Passing user state (e.g., `currentUser` signal) as props to child components.
+  - Using `onMount` for initial data fetching and setting up listeners.
+  - Using `createEffect` for reactive data fetching based on user state.
+  - `props.currentUser()` to access signal value passed as prop.
 
 Difficulties:
-- Initially overlooked checking `.gitignore` for `dev-dist/` until after `git status` revealed it as untracked. Future git operations could benefit from checking `.gitignore` status for build-related directories earlier if untracked build outputs are present.
-- Crafting a sufficiently descriptive commit message initially.
+- Initial oversight on `user_id` for SQL `INSERT` statements: A placeholder UUID would violate foreign key constraints if it doesn't exist in `auth.users`. Corrected by requiring a valid existing `user_id`.
+- Ensuring `currentUser` prop was consistently passed to all components needing it (e.g., `Chores.jsx` from `App.jsx`).
 
 Successes:
-- Successfully deduced the main theme of the uncommitted changes (PWA implementation) by analyzing modified and untracked files.
-- Correctly identified files related to the PWA setup.
-- Successfully updated `.gitignore` based on user confirmation.
-- Formulated a relevant commit message based on the observed changes.
+- Successfully planned and executed the migration from Firebase to Supabase.
+- Designed a functional Supabase schema for the `chores` table.
+- Correctly refactored authentication and data management logic across multiple SolidJS components.
+- Handled data conversion between application representation and Supabase storage (dates, recurrence objects).
 
 Improvements_Identified_For_Consolidation:
-- General pattern: When preparing to commit, if untracked build-related directories (e.g., `dist`, `build`, `dev-dist`) appear, verify if they should be added to `.gitignore`.
-- Project-specific: Chores App uses `vite-plugin-pwa` with `injectManifest` strategy, `src/sw.js` for service worker, and `public/` for PWA assets.
-- General pattern: Ensure commit messages are descriptive, detailing the scope and purpose of changes. For feature additions like PWA, mention key configurations and files involved.
+- General pattern: When migrating DBs with FK constraints, ensure sample data inserts use valid FKs or temporarily disable constraints if appropriate (though less ideal for `user_id`).
+- Supabase: Common user data fields (like `user.id`, `user.user_metadata`).
+- Supabase: Standard CRUD operations syntax.
 ---

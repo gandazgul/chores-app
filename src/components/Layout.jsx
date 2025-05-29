@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onCleanup, Show } from 'solid-js';
-import { auth } from '../utils/firebaseConfig'; // Adjusted path
+import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import './Layout.less'; // Import specific styles
 
 function Layout(props) {
@@ -26,15 +26,18 @@ function Layout(props) {
                     <Show when={props.currentUser()}>
                         <div class="profile-menu-container">
                             <img
-                                src={props.currentUser().photoURL || 'https://via.placeholder.com/40'}
+                                src={props.currentUser().user_metadata?.avatar_url || props.currentUser().user_metadata?.picture || 'https://via.placeholder.com/40'}
                                 alt="Profile"
                                 class="profile-picture"
                                 onClick={() => setShowProfileMenu(!showProfileMenu())}
                             />
                             <Show when={showProfileMenu()}>
                                 <div class="profile-menu">
-                                    <button onClick={() => {
-                                        auth.signOut();
+                                    <button onClick={async () => {
+                                        const { error } = await supabase.auth.signOut();
+                                        if (error) {
+                                            console.error("Error logging out:", error.message);
+                                        }
                                         setShowProfileMenu(false); // Close menu on logout
                                     }}>Logout</button>
                                 </div>

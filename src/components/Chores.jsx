@@ -2,8 +2,7 @@ import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-j
 import ChoresList from './ChoresList'; // Renamed from Chores
 import AddChoreModal from './AddChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
-import { db, auth } from '../utils/firebaseConfig'; // Adjusted path
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, writeBatch } from 'firebase/firestore';
+import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import { jsToday, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js'; // Adjusted path
 import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js'; // Adjusted path
 import { StandardDateAdapter, Rule } from '../rschedule.js'; // Adjusted path
@@ -16,7 +15,8 @@ import './Chores.less'; // Import specific styles
 
 library.add(faPaperPlane);
 
-function Chores() {
+// Assuming currentUser is passed as a prop from App.jsx
+function Chores(props) {
     const [chores, setChores] = createSignal([]);
     const [newChoreModalOpen, setNewChoreModalOpen] = createSignal(false);
     const [quickChoreTitle, setQuickChoreTitle] = createSignal('');
@@ -24,60 +24,71 @@ function Chores() {
     const [loadingChores, setLoadingChores] = createSignal(true);
     // currentUser will be passed as a prop or accessed via a global store if needed.
     // For this refactor, assuming currentUser is available (e.g., passed as prop or from context)
-    // Let's assume it's passed as a prop for now.
-    // const [currentUser, setCurrentUser] = createSignal(auth.currentUser); // Simplified for component context
+    // const currentUser = () => auth.currentUser; // Replaced by props.currentUser
 
-    // Props would include currentUser if passed from App.jsx
-    // For now, directly using auth.currentUser for simplicity in this isolated component.
-    // A more robust solution might involve a Solid store or context for auth state.
-    const currentUser = () => auth.currentUser;
+    // No longer need choresCollectionRef for Supabase in this way
+    // const choresCollectionRef = collection(db, "chores"); 
 
-
-    const choresCollectionRef = collection(db, "chores");
-
-    const convertChoreFromFirestore = (choreData) => {
+    const convertChoreFromSupabase = (choreData) => {
         const chore = { ...choreData };
-        if (chore.dueDate && chore.dueDate.toDate) {
-            chore.dueDate = chore.dueDate.toDate();
+        if (chore.due_date) { // Supabase columns are typically snake_case
+            chore.dueDate = new Date(chore.due_date);
+            delete chore.due_date; // Clean up original snake_case field
         }
-        if (chore.recurrence && chore.recurrence.start && chore.recurrence.start.toDate) {
-            chore.recurrence.start = new StandardDateAdapter(chore.recurrence.start.toDate());
+        if (chore.recurrence && chore.recurrence.start) {
+            // Assuming recurrence.start is stored as an ISO string in JSONB
+            chore.recurrence.start = new StandardDateAdapter(new Date(chore.recurrence.start));
         }
+        // user_id is already in choreData from Supabase, no specific conversion needed here for it
+        // created_at and updated_at are also available
         return chore;
     };
 
-    const convertChoreToFirestore = (choreData) => {
+    const convertChoreToSupabase = (choreData) => {
         const chore = { ...choreData };
         if (chore.dueDate && chore.dueDate instanceof Date) {
-            chore.dueDate = Timestamp.fromDate(chore.dueDate);
+            chore.due_date = chore.dueDate.toISOString(); // Convert to ISO string for Supabase
+            delete chore.dueDate;
         }
         if (chore.recurrence && chore.recurrence.start && chore.recurrence.start instanceof StandardDateAdapter) {
-            chore.recurrence.start = Timestamp.fromDate(chore.recurrence.start._date);
+            // Ensure recurrence.start is an ISO string for JSONB
+            chore.recurrence.start = chore.recurrence.start._date.toISOString();
         }
-        delete chore.id;
+        // Ensure user_id is present if it's coming from a different source name
+        if (chore.userId && !chore.user_id) {
+            chore.user_id = chore.userId;
+            delete chore.userId;
+        }
+        // id is handled by Supabase, no need to delete it before insert
+        // For updates, id is used in the .eq() clause
         return chore;
     };
 
-    createEffect(() => {
-        const user = currentUser();
-        if (user) {
+    createEffect(async () => {
+        const user = props.currentUser(); // Use prop
+        if (user && user.id) { // Supabase user object has `id`
             setLoadingChores(true);
-            const q = query(choresCollectionRef, where("userId", "==", user.uid));
-            const unsubscribe = getDocs(q) // This should be onSnapshot for real-time updates
-                .then(querySnapshot => {
-                    const fetchedChores = querySnapshot.docs.map(doc => ({ ...convertChoreFromFirestore(doc.data()), id: doc.id }));
+            try {
+                const { data, error } = await supabase
+                    .from('chores')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (error) {
+                    console.error("Error fetching chores:", error.message);
+                    setChores([]);
+                } else {
+                    const fetchedChores = data.map(chore => convertChoreFromSupabase(chore));
                     setChores(fetchedChores);
-                })
-                .catch(error => {
-                    console.error("Error fetching chores: ", error);
-                })
-                .finally(() => {
-                    setLoadingChores(false);
-                });
-            // onCleanup for onSnapshot, not directly applicable for one-time getDocs
-            // If using onSnapshot, it would return an unsubscribe function.
+                }
+            } catch (e) {
+                console.error("Exception fetching chores:", e);
+                setChores([]);
+            } finally {
+                setLoadingChores(false);
+            }
         } else {
-            setChores([]);
+            setChores([]); // Clear chores if no user
             setLoadingChores(false);
         }
     });
@@ -101,32 +112,49 @@ function Chores() {
         const choreId = e.target.dataset.choreId;
         const isDone = e.target.checked;
         try {
-            const choreDocRef = doc(db, "chores", choreId);
-            await updateDoc(choreDocRef, { done: isDone });
-            setChores((prevChores) => prevChores.map((chore) => {
-                if (chore.id === choreId) {
-                    return { ...chore, done: isDone };
-                }
-                return chore;
-            }));
-        } catch (error) {
-            console.error("Error updating chore: ", error);
+            const { error } = await supabase
+                .from('chores')
+                .update({ done: isDone, updated_at: new Date().toISOString() })
+                .eq('id', choreId);
+
+            if (error) {
+                console.error("Error updating chore:", error.message);
+                // Optionally, revert UI change or show error to user
+                e.target.checked = !isDone; // Revert checkbox state
+            } else {
+                setChores((prevChores) => prevChores.map((chore) => {
+                    if (chore.id === choreId) {
+                        return { ...chore, done: isDone };
+                    }
+                    return chore;
+                }));
+            }
+        } catch (err) {
+            console.error("Exception updating chore:", err);
+            e.target.checked = !isDone; // Revert checkbox state on exception
         }
     }
 
     async function handleDeleteChore(choreToDelete) {
         try {
-            const choreDocRef = doc(db, "chores", choreToDelete.id);
-            await deleteDoc(choreDocRef);
-            setChores((currentChores) => currentChores.filter(chore => chore.id !== choreToDelete.id));
-        } catch (error) {
-            console.error("Error deleting chore: ", error);
+            const { error } = await supabase
+                .from('chores')
+                .delete()
+                .eq('id', choreToDelete.id);
+
+            if (error) {
+                console.error("Error deleting chore:", error.message);
+            } else {
+                setChores((currentChores) => currentChores.filter(chore => chore.id !== choreToDelete.id));
+            }
+        } catch (err) {
+            console.error("Exception deleting chore:", err);
         }
     }
 
     async function handleAddNewChore(newChoreFromModal) {
-        const user = currentUser();
-        if (!user) {
+        const user = props.currentUser(); // Use prop
+        if (!user || !user.id) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
@@ -135,23 +163,34 @@ function Chores() {
             description: newChoreFromModal.description,
             priority: parseInt(newChoreFromModal.priority, 10),
             done: false,
-            userId: user.uid,
+            user_id: user.id, // Use user.id for Supabase and snake_case
         };
 
         if (newChoreFromModal.schedule) {
             if (newChoreFromModal.schedule instanceof Rule) {
-                choreToAdd.recurrence = newChoreFromModal.schedule;
+                choreToAdd.recurrence = newChoreFromModal.schedule; // convertChoreToSupabase will handle StandardDateAdapter in recurrence.start
             } else if (typeof newChoreFromModal.schedule === 'string' && newChoreFromModal.schedule.trim() !== '') {
-                choreToAdd.dueDate = new Date(newChoreFromModal.schedule);
+                choreToAdd.dueDate = new Date(newChoreFromModal.schedule); // convertChoreToSupabase will handle this
             }
         }
 
         try {
-            const docRef = await addDoc(choresCollectionRef, convertChoreToFirestore(choreToAdd));
-            setChores((prevChores) => [...prevChores, { ...convertChoreFromFirestore(choreToAdd), id: docRef.id }]);
-            setNewChoreModalOpen(false);
-        } catch (error) {
-            console.error("Error adding new chore: ", error);
+            const preparedChore = convertChoreToSupabase(choreToAdd);
+            const { data, error } = await supabase
+                .from('chores')
+                .insert([preparedChore])
+                .select();
+
+            if (error) {
+                console.error("Error adding new chore:", error.message);
+            } else if (data && data.length > 0) {
+                setChores((prevChores) => [...prevChores, convertChoreFromSupabase(data[0])]);
+                setNewChoreModalOpen(false);
+            } else {
+                console.error("Error adding new chore: No data returned after insert.");
+            }
+        } catch (err) {
+            console.error("Exception adding new chore:", err);
         }
     }
 
@@ -165,8 +204,8 @@ function Chores() {
 
     async function handleQuickAddChore(e) {
         if (e) e.preventDefault();
-        const user = currentUser();
-        if (!user) {
+        const user = props.currentUser(); // Use prop
+        if (!user || !user.id) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
@@ -175,16 +214,27 @@ function Chores() {
             const newChore = {
                 title: title,
                 description: '',
-                priority: 4,
+                priority: 4, // Default priority
                 done: false,
-                userId: user.uid,
+                user_id: user.id, // Use user.id for Supabase and snake_case
             };
             try {
-                const docRef = await addDoc(choresCollectionRef, convertChoreToFirestore(newChore));
-                setChores((prevChores) => [...prevChores, { ...convertChoreFromFirestore(newChore), id: docRef.id }]);
-                setQuickChoreTitle('');
-            } catch (error) {
-                console.error("Error quick adding chore: ", error);
+                const preparedChore = convertChoreToSupabase(newChore);
+                const { data, error } = await supabase
+                    .from('chores')
+                    .insert([preparedChore])
+                    .select();
+                
+                if (error) {
+                    console.error("Error quick adding chore:", error.message);
+                } else if (data && data.length > 0) {
+                    setChores((prevChores) => [...prevChores, convertChoreFromSupabase(data[0])]);
+                    setQuickChoreTitle('');
+                } else {
+                    console.error("Error quick adding chore: No data returned after insert.");
+                }
+            } catch (err) {
+                console.error("Exception quick adding chore:", err);
             }
         }
     }

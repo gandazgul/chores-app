@@ -1,9 +1,8 @@
-import { createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { createSignal, createEffect, onCleanup, Show, onMount } from 'solid-js';
 import Chores from './components/Chores';
 import LoginPage from './components/LoginPage';
 import Layout from './components/Layout'; // Import the new Layout component
-import { auth } from './utils/firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from './utils/supabaseConfig'; // Import Supabase client
 // Removed library import for fontawesome as it's not directly used here anymore
 
 import '@picocss/pico';
@@ -11,27 +10,45 @@ import './App.less';
 
 function App() {
     const [currentUser, setCurrentUser] = createSignal(null);
-    // showProfileMenu logic is now in Layout.jsx
-    // const [showProfileMenu, setShowProfileMenu] = createSignal(false); 
-    const [loadingAuth, setLoadingAuth] = createSignal(true); 
+    const [loadingAuth, setLoadingAuth] = createSignal(true);
 
-    createEffect(() => {
+    onMount(async () => {
         setLoadingAuth(true);
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-            setLoadingAuth(false);
-        });
-        onCleanup(() => unsubscribe());
-    });
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+            console.error("Error getting initial session:", error.message);
+        }
+        setCurrentUser(session?.user ?? null);
+        setLoadingAuth(false);
 
-    // Profile menu click outside logic moved to Layout.jsx
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("Auth event:", event, "Session:", session);
+            setCurrentUser(session?.user ?? null);
+            // If the user signs in or out, loading should be false.
+            // If it's an initial session check, it might already be handled by getSession.
+            // However, if a token refresh happens or user is updated, we might want to reflect that.
+            // For simplicity, we'll assume loadingAuth is primarily for the initial check.
+            if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+                setLoadingAuth(false);
+            }
+        });
+
+        onCleanup(() => {
+            if (authListener && typeof authListener.unsubscribe === 'function') {
+                authListener.unsubscribe();
+            } else if (authListener && authListener.subscription && typeof authListener.subscription.unsubscribe === 'function') {
+                // Handle potential older structure if needed, though current Supabase JS v2 uses { data: { subscription } }
+                authListener.subscription.unsubscribe();
+            }
+        });
+    });
 
     return (
         <div class="app">
             <Show when={!loadingAuth()} fallback={<p>Loading application...</p>}>
                 {currentUser() ? (
                     <Layout currentUser={currentUser}> {/* Pass currentUser to Layout */}
-                        <Chores />
+                        <Chores currentUser={currentUser} /> {/* Pass currentUser to Chores */}
                     </Layout>
                 ) : (
                     <LoginPage />

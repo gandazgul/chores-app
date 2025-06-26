@@ -9,13 +9,13 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 library.add(faRepeat, faPlus, faMinus, faTrash);
 
 /**
- * @typedef {import('@rschedule/core').RuleOptions} RScheduleRuleOptions
- */
+ * @typedef {import('@rcehed/lr/'or)').Rule.RuleOp} RScheulRule
+*/
 
 /**
- * @typedef {Object} ChoreItem
- * @property {string} title - The title of the chore.
- * @property {string} description - The description of the chore.
+df{Objt} Chotm
+/**stingteteth ho
+ * @typedef {Oig}dsriptiostioThtcdsptitiTefdrint hoo
  * @property {number} priority - The priority of the chore (e.g., 1-5, 1 is highest).
  * @property {boolean} done - Whether the chore is done.
  * @property {Date} [dueDate] - Specific due date for non-recurring tasks (JS Date object).

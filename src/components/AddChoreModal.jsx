@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Rule, StandardDateAdapter } from "../rschedule.js";
+import { Day, Recurrence, Weekday, Month } from 'dayspan';
 import { Show, createSignal, onMount, onCleanup } from "solid-js"; // For conditional rendering and lifecycle
 import './AddChoreModal.less'; // Import the Less file
 
@@ -56,15 +56,23 @@ function AddChoreModal(props) {
     }
 
     function getSelectedWeekdays() {
-        const weekdays = [];
-        const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-        days.forEach(day => {
-            const checkbox = document.getElementById(`chore-weekday-${day.toLowerCase()}`);
+        const selectedWeekdays = [];
+        const dayMap = {
+            'SU': Weekday.SUNDAY,
+            'MO': Weekday.MONDAY,
+            'TU': Weekday.TUESDAY,
+            'WE': Weekday.WEDNESDAY,
+            'TH': Weekday.THURSDAY,
+            'FR': Weekday.FRIDAY,
+            'SA': Weekday.SATURDAY,
+        };
+        Object.keys(dayMap).forEach(dayKey => {
+            const checkbox = document.getElementById(`chore-weekday-${dayKey.toLowerCase()}`);
             if (checkbox && checkbox.checked) {
-                weekdays.push(day);
+                selectedWeekdays.push(dayMap[dayKey]);
             }
         });
-        return weekdays;
+        return selectedWeekdays;
     }
 
     function handleAddNewChore() {
@@ -73,44 +81,65 @@ function AddChoreModal(props) {
         const priority = document.getElementById('chore-priority').value;
         const scheduleInput = document.getElementById('chore-schedule').value;
         
-        let scheduleObject = scheduleInput; // Default to the date string
+        let scheduleObject = scheduleInput ? Day.fromDate(new Date(scheduleInput)).toDate() : null; // Store as JS Date for non-recurring
 
         if (isRecurring() && scheduleInput) {
-            const recurrenceFrequencyValue = selectedFrequency();
-            // Ensure interval input exists and has a value, otherwise default to 1
+            const recurrenceFrequencyString = selectedFrequency();
             const intervalElement = document.getElementById('chore-recurrence-interval');
             const recurrenceInterval = intervalElement && intervalElement.value ? parseInt(intervalElement.value, 10) : 1;
+            
+            const startDate = Day.fromDate(new Date(scheduleInput));
 
-            const startDate = new StandardDateAdapter(new Date(scheduleInput));
+            let recurrenceType;
+            switch (recurrenceFrequencyString) {
+                case "DAILY": recurrenceType = Recurrence.DAILY; break;
+                case "WEEKLY": recurrenceType = Recurrence.WEEKLY; break;
+                case "MONTHLY": recurrenceType = Recurrence.MONTHLY; break;
+                case "YEARLY": recurrenceType = Recurrence.YEARLY; break;
+                default: recurrenceType = Recurrence.DAILY; // Fallback
+            }
+
             const options = {
-                frequency: recurrenceFrequencyValue,
+                type: recurrenceType,
                 interval: recurrenceInterval,
-                start: startDate,
+                start: startDate.toDate(), // Store start as JS Date in the options
+                // Dayspan specific options will be added below
             };
 
-            if (recurrenceFrequencyValue === "WEEKLY") {
-                const selectedDays = getSelectedWeekdays();
+            if (recurrenceType === Recurrence.WEEKLY) {
+                const selectedDays = getSelectedWeekdays(); // Returns Weekday enums
                 if (selectedDays.length > 0) {
-                    options.byDayOfWeek = selectedDays;
+                    options.weekdays = selectedDays.map(wd => wd.iso); // Store ISO day numbers (0-6)
                 }
-            } else if (recurrenceFrequencyValue === "MONTHLY") {
+            } else if (recurrenceType === Recurrence.MONTHLY) {
                 const monthDayInput = document.getElementById('chore-month-day');
                 if (monthDayInput && monthDayInput.value) {
-                    options.byMonthDay = [parseInt(monthDayInput.value, 10)];
+                    options.dayOfMonth = parseInt(monthDayInput.value, 10);
                 }
-            } else if (recurrenceFrequencyValue === "YEARLY") {
-                const yearMonthInput = document.getElementById('chore-year-month');
+            } else if (recurrenceType === Recurrence.YEARLY) {
+                const yearMonthInput = document.getElementById('chore-year-month'); // value is 1-12
                 const yearDayInput = document.getElementById('chore-year-day');
                 if (yearMonthInput && yearMonthInput.value) {
-                    options.byMonth = [parseInt(yearMonthInput.value, 10)];
+                    // Dayspan Month enum is 0-indexed (JANUARY is 0), input is 1-indexed
+                    options.month = parseInt(yearMonthInput.value, 10) - 1; 
                 }
                 if (yearDayInput && yearDayInput.value) {
-                    options.byMonthDay = [parseInt(yearDayInput.value, 10)];
+                    options.dayOfMonth = parseInt(yearDayInput.value, 10);
                 }
             }
             
-            scheduleObject = new Rule(options, { dateAdapter: StandardDateAdapter });
+            // For 'until' or 'count', additional UI and logic would be needed here.
+            // For now, we are creating an infinitely recurring schedule from 'start'.
+            // options.ends = Recurrence.NEVER; // Default or can be set if UI supports it
+
+            scheduleObject = options; // The schedule object is now the dayspan-compatible options
+        } else if (scheduleInput) {
+             // Ensure scheduleObject is a JS Date if not recurring but date is provided
+            scheduleObject = Day.fromDate(new Date(scheduleInput)).toDate();
+        } else {
+            scheduleObject = null; // No date provided
         }
+
 
         onAddNewChore({
             title,

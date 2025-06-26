@@ -1,11 +1,37 @@
 import { createSignal, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
 import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import { useUser } from '../utils/UserContext'; // Import useUser
+import { requestNotificationPermissionAndToken, saveFCMTokenToSupabase } from '../utils/pushNotifications.js';
 import './Layout.less'; // Import specific styles
 
 function Layout(props) { // props might still contain children
     const currentUser = useUser(); // Get the currentUser signal from context
     const [showProfileMenu, setShowProfileMenu] = createSignal(false);
+
+    const handleEnableNotifications = async () => {
+        if (!currentUser()?.id) {
+            alert("You must be logged in to enable notifications.");
+            return;
+        }
+        try {
+            const token = await requestNotificationPermissionAndToken();
+            if (token) {
+                const result = await saveFCMTokenToSupabase(currentUser().id, token);
+                if (result) {
+                    alert('Notifications enabled successfully!');
+                } else {
+                    alert('Failed to save notification preferences. Please try again.');
+                }
+            } else {
+                // User denied permission or an error occurred
+                alert('Notification permission was not granted or an error occurred.');
+            }
+        } catch (error) {
+            console.error("Error enabling notifications:", error);
+            alert('An error occurred while enabling notifications.');
+        }
+        setShowProfileMenu(false); // Close menu
+    };
 
     // Close profile menu if clicked outside
     createEffect(() => {
@@ -35,6 +61,7 @@ function Layout(props) { // props might still contain children
                             />
                             <Show when={showProfileMenu()}>
                                 <div class="profile-menu">
+                                    <button onClick={handleEnableNotifications}>Enable Notifications</button>
                                     <button onClick={async () => {
                                         const { error } = await supabase.auth.signOut();
                                         if (error) {

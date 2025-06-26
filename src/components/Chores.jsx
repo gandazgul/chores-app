@@ -6,7 +6,7 @@ import AddChoreFloatButton from './AddChoreFloatButton';
 import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import { jsToday, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js'; // Adjusted path
 import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js'; // Adjusted path
-import { StandardDateAdapter, Rule } from '../rschedule.js'; // Adjusted path
+// Removed rschedule import, dayspan is used within scheduleUtils.js
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -37,9 +37,9 @@ function Chores() { // Removed props
             chore.dueDate = new Date(chore.due_date);
             delete chore.due_date; // Clean up original snake_case field
         }
-        if (chore.recurrence && chore.recurrence.start) {
-            // Assuming recurrence.start is stored as an ISO string in JSONB
-            chore.recurrence.start = new StandardDateAdapter(new Date(chore.recurrence.start));
+        if (chore.recurrence && typeof chore.recurrence.start === 'string') {
+            // Convert recurrence.start from ISO string to JS Date object
+            chore.recurrence.start = new Date(chore.recurrence.start);
         }
         // user_id is already in choreData from Supabase, no specific conversion needed here for it
         // created_at and updated_at are also available
@@ -52,9 +52,9 @@ function Chores() { // Removed props
             chore.due_date = chore.dueDate.toISOString(); // Convert to ISO string for Supabase
             delete chore.dueDate;
         }
-        if (chore.recurrence && chore.recurrence.start && chore.recurrence.start instanceof StandardDateAdapter) {
-            // Ensure recurrence.start is an ISO string for JSONB
-            chore.recurrence.start = chore.recurrence.start._date.toISOString();
+        if (chore.recurrence && chore.recurrence.start && chore.recurrence.start instanceof Date) {
+            // Ensure recurrence.start (which is a JS Date) is an ISO string for JSONB
+            chore.recurrence.start = chore.recurrence.start.toISOString();
         }
         // Ensure user_id is present if it's coming from a different source name
         if (chore.userId && !chore.user_id) {
@@ -169,10 +169,13 @@ function Chores() { // Removed props
         };
 
         if (newChoreFromModal.schedule) {
-            if (newChoreFromModal.schedule instanceof Rule) {
-                choreToAdd.recurrence = newChoreFromModal.schedule; // convertChoreToSupabase will handle StandardDateAdapter in recurrence.start
-            } else if (typeof newChoreFromModal.schedule === 'string' && newChoreFromModal.schedule.trim() !== '') {
-                choreToAdd.dueDate = new Date(newChoreFromModal.schedule); // convertChoreToSupabase will handle this
+            // AddChoreModal now sends a JS Date for dueDate, or a dayspan-compatible options object for recurrence
+            if (newChoreFromModal.schedule instanceof Date) {
+                choreToAdd.dueDate = newChoreFromModal.schedule;
+            } else if (typeof newChoreFromModal.schedule === 'object' && newChoreFromModal.schedule !== null && newChoreFromModal.schedule.type !== undefined) {
+                // It's a recurrence options object from dayspan
+                choreToAdd.recurrence = newChoreFromModal.schedule; 
+                // convertChoreToSupabase will handle converting recurrence.start (JS Date) to ISO string
             }
         }
 

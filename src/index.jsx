@@ -1,5 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
+import './utils/firebaseConfig.js'; // Initialize Firebase
 import App from './App.jsx'
 // Use the virtual module for PWA registration
 import { registerSW } from 'virtual:pwa-register'

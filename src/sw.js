@@ -2,6 +2,32 @@ import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 
+// Firebase imports
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+import { firebaseConfig } from './utils/firebaseConfig.js'; // Adjust path as necessary
+
+// Initialize Firebase app and messaging
+if (firebaseConfig && firebaseConfig.projectId) {
+  const firebaseApp = initializeApp(firebaseConfig);
+  const messaging = getMessaging(firebaseApp);
+
+  onBackgroundMessage(messaging, (payload) => {
+    console.log('[Service Worker] Received background message ', payload);
+    // Customize notification here
+    const notificationTitle = payload.notification?.title || 'New Message';
+    const notificationOptions = {
+      body: payload.notification?.body || 'You have a new message.',
+      icon: payload.notification?.icon || '/icon.png', // Default icon
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} else {
+  console.error('[Service Worker] Firebase config not found or incomplete. Background messaging will not work.');
+}
+
+
 // Precache all assets defined in the Workbox configuration
 // Make sure __WB_MANIFEST is populated by Workbox CLI
 precacheAndRoute(self.__WB_MANIFEST || []);
@@ -44,16 +70,19 @@ registerRoute(
   })
 );
 
-// Placeholder for push notification event listener
-self.addEventListener('push', (event) => {
-  const title = 'New Chore Alert!';
-  const options = {
-    body: event.data.text(),
-    // icon: 'images/icon.png', // Optional: Add an icon for notifications
-    // badge: 'images/badge.png' // Optional: Add a badge for notifications
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
-});
+// The generic 'push' event listener might be redundant if FCM's onBackgroundMessage is handling everything.
+// However, it can be a fallback or for non-FCM push events.
+// For FCM, onBackgroundMessage is preferred.
+// self.addEventListener('push', (event) => {
+//   console.log('[Service Worker] Generic push event received:', event);
+//   const title = 'New Chore Alert!';
+//   const options = {
+//     body: event.data ? event.data.text() : 'Something new happened!',
+//     // icon: 'images/icon.png', 
+//     // badge: 'images/badge.png' 
+//   };
+//   event.waitUntil(self.registration.showNotification(title, options));
+// });
 
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] Notification click Received.', event.notification.data);

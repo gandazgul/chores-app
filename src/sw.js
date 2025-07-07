@@ -5,7 +5,7 @@ import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
-import { firebaseConfig } from './utils/firebaseConfig.js'; // Adjust path as necessary
+import { firebaseConfig } from './utils/firebaseConfig-data.js'; // Adjust path as necessary
 
 // Initialize Firebase app and messaging
 if (firebaseConfig && firebaseConfig.projectId) {

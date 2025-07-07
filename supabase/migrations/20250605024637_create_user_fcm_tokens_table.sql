@@ -23,26 +23,26 @@ ALTER TABLE public.user_fcm_tokens ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow users to insert their own FCM tokens"
 ON public.user_fcm_tokens
 FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+WITH CHECK ((select auth.uid()) = user_id);
 
 -- Users can select their own FCM tokens
 CREATE POLICY "Allow users to select their own FCM tokens"
 ON public.user_fcm_tokens
 FOR SELECT
-USING (auth.uid() = user_id);
+USING ((select auth.uid()) = user_id);
 
 -- Users can update their own FCM tokens
 CREATE POLICY "Allow users to update their own FCM tokens"
 ON public.user_fcm_tokens
 FOR UPDATE
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING ((select auth.uid()) = user_id)
+WITH CHECK ((select auth.uid()) = user_id);
 
 -- Users can delete their own FCM tokens
 CREATE POLICY "Allow users to delete their own FCM tokens"
 ON public.user_fcm_tokens
 FOR DELETE
-USING (auth.uid() = user_id);
+USING ((select auth.uid()) = user_id);
 
 
 -- Function to update updated_at column

@@ -12,12 +12,14 @@ const requestNotificationPermissionAndToken = async () => {
   if (!('Notification' in window)) {
     console.error('This browser does not support desktop notification');
     alert('This browser does not support desktop notification');
+
     return null;
   }
 
   if (!firebaseConfig.vapidKey) {
     console.error('VAPID key is not set in firebaseConfig.js. Please add it to enable push notifications.');
     alert('Push notification setup is incomplete. Administrator needs to configure VAPID key.');
+    
     return null;
   }
 
@@ -27,27 +29,38 @@ const requestNotificationPermissionAndToken = async () => {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       console.log('Notification permission granted.');
+      const swRegistration = await navigator.serviceWorker.getRegistration();
+
       const currentToken = await getToken(messagingInstance, {
         vapidKey: firebaseConfig.vapidKey,
+        serviceWorkerRegistration: swRegistration,
       });
+
       if (currentToken) {
         console.log('FCM Token:', currentToken);
+
         return currentToken;
-      } else {
+      } 
+      else {
         console.log('No registration token available. Request permission to generate one.');
+
         return null;
       }
-    } else {
+    } 
+    else {
       console.log('Unable to get permission to notify.');
+
       return null;
     }
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('An error occurred while getting token. ', error);
+
     return null;
   }
 };
 
-const saveFCMTokenToSupabase = async (userId, token) => {
+async function saveFCMTokenToSupabase(userId, token) {
   if (!userId || !token) {
     console.error('User ID and token are required to save FCM token.');
     return null;
@@ -56,7 +69,6 @@ const saveFCMTokenToSupabase = async (userId, token) => {
   // Assuming you have supabase client imported and configured
   // You might need to import it if it's not globally available or passed in
   // import { supabase } from './supabaseConfig'; // Or wherever your supabase client is
-
   // Use supabase client from window if available, or import it.
   // This example assumes supabase is available globally or imported within this scope.
   // For a cleaner approach, ensure supabase client is properly imported.
@@ -94,7 +106,7 @@ const saveFCMTokenToSupabase = async (userId, token) => {
     console.error('Unexpected error saving FCM token:', err);
     return null;
   }
-};
+}
 
 
 export { requestNotificationPermissionAndToken, saveFCMTokenToSupabase };

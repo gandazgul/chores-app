@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
 import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import { useUser } from '../utils/UserContext'; // Import useUser
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { requestNotificationPermissionAndToken, saveFCMTokenToSupabase } from '../utils/pushNotifications.js';
 import './Layout.less'; // Import specific styles
 
@@ -14,6 +15,9 @@ function Layout(props) { // props might still contain children
             return;
         }
         try {
+            // const auth = getAuth();
+            // await signInAnonymously(auth);
+            
             const token = await requestNotificationPermissionAndToken();
             if (token) {
                 const result = await saveFCMTokenToSupabase(currentUser().id, token);

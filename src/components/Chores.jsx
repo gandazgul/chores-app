@@ -1,11 +1,11 @@
 import { createSignal, createMemo, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
-import { useUser } from '../utils/UserContext'; // Import useUser
-import ChoresList from './ChoresList'; // Renamed from Chores
+import { useUser } from '../utils/UserContext';
+import ChoresList from './ChoresList';
 import AddChoreModal from './AddChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
 import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
-import { jsToday, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js'; // Adjusted path
-import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js'; // Adjusted path
+import { today, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js';
+import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js';
 // Removed rschedule import, dayspan is used within scheduleUtils.js
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';

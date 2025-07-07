@@ -2,27 +2,22 @@ import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     solid(),
     VitePWA({
-      registerType: 'autoUpdate', // Automatically update the service worker when a new version is available
-      injectRegister: 'script', // Use 'script' to let the plugin handle registration via virtual module
+      registerType: 'autoUpdate',
+      injectRegister: 'script',
       devOptions: {
         enabled: true,
         type: 'module',
-        /* when using generateSW the PWA plugin will switch to classic */
-        // navigateFallback: 'index.html', 
-        // suppressWarnings: true,
       },
-      strategies: 'injectManifest', // Explicitly set the strategy
-      srcDir: 'src', // directory where sw.js is located
-      filename: 'sw.js', // name of the service worker file
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      // filename: mode === 'development' ? 'dev-sw.js' : 'sw.js',
+      filename: 'sw.js',
       workbox: {
-        // globPatterns: ['**/*.{js,css,html,ico,png,svg,json,webmanifest,txt}'], // Default, adjust if needed
-        // swDest is not needed here, it's controlled by srcDir and filename for injectManifest
-        // For injectManifest strategy, swSrc is configured via srcDir and filename options at the plugin root
-        // injectionPoint is not needed here as it's handled by the plugin
+        // globPatterns: ['**/*.{js,css,html,ico,png,svg,json,webmanifest,txt}'],
       },
       manifest: {
         name: 'Chores App',

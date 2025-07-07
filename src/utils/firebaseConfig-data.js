@@ -1,7 +1,3 @@
-// This file is intended to be a safe, data-only module that can be
-// imported by both the client-side application and the service worker.
-
-// TODO: Replace with your Firebase project's configuration
 export const firebaseConfig = {
   apiKey: "AIzaSyBjVO-EIYN7N6sT4hEBxlNTA4Zo9nqJrsw",
   authDomain: "locahost:5173",

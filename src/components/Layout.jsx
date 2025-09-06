@@ -1,8 +1,7 @@
 import { createSignal, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
-import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
 import { useUser } from '../utils/UserContext'; // Import useUser
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { requestNotificationPermissionAndToken, saveFCMTokenToSupabase } from '../utils/pushNotifications.js';
+import { requestNotificationPermissionAndToken, saveFCMToken } from '../utils/pushNotifications.js';
 import './Layout.less'; // Import specific styles
 
 function Layout(props) { // props might still contain children
@@ -17,10 +16,10 @@ function Layout(props) { // props might still contain children
         try {
             // const auth = getAuth();
             // await signInAnonymously(auth);
-            
+
             const token = await requestNotificationPermissionAndToken();
             if (token) {
-                const result = await saveFCMTokenToSupabase(currentUser().id, token);
+                const result = await saveFCMToken(currentUser().uid, token);
                 if (result) {
                     alert('Notifications enabled successfully!');
                 } else {
@@ -67,7 +66,8 @@ function Layout(props) { // props might still contain children
                                 <div class="profile-menu">
                                     <button onClick={handleEnableNotifications}>Enable Notifications</button>
                                     <button onClick={async () => {
-                                        const { error } = await supabase.auth.signOut();
+                                        const auth = getAuth();
+                                        const { error } = await auth.signOut();
                                         if (error) {
                                             console.error("Error logging out:", error.message);
                                         }

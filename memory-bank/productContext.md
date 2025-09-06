@@ -11,17 +11,16 @@
 
 ## How It Should Work
 
+- Users must sign in with their Google account to use the app.
 - Users can view a list of their chores.
-- Users can view a list of all chores.
-- Users can add new chores.
+- Users can add new chores with titles, descriptions, priorities, due dates, and recurrence rules.
 - Users can mark chores as complete.
 - Users can delete chores.
 - Chores may have descriptions.
 - Chores may have due dates and potentially recurring schedules.
 - Due dates can be long periods like a week or month. e.g. every June you need to plan the Kids birthday party. Or the first week of each month you have to check the budget.
 - Chores are sorted (likely by due date or completion status).
-- Chores are assigned to specific users or unassigned
-- Users can assign a chore to themselves or another user, the other user gets notified
+- The app will send push notifications to remind users of their chores.
 
 ## User Experience Goals
 

@@ -1,4 +1,4 @@
 onlyBuiltDependencies:
   - '@firebase/util'
   - protobufjs
-  - supabase
+  - sqlite3

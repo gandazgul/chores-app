@@ -1,5 +1,6 @@
 import { Day, Schedule, Recurrence, Weekday, Month, Timespan } from 'dayspan';
 
+
 // Dayspan Day object for 'today'
 const today = Day.today();
 
@@ -67,7 +68,7 @@ function createScheduleFromChore(recurrenceOptions) {
 function isChoreForToday(chore) {
     if (chore.dueDate) {
         const dueDate = ensureDay(chore.dueDate);
-        return dueDate ? dueDate.isSame(today) : false;
+        return dueDate ? dueDate.valueOf() === today.valueOf() : false;
     }
     if (chore.recurrence) {
         const schedule = createScheduleFromChore(chore.recurrence);
@@ -147,35 +148,42 @@ function getOrdinalSuffix(day) {
 function getScheduleDisplayString(recurrenceInput) {
     if (!recurrenceInput) return '';
 
-    // Assuming recurrenceInput is a dayspan-compatible options object
-    const { type, interval = 1, weekdays, month, dayOfMonth, max, end } = recurrenceInput;
+    // Handle both dayspan and rrule-like recurrence objects
+    const type = recurrenceInput.type || recurrenceInput.freq;
+    const { interval = 1, weekdays, month, dayOfMonth, max, end } = recurrenceInput;
     let displayString = '';
 
     switch (type) {
-        case Recurrence.DAILY:
+        case 'DAILY':
             displayString = interval === 1 ? 'Every day' : `Every ${interval} days`;
             break;
-        case Recurrence.WEEKLY:
+        case 'WEEKLY':
             displayString = interval === 1 ? 'Every week' : `Every ${interval} weeks`;
             if (weekdays && weekdays.length > 0) {
-                // weekdays is an array of Weekday enum values (e.g., Weekday.MONDAY)
-                // Sort them: Weekday enums are 0 (Sun) to 6 (Sat)
-                const sortedDays = [...weekdays].sort((a, b) => a.iso - b.iso);
-                displayString += ' on ' + sortedDays.map(wd => dayspanWeekdayMap[wd.iso]).join(', ');
+                // This part is tricky because rrule and dayspan have different weekday formats.
+                // The existing code expects dayspan's format.
+                // A more robust solution would be to convert rrule weekdays to dayspan format.
+                if (typeof weekdays[0] === 'object' && weekdays[0] !== null && 'iso' in weekdays[0]) { // Heuristic for dayspan format
+                    const sortedDays = [...weekdays].sort((a, b) => a.iso - b.iso);
+                    displayString += ' on ' + sortedDays.map(wd => dayspanWeekdayMap[wd.iso]).join(', ');
+                } else {
+                    // Assuming rrule format like ['MO', 'TU'], which we don't handle yet.
+                    console.warn("Weekday display for rrule format not fully implemented.");
+                }
             }
             break;
-        case Recurrence.MONTHLY:
+        case 'MONTHLY':
             displayString = interval === 1 ? 'Every month' : `Every ${interval} months`;
             if (dayOfMonth) { // dayOfMonth is a number
                 displayString += ` on the ${dayOfMonth}${getOrdinalSuffix(dayOfMonth)}`;
             }
-            // Dayspan also supports more complex monthly like "first Monday" via dayOfWeekInMonth
-            // This simple display string doesn't cover that yet.
             break;
-        case Recurrence.YEARLY:
+        case 'YEARLY':
             displayString = interval === 1 ? 'Every year' : `Every ${interval} years`;
             if (month) { // month is a Month enum value (e.g., Month.JANUARY)
-                displayString += ` in ${dayspanMonthMap[month.key]}`; // Use .key or appropriate property
+                if (typeof month === 'object' && month !== null && 'key' in month) { // Heuristic for dayspan format
+                    displayString += ` in ${dayspanMonthMap[month.key]}`;
+                }
                 if (dayOfMonth) {
                     displayString += ` on the ${dayOfMonth}${getOrdinalSuffix(dayOfMonth)}`;
                 }
@@ -241,10 +249,24 @@ function getChoreDisplayDetails(chore) {
     return { displayDate, recurrenceTitle };
 }
 
+function isOverdue(chore) {
+    if (chore.done) {
+        return false;
+    }
+    const dueDate = getEffectiveDueDate(chore);
+    if (!dueDate) {
+        return false;
+    }
+    // Compare dueDate (a Day object) with today.
+    // valueOf() gives the number of days since epoch, so it's a clean comparison.
+    return dueDate.valueOf() < today.valueOf();
+}
+
 export {
     today, // Exporting dayspan Day object for today
     isChoreForToday,
     getEffectiveDueDate,
+    isOverdue,
     choreSortFn,
     getScheduleDisplayString,
     getChoreDisplayDetails,

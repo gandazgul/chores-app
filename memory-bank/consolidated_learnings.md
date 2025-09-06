@@ -38,8 +38,7 @@
       </UserContext.Provider>
     );
   }
-  ```
-  - The `value` provided can be a signal, store, or any JavaScript value.
+  ```  - The `value` provided can be a signal, store, or any JavaScript value.
 - **3. Create Custom Hook for Consumption (Recommended):**
   ```javascript
   // Example: src/utils/UserContext.jsx
@@ -92,3 +91,19 @@
 - **Account for Auto-Formatters:** Be aware that auto-formatters might modify files after `write_to_file` or `replace_in_file` (e.g., adding/removing imports, changing formatting). This can affect the accuracy of `SEARCH` blocks in subsequent `replace_in_file` calls.
 - **Re-read Modified Files:** Before using `replace_in_file` on a file that might have been recently modified (by you or an auto-formatter), re-read its content using `read_file`. Use this latest content to craft accurate `SEARCH` blocks.
 - *Rationale:* Increases the reliability of `replace_in_file` operations by ensuring `SEARCH` blocks match the current file state.
+
+## Database & Knex.js
+
+**Pattern: Knex.js Migrations**
+- **Create a migration:** `npx knex migrate:make <migration_name>`
+- **Run migrations:** `npx knex migrate:latest`
+- **Rollback a migration:** `npx knex migrate:rollback`
+- **Migration Structure:**
+    - `up()`: Defines the schema changes to be applied.
+    - `down()`: Defines how to revert the changes made in `up()`.
+- *Rationale:* Provides a version-controlled way to manage database schema changes.
+
+**Pattern: Knex.js Querying**
+- **Configuration:** `knexfile.js` contains the database connection details for different environments.
+- **Query Builder:** Use the Knex.js query builder to interact with the database in a structured and secure way.
+- *Rationale:* Abstracts away raw SQL, reducing the risk of SQL injection and making database interactions more readable and maintainable.

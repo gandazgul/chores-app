@@ -3,19 +3,13 @@ import { createSignal } from "solid-js";
 import cx from 'classnames';
 import { FontAwesomeIcon } from 'solid-fontawesome';
 import { faRepeat, faPlus, faMinus, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { getEffectiveDueDate, getScheduleDisplayString } from '../utils/scheduleUtils.js'; // Import helpers
+import { getEffectiveDueDate, getScheduleDisplayString, isOverdue } from '../utils/scheduleUtils.js'; // Import helpers
 import { library } from '@fortawesome/fontawesome-svg-core';
 
 library.add(faRepeat, faPlus, faMinus, faTrash);
 
 /**
- * @typedef {import('@rcehed/lr/'or)').Rule.RuleOp} RScheulRule
-*/
-
-/**
-df{Objt} Chotm
-/**stingteteth ho
- * @typedef {Oig}dsriptiostioThtcdsptitiTefdrint hoo
+ * @typedef {Object} ChoreItem
  * @property {number} priority - The priority of the chore (e.g., 1-5, 1 is highest).
  * @property {boolean} done - Whether the chore is done.
  * @property {Date} [dueDate] - Specific due date for non-recurring tasks (JS Date object).
@@ -38,6 +32,7 @@ function Chore(props) {
     const classNames = {
         chore: true,
         done: chore.done,
+        overdue: isOverdue(chore),
         [`priority-${chore.priority}`]: true,
     };
     const [isDescriptionOpen, setIsDescriptionOpen] = createSignal(false);
@@ -77,7 +72,7 @@ function Chore(props) {
                         checked={chore.done}
                         onChange={props.onChoreDone}
                     />
-                    <h3>{chore.title}</h3>
+                    <h3 class={cx({ overdue: isOverdue(chore) })}>{chore.title}</h3>
                     {chore.dueDate && !chore.recurrence && (
                         <span class="chore-due-date" title="Due Date">{displayDate}</span>
                     )}

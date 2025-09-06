@@ -5,6 +5,8 @@
 - Frontend application built with SolidJS.
 - Component-based architecture.
 - The main application entry point is `App.jsx`.
+- Backend services (Authentication, Push Notifications) are provided by Firebase.
+- A local SQLite database is used for data persistence, managed by Knex.js.
 
 ## Key Technical Decisions
 
@@ -12,7 +14,9 @@
 - Vite for the build process.
 - Less for styling.
 - `@picocss/pico` for base styling/CSS framework.
-- `@rschedule/core` for handling recurring schedules (suggests potential for recurring chores).
+- `dayspan` for handling recurring schedules.
+- Knex.js for database migrations and queries.
+- Firebase for authentication and push notifications.
 
 ## Design Patterns in Use
 
@@ -27,6 +31,8 @@
 - **Utility Modules / Separation of Concerns:**
     - `src/utils/scheduleUtils.js`: Encapsulates logic related to chore scheduling, date comparisons, due date calculations (including recurrence), and chore sorting. This promotes reusability and keeps `App.jsx` cleaner.
     - `src/utils/fuzzySearchUtils.js`: Contains functions for initializing and performing fuzzy searches on chores, separating search logic from main application flow.
+    - `src/utils/db.js`: Encapsulates all database interactions using Knex.js.
+    - `src/utils/pushNotifications.js`: Manages the logic for requesting push notification permissions and handling FCM tokens.
 - **Conditional Rendering:**
     - The `AddChoreModal` is conditionally rendered in `App.jsx` based on the boolean value of the `newChoreModalOpen` signal.
     - Individual `Chore` components likely use conditional rendering to show/hide chore descriptions.
@@ -69,7 +75,21 @@
 
 ## Critical Implementation Paths
 
-1.  **Adding a New Chore (via Modal):**
+1.  **User Authentication:**
+    *   User visits the app and is presented with the `LoginPage.jsx` component.
+    *   User clicks the "Sign in with Google" button.
+    *   `firebase.auth().signInWithPopup()` is called.
+    *   On successful authentication, `onAuthStateChanged` in `App.jsx` fires.
+    *   The user's information is stored in the `users` table in the database.
+    *   The main application content is rendered.
+
+2.  **Push Notification Setup:**
+    *   After login, `setupPushNotifications()` in `src/utils/pushNotifications.js` is called.
+    *   The app requests permission from the user to show notifications.
+    *   If permission is granted, the app retrieves the FCM token.
+    *   The FCM token is saved to the `user_fcm_tokens` table in the database, associated with the current user.
+
+3.  **Adding a New Chore (via Modal):**
     *   User clicks `AddChoreFloatButton`.
     *   `App.jsx`'s `handleAddChoreClick` sets `newChoreModalOpen` signal to `true`.
     *   `AddChoreModal` component becomes visible.
@@ -77,23 +97,25 @@
     *   Upon submission, `AddChoreModal` calls `props.onAddNewChore` (which is `handleAddNewChore` in `App.jsx`).
     *   `handleAddNewChore` in `App.jsx`:
         *   Constructs a new chore object. It correctly handles both simple `dueDate` (as a `Date` object) and complex `recurrence` (as an `rschedule` `Rule` object).
+        *   Saves the new chore to the database via `db.js`.
         *   Updates the `chores` signal by appending the new chore.
         *   Sets `newChoreModalOpen` to `false` to close the modal.
     *   The `displayedChores` memo recomputes due to the change in `chores`.
     *   `Chores` component re-renders to display the updated list including the new chore.
 
-2.  **Adding a New Chore (via Quick Add Input):**
+4.  **Adding a New Chore (via Quick Add Input):**
     *   User types a chore title into the combined search/quick-add input field in `App.jsx`.
     *   User presses "Enter" or clicks the submit button associated with the input.
     *   `App.jsx`'s `handleQuickAddChore` function is invoked.
     *   It retrieves the `quickChoreTitle()`. If not empty:
         *   A new chore object is created with the entered title and default values for description and priority.
+        *   Saves the new chore to the database via `db.js`.
         *   The `chores` signal is updated by appending this new chore.
         *   The `quickChoreTitle` signal is cleared.
     *   The `displayedChores` memo recomputes.
     *   `Chores` component re-renders.
 
-3.  **Viewing, Searching, and Filtering Chores:**
+5.  **Viewing, Searching, and Filtering Chores:**
     *   **Initial Load:** `App.jsx` initializes the `chores` signal with `initialChores`.
     *   **Search Initialization:** `createEffect` in `App.jsx` monitors the `chores` signal. When `chores` change, it re-initializes the `fuse` fuzzy search instance (`initializeFuzzySearch`) with the current chores and specified keys (`title`, `description`).
     *   **User Search Input:** User types into the search/quick-add input. The `onInput` event updates the `quickChoreTitle` signal.
@@ -102,23 +124,25 @@
         *   Otherwise, it calls `fuzzySearchChores(fuse(), quickChoreTitle())` to get a filtered list.
     *   **Rendering:** The `Chores` component receives `displayedChores()` as a prop and renders the list of `Chore` components. It may use utility functions like `choreSortFn` (passed as a prop) for sorting before rendering.
 
-4.  **Marking a Chore as Done/Not Done:**
+6.  **Marking a Chore as Done/Not Done:**
     *   User interacts with a completion toggle (e.g., checkbox) within a specific `Chore` component.
     *   The `Chore` component calls `props.onChoreDone` (passed down from `App.jsx` via `Chores.jsx`), likely passing an event object.
     *   `App.jsx`'s `handleChoreDone` function:
         *   Identifies the target chore (e.g., using `e.target.dataset.choreTitle`).
+        *   Updates the chore's `done` status in the database via `db.js`.
         *   Updates the `chores` signal by mapping over the previous chores and toggling the `done` status of the matched chore.
     *   The UI (specifically the affected `Chore` component) re-renders to reflect the new completion status.
 
-5.  **Deleting a Chore:**
+7.  **Deleting a Chore:**
     *   User clicks a delete button within a specific `Chore` component.
     *   The `Chore` component calls `props.onDeleteChore` (passed down from `App.jsx` via `Chores.jsx`), passing the chore object to be deleted.
     *   `App.jsx`'s `handleDeleteChore` function:
+        *   Deletes the chore from the database via `db.js`.
         *   Updates the `chores` signal by filtering out the chore whose title matches `choreToDelete.title`.
     *   The `Chores` component re-renders, removing the deleted chore from the display.
 
-6.  **Recurring Chore Evaluation and Display:**
-    *   Chores can be created with a `recurrence` property, which is an object defining the recurrence rule (e.g., frequency, interval, specific days/dates, start date, count/until). This structure is compatible with `@rschedule/core`.
+8.  **Recurring Chore Evaluation and Display:**
+    *   Chores can be created with a `recurrence` property, which is an object defining the recurrence rule (e.g., frequency, interval, specific days/dates, start date, count/until). This structure is compatible with `dayspan`.
     *   `AddChoreModal.jsx` provides UI elements for users to define these recurrence rules, which are then transformed into `Rule` objects or stored appropriately.
     *   Utility functions in `src/utils/scheduleUtils.js` (e.g., `getEffectiveDueDate`, `isChoreForToday`, `getScheduleDisplayString`, `getChoreDisplayDetails`) are used to:
         *   Calculate the next or relevant occurrence of a recurring chore.

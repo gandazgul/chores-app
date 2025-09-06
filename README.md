@@ -10,7 +10,7 @@ A simple and efficient application to manage your daily tasks and chores.
 
 ## Project Structure
 
-The project is built using SolidJS, Vite, PicoCSS and Firebase. It uses pnpm as the package manager. The main components are located in the `src/components` directory.
+The project is built using SolidJS, Vite, and PicoCSS. It uses Firebase for authentication and a local SQLite database managed by Knex for data storage. The project uses pnpm as the package manager. The main components are located in the `src/components` directory.
 
 ## Installation
 

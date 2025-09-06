@@ -1,41 +1,31 @@
 import { createSignal } from 'solid-js';
-import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { app } from '../utils/firebaseConfig';
 
 function LoginPage() {
   const [errorMessage, setErrorMessage] = createSignal(null);
 
   const handleGoogleLogin = async () => {
-    setErrorMessage(null); // Clear previous error on new attempt
+    setErrorMessage(null);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          // Optional: redirectTo can be used to specify where the user should be redirected after login.
-          // redirectTo: window.location.origin, 
-        }
-      });
-
-      if (error) {
-        console.error("Supabase Login Error:", error.message);
-        setErrorMessage(`Login failed: ${error.message}. Please try again.`);
-        return;
-      }
-
-      // signInWithOAuth redirects the user to Google and then back to your app.
-      // The session is established on redirect. You might not get user data immediately here
-      // unless you handle the redirect and session retrieval in App.jsx or a similar top-level component.
-      // For now, we can log the data if available, but actual user state management will be in App.jsx.
-      if (data && data.user) {
-        console.log("Logged in user (Supabase):", data.user);
-      } else if (data && data.url) {
-        // If a URL is returned, it means Supabase is redirecting.
-        // The browser will handle this redirect.
-        console.log("Redirecting to Google for OAuth...");
-      }
-
+      const result = await signInWithPopup(auth, provider);
+      // The signed-in user info.
+      const user = result.user;
+      console.log("Logged in user (Firebase):", user);
+      // You can now update your app's state with the user info.
     } catch (error) {
-      console.error("Unexpected Login Error:", error);
-      setErrorMessage("An unexpected error occurred during login. Please try again.");
+      // Handle Errors here.
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      // The email of the user's account used.
+      const email = error.customData ? error.customData.email : 'N/A';
+      // The AuthCredential type that was used.
+      const credential = GoogleAuthProvider.credentialFromError(error);
+      console.error("Firebase Login Error:", { errorCode, errorMessage, email, credential });
+      setErrorMessage(`Login failed: ${errorMessage}`);
     }
   };
 

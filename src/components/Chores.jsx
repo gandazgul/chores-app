@@ -3,7 +3,7 @@ import { useUser } from '../utils/UserContext';
 import ChoresList from './ChoresList';
 import AddChoreModal from './AddChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
-import { supabase } from '../utils/supabaseConfig'; // Import Supabase client
+import db from '../utils/db';
 import { today, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js';
 import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js';
 // Removed rschedule import, dayspan is used within scheduleUtils.js
@@ -28,61 +28,13 @@ function Chores() { // Removed props
     // For this refactor, assuming currentUser is available (e.g., passed as prop or from context)
     // const currentUserSignal = () => auth.currentUser; // Comment can be removed or updated
 
-    // No longer need choresCollectionRef for Supabase in this way
-    // const choresCollectionRef = collection(db, "chores"); 
-
-    const convertChoreFromSupabase = (choreData) => {
-        const chore = { ...choreData };
-        if (chore.due_date) { // Supabase columns are typically snake_case
-            chore.dueDate = new Date(chore.due_date);
-            delete chore.due_date; // Clean up original snake_case field
-        }
-        if (chore.recurrence && typeof chore.recurrence.start === 'string') {
-            // Convert recurrence.start from ISO string to JS Date object
-            chore.recurrence.start = new Date(chore.recurrence.start);
-        }
-        // user_id is already in choreData from Supabase, no specific conversion needed here for it
-        // created_at and updated_at are also available
-        return chore;
-    };
-
-    const convertChoreToSupabase = (choreData) => {
-        const chore = { ...choreData };
-        if (chore.dueDate && chore.dueDate instanceof Date) {
-            chore.due_date = chore.dueDate.toISOString(); // Convert to ISO string for Supabase
-            delete chore.dueDate;
-        }
-        if (chore.recurrence && chore.recurrence.start && chore.recurrence.start instanceof Date) {
-            // Ensure recurrence.start (which is a JS Date) is an ISO string for JSONB
-            chore.recurrence.start = chore.recurrence.start.toISOString();
-        }
-        // Ensure user_id is present if it's coming from a different source name
-        if (chore.userId && !chore.user_id) {
-            chore.user_id = chore.userId;
-            delete chore.userId;
-        }
-        // id is handled by Supabase, no need to delete it before insert
-        // For updates, id is used in the .eq() clause
-        return chore;
-    };
-
     createEffect(async () => {
-        const user = currentUser(); // Use context
-        if (user && user.id) { // Supabase user object has `id`
+        const user = currentUser();
+        if (user && user.uid) {
             setLoadingChores(true);
             try {
-                const { data, error } = await supabase
-                    .from('chores')
-                    .select('*')
-                    .eq('user_id', user.id);
-
-                if (error) {
-                    console.error("Error fetching chores:", error.message);
-                    setChores([]);
-                } else {
-                    const fetchedChores = data.map(chore => convertChoreFromSupabase(chore));
-                    setChores(fetchedChores);
-                }
+                const choresData = await db('chores').where('user_id', user.uid);
+                setChores(choresData);
             } catch (e) {
                 console.error("Exception fetching chores:", e);
                 setChores([]);
@@ -90,7 +42,7 @@ function Chores() { // Removed props
                 setLoadingChores(false);
             }
         } else {
-            setChores([]); // Clear chores if no user
+            setChores([]);
             setLoadingChores(false);
         }
     });
@@ -114,49 +66,31 @@ function Chores() { // Removed props
         const choreId = e.target.dataset.choreId;
         const isDone = e.target.checked;
         try {
-            const { error } = await supabase
-                .from('chores')
-                .update({ done: isDone, updated_at: new Date().toISOString() })
-                .eq('id', choreId);
-
-            if (error) {
-                console.error("Error updating chore:", error.message);
-                // Optionally, revert UI change or show error to user
-                e.target.checked = !isDone; // Revert checkbox state
-            } else {
-                setChores((prevChores) => prevChores.map((chore) => {
-                    if (chore.id === choreId) {
-                        return { ...chore, done: isDone };
-                    }
-                    return chore;
-                }));
-            }
+            await db('chores').where('id', choreId).update({ done: isDone });
+            setChores((prevChores) => prevChores.map((chore) => {
+                if (chore.id === choreId) {
+                    return { ...chore, done: isDone };
+                }
+                return chore;
+            }));
         } catch (err) {
             console.error("Exception updating chore:", err);
-            e.target.checked = !isDone; // Revert checkbox state on exception
+            e.target.checked = !isDone;
         }
     }
 
     async function handleDeleteChore(choreToDelete) {
         try {
-            const { error } = await supabase
-                .from('chores')
-                .delete()
-                .eq('id', choreToDelete.id);
-
-            if (error) {
-                console.error("Error deleting chore:", error.message);
-            } else {
-                setChores((currentChores) => currentChores.filter(chore => chore.id !== choreToDelete.id));
-            }
+            await db('chores').where('id', choreToDelete.id).del();
+            setChores((currentChores) => currentChores.filter(chore => chore.id !== choreToDelete.id));
         } catch (err) {
             console.error("Exception deleting chore:", err);
         }
     }
 
     async function handleAddNewChore(newChoreFromModal) {
-        const user = currentUser(); // Use context
-        if (!user || !user.id) {
+        const user = currentUser();
+        if (!user || !user.uid) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
@@ -165,35 +99,15 @@ function Chores() { // Removed props
             description: newChoreFromModal.description,
             priority: parseInt(newChoreFromModal.priority, 10),
             done: false,
-            user_id: user.id, // Use user.id for Supabase and snake_case
+            user_id: user.uid,
+            due_date: newChoreFromModal.schedule instanceof Date ? newChoreFromModal.schedule.toISOString() : null,
+            recurrence: typeof newChoreFromModal.schedule === 'object' && newChoreFromModal.schedule !== null ? newChoreFromModal.schedule : null,
         };
 
-        if (newChoreFromModal.schedule) {
-            // AddChoreModal now sends a JS Date for dueDate, or a dayspan-compatible options object for recurrence
-            if (newChoreFromModal.schedule instanceof Date) {
-                choreToAdd.dueDate = newChoreFromModal.schedule;
-            } else if (typeof newChoreFromModal.schedule === 'object' && newChoreFromModal.schedule !== null && newChoreFromModal.schedule.type !== undefined) {
-                // It's a recurrence options object from dayspan
-                choreToAdd.recurrence = newChoreFromModal.schedule; 
-                // convertChoreToSupabase will handle converting recurrence.start (JS Date) to ISO string
-            }
-        }
-
         try {
-            const preparedChore = convertChoreToSupabase(choreToAdd);
-            const { data, error } = await supabase
-                .from('chores')
-                .insert([preparedChore])
-                .select();
-
-            if (error) {
-                console.error("Error adding new chore:", error.message);
-            } else if (data && data.length > 0) {
-                setChores((prevChores) => [...prevChores, convertChoreFromSupabase(data[0])]);
-                setNewChoreModalOpen(false);
-            } else {
-                console.error("Error adding new chore: No data returned after insert.");
-            }
+            const [newChore] = await db('chores').insert(choreToAdd).returning('*');
+            setChores((prevChores) => [...prevChores, newChore]);
+            setNewChoreModalOpen(false);
         } catch (err) {
             console.error("Exception adding new chore:", err);
         }
@@ -209,8 +123,8 @@ function Chores() { // Removed props
 
     async function handleQuickAddChore(e) {
         if (e) e.preventDefault();
-        const user = currentUser(); // Use context
-        if (!user || !user.id) {
+        const user = currentUser();
+        if (!user || !user.uid) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
@@ -219,25 +133,14 @@ function Chores() { // Removed props
             const newChore = {
                 title: title,
                 description: '',
-                priority: 4, // Default priority
+                priority: 4,
                 done: false,
-                user_id: user.id, // Use user.id for Supabase and snake_case
+                user_id: user.uid,
             };
             try {
-                const preparedChore = convertChoreToSupabase(newChore);
-                const { data, error } = await supabase
-                    .from('chores')
-                    .insert([preparedChore])
-                    .select();
-                
-                if (error) {
-                    console.error("Error quick adding chore:", error.message);
-                } else if (data && data.length > 0) {
-                    setChores((prevChores) => [...prevChores, convertChoreFromSupabase(data[0])]);
-                    setQuickChoreTitle('');
-                } else {
-                    console.error("Error quick adding chore: No data returned after insert.");
-                }
+                const [addedChore] = await db('chores').insert(newChore).returning('*');
+                setChores((prevChores) => [...prevChores, addedChore]);
+                setQuickChoreTitle('');
             } catch (err) {
                 console.error("Exception quick adding chore:", err);
             }

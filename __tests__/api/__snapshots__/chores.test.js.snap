@@ -1,0 +1,166 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Chores API Integration Tests DELETE /api/chores/:id should delete an existing chore 1`] = `
+{
+  "message": "Chore deleted successfully",
+}
+`;
+
+exports[`Chores API Integration Tests DELETE /api/chores/:id should handle invalid chore ID format 1`] = `
+{
+  "message": "Chore not found",
+}
+`;
+
+exports[`Chores API Integration Tests DELETE /api/chores/:id should return 404 for non-existent chore ID 1`] = `
+{
+  "message": "Chore not found",
+}
+`;
+
+exports[`Chores API Integration Tests GET /api/chores should correctly parse recurrence data from JSON 1`] = `
+{
+  "daysOfWeek": [
+    "Monday",
+  ],
+  "interval": 1,
+  "type": "weekly",
+}
+`;
+
+exports[`Chores API Integration Tests GET /api/chores should return 400 when userId query parameter is missing 1`] = `
+{
+  "message": "userId query parameter is required",
+}
+`;
+
+exports[`Chores API Integration Tests GET /api/chores should return all chores for a valid user ID 1`] = `
+[
+  {
+    "created_at": Any<String>,
+    "description": "Wash all the dishes in the sink.",
+    "done": false,
+    "due_date": null,
+    "id": "test-uuid-001",
+    "priority": 1,
+    "recurrence": null,
+    "remind_until_done": 0,
+    "title": "Wash the dishes",
+    "updated_at": Any<String>,
+    "user_id": "test-user-001",
+  },
+  {
+    "created_at": Any<String>,
+    "description": "Take out the trash and recycling.",
+    "done": true,
+    "due_date": null,
+    "id": "test-uuid-002",
+    "priority": 2,
+    "recurrence": null,
+    "remind_until_done": 0,
+    "title": "Take out the trash",
+    "updated_at": Any<String>,
+    "user_id": "test-user-001",
+  },
+  {
+    "created_at": Any<String>,
+    "description": "Clean the toilet, sink, and shower.",
+    "done": false,
+    "due_date": null,
+    "id": "test-uuid-003",
+    "priority": 3,
+    "recurrence": {
+      "daysOfWeek": [
+        "Monday",
+      ],
+      "interval": 1,
+      "type": "weekly",
+    },
+    "remind_until_done": 0,
+    "title": "Clean the bathroom",
+    "updated_at": Any<String>,
+    "user_id": "test-user-001",
+  },
+]
+`;
+
+exports[`Chores API Integration Tests GET /api/chores should return empty array for non-existent user 1`] = `[]`;
+
+exports[`Chores API Integration Tests POST /api/chores should create a new chore with valid data 1`] = `
+{
+  "created_at": Any<String>,
+  "description": "This is a new test chore",
+  "done": false,
+  "due_date": null,
+  "id": Any<String>,
+  "priority": 2,
+  "recurrence": null,
+  "remind_until_done": 0,
+  "title": "New Test Chore",
+  "updated_at": Any<String>,
+  "user_id": "test-user-001",
+}
+`;
+
+exports[`Chores API Integration Tests POST /api/chores should create chore with recurrence data 1`] = `
+{
+  "created_at": Any<String>,
+  "description": null,
+  "done": false,
+  "due_date": null,
+  "id": Any<String>,
+  "priority": null,
+  "recurrence": {
+    "daysOfWeek": [
+      "Monday",
+      "Wednesday",
+    ],
+    "interval": 2,
+    "type": "weekly",
+  },
+  "remind_until_done": 0,
+  "title": "Weekly Chore",
+  "updated_at": Any<String>,
+  "user_id": "test-user-001",
+}
+`;
+
+exports[`Chores API Integration Tests POST /api/chores should return 422 when title is missing 1`] = `
+{
+  "message": "Missing required fields: title and user_id",
+}
+`;
+
+exports[`Chores API Integration Tests POST /api/chores should return 422 when user_id is missing 1`] = `
+{
+  "message": "Missing required fields: title and user_id",
+}
+`;
+
+exports[`Chores API Integration Tests PUT /api/chores/:id should handle invalid chore ID format 1`] = `
+{
+  "message": "Chore not found",
+}
+`;
+
+exports[`Chores API Integration Tests PUT /api/chores/:id should return 404 for non-existent chore ID 1`] = `
+{
+  "message": "Chore not found",
+}
+`;
+
+exports[`Chores API Integration Tests PUT /api/chores/:id should update an existing chore 1`] = `
+{
+  "created_at": Any<String>,
+  "description": "Updated description",
+  "done": 1,
+  "due_date": null,
+  "id": "test-uuid-001",
+  "priority": 1,
+  "recurrence": null,
+  "remind_until_done": 0,
+  "title": "Updated Chore Title",
+  "updated_at": Any<String>,
+  "user_id": "test-user-001",
+}
+`;

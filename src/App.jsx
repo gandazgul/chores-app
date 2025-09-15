@@ -1,42 +1,61 @@
-import { createSignal, createEffect, onCleanup, Show, onMount } from 'solid-js';
+import { useState, useEffect } from 'react';
 import Chores from './components/Chores';
 import LoginPage from './components/LoginPage';
-import Layout from './components/Layout'; // Import the new Layout component
+import Layout from './components/Layout';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { app } from './utils/firebaseConfig';
-import { UserProvider } from './utils/UserContext'; // Import UserProvider
-// Removed library import for fontawesome as it's not directly used here anymore
+import { UserProvider } from './utils/UserContext';
 
 import '@picocss/pico';
 import './App.less';
 
 function App() {
-    const [currentUser, setCurrentUser] = createSignal(null);
-    const [loadingAuth, setLoadingAuth] = createSignal(true);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loadingAuth, setLoadingAuth] = useState(true);
 
-    onMount(() => {
+    useEffect(() => {
         const auth = getAuth(app);
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
             setLoadingAuth(false);
         });
 
-        onCleanup(() => unsubscribe());
-    });
+        // Listen for mock authentication events (for testing)
+        const handleMockAuth = (event) => {
+            console.log('Mock auth event received:', event.detail.user);
+            setCurrentUser(event.detail.user);
+            setLoadingAuth(false);
+        };
+
+        window.addEventListener('mockAuth', handleMockAuth);
+
+        // If skip auth is enabled, immediately set loading to false and mock user
+        if (import.meta.env.VITE_SKIP_AUTH === 'true') {
+            setCurrentUser({ uid: 'test-user-123', email: 'test@example.com' });
+            setLoadingAuth(false);
+        }
+
+        return () => {
+            unsubscribe();
+            window.removeEventListener('mockAuth', handleMockAuth);
+        };
+    }, []);
+
+    if (loadingAuth) {
+        return <p>Loading application...</p>;
+    }
 
     return (
-        <div class="app">
-            <Show when={!loadingAuth()} fallback={<p>Loading application...</p>}>
-                {currentUser() ? (
-                    <UserProvider currentUser={currentUser}>
-                        <Layout> {/* Remove currentUser prop */}
-                            <Chores /> {/* Remove currentUser prop */}
-                        </Layout>
-                    </UserProvider>
-                ) : (
-                    <LoginPage />
-                )}
-            </Show>
+        <div className="app">
+            {currentUser ? (
+                <UserProvider currentUser={currentUser}>
+                    <Layout>
+                        <Chores />
+                    </Layout>
+                </UserProvider>
+            ) : (
+                <LoginPage />
+            )}
         </div>
     );
 }

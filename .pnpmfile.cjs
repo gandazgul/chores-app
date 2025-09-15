@@ -3,6 +3,10 @@ function readPackage(pkg, context) {
         context.log('Allowing sqlite3 to run its build scripts');
         pkg.requiresBuild = true;
     }
+    if (pkg.name === 'playwright') {
+        context.log('Allowing playwright to run its build scripts');
+        pkg.requiresBuild = true;
+    }
     return pkg;
 }
 

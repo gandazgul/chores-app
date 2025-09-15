@@ -1,16 +1,18 @@
-import { Day, Schedule, Recurrence, Weekday, Month, Timespan } from 'dayspan';
+import * as ds from 'dayspan';
 
 
-// Dayspan Day object for 'today'
-const today = Day.today();
+// Helper function to get current day (always fresh)
+function getToday() {
+    return ds.Day.today();
+}
 
 // Helper to convert various date inputs (JS Date, string, Day object) to a Day object
 function ensureDay(dateInput) {
     if (!dateInput) return null;
-    if (dateInput instanceof Day) return dateInput;
+    if (dateInput instanceof ds.Day) return dateInput;
     if (dateInput instanceof Date || typeof dateInput === 'string' || typeof dateInput === 'number') {
         try {
-            return Day.fromDate(new Date(dateInput));
+            return ds.Day.fromDate(new Date(dateInput));
         } catch (e) {
             console.error("Failed to convert to Day:", dateInput, e);
             return null;
@@ -22,12 +24,25 @@ function ensureDay(dateInput) {
 
 // Helper to create a dayspan Schedule from chore recurrence options
 function createScheduleFromChore(recurrenceOptions) {
+    // Parse if it's a JSON string
+    if (typeof recurrenceOptions === 'string') {
+        try {
+            recurrenceOptions = JSON.parse(recurrenceOptions);
+        } catch (error) {
+            console.warn('Failed to parse recurrence options:', error);
+            return null;
+        }
+    }
+
     if (!recurrenceOptions || !recurrenceOptions.start) {
         console.warn('Invalid recurrence options for creating schedule: missing start date.', recurrenceOptions);
         return null;
     }
 
+    console.log('About to call ensureDay with:', recurrenceOptions.start);
     const startDay = ensureDay(recurrenceOptions.start);
+    console.log('ensureDay returned:', startDay);
+
     if (!startDay) {
         console.warn('Invalid start date in recurrence options:', recurrenceOptions.start);
         return null;
@@ -42,13 +57,13 @@ function createScheduleFromChore(recurrenceOptions) {
         const endDay = ensureDay(recurrenceOptions.until);
         if (endDay) {
             dayspanRecurrenceOptions.end = endDay;
-            dayspanRecurrenceOptions.ends = Recurrence.ENDS_ON; // Explicitly set if 'until' is present
+            dayspanRecurrenceOptions.ends = ds.Recurrence.ENDS_ON; // Explicitly set if 'until' is present
         } else {
             console.warn('Invalid until date in recurrence options:', recurrenceOptions.until);
             // Decide if this should prevent schedule creation or just ignore 'until'
         }
     }
-    
+
     // Map rschedule frequency to dayspan type if necessary (assuming options are already dayspan compatible)
     // For example, if chore.recurrence.frequency = 'DAILY', map to type: Recurrence.DAILY
 
@@ -57,7 +72,15 @@ function createScheduleFromChore(recurrenceOptions) {
     // For now, assuming recurrenceOptions are already in dayspan format (e.g., recurrenceOptions.weekdays)
 
     try {
-        return Schedule.forRecurrence(dayspanRecurrenceOptions);
+        // Use plain object approach based on Dayspan examples
+        const scheduleObject = {
+            start: startDay,
+            every: recurrenceOptions.every || 1,
+            duration: recurrenceOptions.duration || 1,
+            durationUnit: recurrenceOptions.durationUnit || 'days'
+        };
+        console.log('Created schedule object:', scheduleObject);
+        return scheduleObject;
     } catch (e) {
         console.error("Failed to create schedule from options:", dayspanRecurrenceOptions, e);
         return null;
@@ -66,28 +89,86 @@ function createScheduleFromChore(recurrenceOptions) {
 
 
 function isChoreForToday(chore) {
-    if (chore.dueDate) {
-        const dueDate = ensureDay(chore.dueDate);
+    const today = getToday(); // Get fresh today
+
+    if (chore.due_date) {
+        const dueDate = ensureDay(chore.due_date);
         return dueDate ? dueDate.valueOf() === today.valueOf() : false;
     }
     if (chore.recurrence) {
         const schedule = createScheduleFromChore(chore.recurrence);
-        return schedule ? schedule.occursOn(today) : false;
+        if (!schedule) return false;
+
+        try {
+            // Manual check for daily recurrence - simpler approach
+            if (schedule.durationUnit === 'days' && schedule.every === 1) {
+                // For daily recurrence, check if today is on or after start date
+                const startDay = schedule.start;
+                console.log('Daily recurrence check - startDay:', startDay, 'today:', today);
+                console.log('startDay.dayOfYear:', startDay.dayOfYear, 'today.dayOfYear:', today.dayOfYear);
+                console.log('startDay.year:', startDay.year, 'today.year:', today.year);
+                // Compare just the date, not the time, for daily recurrence
+                if (startDay.year !== today.year) {
+                    return startDay.year <= today.year;
+                }
+                return startDay.dayOfYear <= today.dayOfYear;
+            }
+
+            // For other types, try to create a proper Schedule if needed
+            if (typeof schedule.occursOn !== 'function') {
+                console.log('Non-daily schedule, trying Dayspan Schedule:', schedule);
+                const dayspanSchedule = new ds.Schedule(schedule);
+                return dayspanSchedule.occursOn(today);
+            }
+            return schedule.occursOn(today);
+        } catch (error) {
+            console.error('Error in isChoreForToday:', error, 'schedule:', schedule);
+            return false;
+        }
     }
     return true; // No due date or recurrence means it's a general task, considered for today
 }
 
 function getEffectiveDueDate(chore) {
-    if (chore.dueDate) {
-        return ensureDay(chore.dueDate);
+    if (chore.due_date) {
+        return ensureDay(chore.due_date);
     }
     if (chore.recurrence) {
         const schedule = createScheduleFromChore(chore.recurrence);
         if (!schedule) return null;
-        
-        // Find the next occurrence on or after today
-        const nextOccurrenceTimespan = schedule.next(today, true); // true to include today
-        return nextOccurrenceTimespan ? nextOccurrenceTimespan.start : null;
+
+        try {
+            // For daily recurrence, just return the start date if it's today or later
+            if (schedule.durationUnit === 'days' && schedule.every === 1) {
+                const startDay = schedule.start;
+                const today = getToday();
+                if (startDay.valueOf() >= today.valueOf()) {
+                    return startDay;
+                }
+                return today; // If start was in the past, return today
+            }
+
+            // If it's a plain object, try to create a proper Schedule
+            if (typeof schedule.next !== 'function') {
+                console.log('Schedule is plain object in getEffectiveDueDate, creating Dayspan Schedule:', schedule);
+                try {
+                    const dayspanSchedule = new ds.Schedule(schedule);
+                    const nextOccurrenceTimespan = dayspanSchedule.next(getToday(), true);
+                    return nextOccurrenceTimespan ? nextOccurrenceTimespan.start : null;
+                } catch (scheduleError) {
+                    console.error('Error creating Dayspan Schedule:', scheduleError);
+                    // Fallback: return the start date if it exists
+                    return schedule.start || null;
+                }
+            }
+
+            // Find the next occurrence on or after today
+            const nextOccurrenceTimespan = schedule.next(getToday(), true); // true to include today
+            return nextOccurrenceTimespan ? nextOccurrenceTimespan.start : null;
+        } catch (error) {
+            console.error('Error in getEffectiveDueDate:', error, 'schedule:', schedule);
+            return schedule.start || null; // Fallback
+        }
     }
     return null;
 }
@@ -110,28 +191,28 @@ function choreSortFn(a, b) {
 }
 
 const dayspanWeekdayMap = {
-    [Weekday.SUNDAY.iso]: 'Sunday',
-    [Weekday.MONDAY.iso]: 'Monday',
-    [Weekday.TUESDAY.iso]: 'Tuesday',
-    [Weekday.WEDNESDAY.iso]: 'Wednesday',
-    [Weekday.THURSDAY.iso]: 'Thursday',
-    [Weekday.FRIDAY.iso]: 'Friday',
-    [Weekday.SATURDAY.iso]: 'Saturday',
+    [ds.Weekday.SUNDAY.iso]: 'Sunday',
+    [ds.Weekday.MONDAY.iso]: 'Monday',
+    [ds.Weekday.TUESDAY.iso]: 'Tuesday',
+    [ds.Weekday.WEDNESDAY.iso]: 'Wednesday',
+    [ds.Weekday.THURSDAY.iso]: 'Thursday',
+    [ds.Weekday.FRIDAY.iso]: 'Friday',
+    [ds.Weekday.SATURDAY.iso]: 'Saturday',
 };
 
 const dayspanMonthMap = {
-    [Month.JANUARY.key]: 'January', // Assuming .key or similar gives a usable key like 'january' or 1
-    [Month.FEBRUARY.key]: 'February',
-    [Month.MARCH.key]: 'March',
-    [Month.APRIL.key]: 'April',
-    [Month.MAY.key]: 'May',
-    [Month.JUNE.key]: 'June',
-    [Month.JULY.key]: 'July',
-    [Month.AUGUST.key]: 'August',
-    [Month.SEPTEMBER.key]: 'September',
-    [Month.OCTOBER.key]: 'October',
-    [Month.NOVEMBER.key]: 'November',
-    [Month.DECEMBER.key]: 'December',
+    [ds.Month.JANUARY.key]: 'January', // Assuming .key or similar gives a usable key like 'january' or 1
+    [ds.Month.FEBRUARY.key]: 'February',
+    [ds.Month.MARCH.key]: 'March',
+    [ds.Month.APRIL.key]: 'April',
+    [ds.Month.MAY.key]: 'May',
+    [ds.Month.JUNE.key]: 'June',
+    [ds.Month.JULY.key]: 'July',
+    [ds.Month.AUGUST.key]: 'August',
+    [ds.Month.SEPTEMBER.key]: 'September',
+    [ds.Month.OCTOBER.key]: 'October',
+    [ds.Month.NOVEMBER.key]: 'November',
+    [ds.Month.DECEMBER.key]: 'December',
 };
 
 
@@ -149,7 +230,16 @@ function getScheduleDisplayString(recurrenceInput) {
     if (!recurrenceInput) return '';
 
     // Handle both dayspan and rrule-like recurrence objects
-    const type = recurrenceInput.type || recurrenceInput.freq;
+    // Map durationUnit to type for display
+    let type = recurrenceInput.type || recurrenceInput.freq;
+    if (!type && recurrenceInput.durationUnit) {
+        switch (recurrenceInput.durationUnit) {
+            case 'days': type = 'DAILY'; break;
+            case 'weeks': type = 'WEEKLY'; break;
+            case 'months': type = 'MONTHLY'; break;
+            case 'years': type = 'YEARLY'; break;
+        }
+    }
     const { interval = 1, weekdays, month, dayOfMonth, max, end } = recurrenceInput;
     let displayString = '';
 
@@ -181,7 +271,7 @@ function getScheduleDisplayString(recurrenceInput) {
         case 'YEARLY':
             displayString = interval === 1 ? 'Every year' : `Every ${interval} years`;
             if (month) { // month is a Month enum value (e.g., Month.JANUARY)
-                if (typeof month === 'object' && month !== null && 'key' in month) { // Heuristic for dayspan format
+                if (typeof month === 'object' && 'key' in month) { // Heuristic for dayspan format
                     displayString += ` in ${dayspanMonthMap[month.key]}`;
                 }
                 if (dayOfMonth) {
@@ -221,15 +311,15 @@ function getChoreDisplayDetails(chore) {
             displayDate = "Invalid recurrence data (missing start)";
             recurrenceTitle = "Recurring (Error)";
         }
-    } else if (chore.dueDate) {
+    } else if (chore.due_date) {
         const effectiveDay = getEffectiveDueDate(chore); // Returns a Day object
         if (effectiveDay) {
-            // Format Day object. For time, we'd need to store time with dueDate.
-            // Assuming dueDate is just a date for now.
+            // Format Day object. For time, we'd need to store time with due_date.
+            // Assuming due_date is just a date for now.
             displayDate = effectiveDay.format('L'); // MM/DD/YYYY
-            
-            // If chore.dueDate was a JS Date with time:
-            const jsDate = new Date(chore.dueDate);
+
+            // If chore.due_date was a JS Date with time:
+            const jsDate = new Date(chore.due_date);
             if (jsDate.getHours() !== 0 || jsDate.getMinutes() !== 0) {
                 let hours = jsDate.getHours();
                 const minutes = jsDate.getMinutes().toString().padStart(2, '0');
@@ -259,11 +349,11 @@ function isOverdue(chore) {
     }
     // Compare dueDate (a Day object) with today.
     // valueOf() gives the number of days since epoch, so it's a clean comparison.
-    return dueDate.valueOf() < today.valueOf();
+    return dueDate.valueOf() < getToday().valueOf();
 }
 
 export {
-    today, // Exporting dayspan Day object for today
+    getToday, // Exporting function to get current day
     isChoreForToday,
     getEffectiveDueDate,
     isOverdue,

@@ -1,11 +1,8 @@
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from 'solid-fontawesome';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
-// Add the plus icon to the library
 library.add(faPlus);
-
-// Styles are expected to be in App.less or a dedicated file imported elsewhere.
 
 function AddChoreFloatButton({ onClick }) {
   return (

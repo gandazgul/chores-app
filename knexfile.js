@@ -18,6 +18,20 @@ export default {
         }
     },
 
+    test: {
+        client: 'sqlite3',
+        connection: {
+            filename: './test.sqlite3'
+        },
+        useNullAsDefault: true,
+        migrations: {
+            directory: './migrations'
+        },
+        seeds: {
+            directory: './seeds'
+        }
+    },
+
     staging: {
         client: 'postgresql',
         connection: {
@@ -47,6 +61,9 @@ export default {
         },
         migrations: {
             tableName: 'knex_migrations'
+        },
+        seeds: {
+            directory: './seeds'
         }
     }
 };

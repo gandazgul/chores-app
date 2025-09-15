@@ -1,112 +1,143 @@
-import { createSignal, createMemo, createEffect, onCleanup, Show, useContext } from 'solid-js'; // Added useContext, though useUser hook is preferred
+import { useState, useMemo, useEffect } from 'react';
 import { useUser } from '../utils/UserContext';
 import ChoresList from './ChoresList';
 import AddChoreModal from './AddChoreModal';
+import EditChoreModal from './EditChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
-import db from '../utils/db';
-import { today, isChoreForToday, getEffectiveDueDate, choreSortFn } from '../utils/scheduleUtils.js';
+import { getChores, addChore, updateChore, deleteChore } from '../api';
+import { isChoreForToday, choreSortFn } from '../utils/scheduleUtils.js';
 import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js';
-// Removed rschedule import, dayspan is used within scheduleUtils.js
-import { FontAwesomeIcon } from 'solid-fontawesome';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
 
-// For now, let's assume App.less is global enough or specific styles will be moved.
-import './Chores.less'; // Import specific styles
+import './Chores.less';
 
 library.add(faPaperPlane);
 
-// currentUser will be accessed via context
-function Chores() { // Removed props
-    const currentUser = useUser(); // Get the currentUser signal from context
-    const [chores, setChores] = createSignal([]);
-    const [newChoreModalOpen, setNewChoreModalOpen] = createSignal(false);
-    const [quickChoreTitle, setQuickChoreTitle] = createSignal('');
-    const [fuse, setFuse] = createSignal(null);
-    const [loadingChores, setLoadingChores] = createSignal(true);
-    // currentUser will be passed as a prop or accessed via a global store if needed.
-    // For this refactor, assuming currentUser is available (e.g., passed as prop or from context)
-    // const currentUserSignal = () => auth.currentUser; // Comment can be removed or updated
+function Chores() {
+    const currentUser = useUser();
+    const [chores, setChores] = useState([]);
+    const [newChoreModalOpen, setNewChoreModalOpen] = useState(false);
+    const [editChoreModalOpen, setEditChoreModalOpen] = useState(false);
+    const [choreToEdit, setChoreToEdit] = useState(null);
+    const [quickChoreTitle, setQuickChoreTitle] = useState('');
+    const [fuse, setFuse] = useState(null);
+    const [loadingChores, setLoadingChores] = useState(true);
 
-    createEffect(async () => {
-        const user = currentUser();
-        if (user && user.uid) {
+    useEffect(() => {
+        if (currentUser && currentUser.uid) {
             setLoadingChores(true);
-            try {
-                const choresData = await db('chores').where('user_id', user.uid);
-                setChores(choresData);
-            } catch (e) {
-                console.error("Exception fetching chores:", e);
-                setChores([]);
-            } finally {
-                setLoadingChores(false);
-            }
-        } else {
+            getChores(currentUser.uid)
+                .then(choresData => {
+                    setChores(choresData);
+                })
+                .catch(e => {
+                    console.error("Exception fetching chores:", e);
+                    setChores([]);
+                })
+                .finally(() => {
+                    setLoadingChores(false);
+                });
+        } else if (!currentUser) {
             setChores([]);
             setLoadingChores(false);
         }
-    });
+    }, [currentUser]);
 
 
-    createEffect(() => {
-        const currentChores = chores();
-        setFuse(initializeFuzzySearch([...currentChores], ['title', 'description']));
-    });
+    useEffect(() => {
+        setFuse(initializeFuzzySearch([...chores], ['title', 'description']));
+    }, [chores]);
 
-    const displayedChores = createMemo(() => {
-        const searchTerm = quickChoreTitle();
-        const currentFuse = fuse();
-        if (searchTerm.trim() === '' || !currentFuse) {
-            return chores();
+    const displayedChores = useMemo(() => {
+        if (quickChoreTitle.trim() === '' || !fuse) {
+            return chores;
         }
-        return fuzzySearchChores(currentFuse, searchTerm);
-    });
+        return fuzzySearchChores(fuse, quickChoreTitle);
+    }, [chores, quickChoreTitle, fuse]);
 
-    async function handleChoreDone(e) {
-        const choreId = e.target.dataset.choreId;
-        const isDone = e.target.checked;
+    async function handleChoreDone(choreToUpdate, isDone) {
         try {
-            await db('chores').where('id', choreId).update({ done: isDone });
-            setChores((prevChores) => prevChores.map((chore) => {
-                if (chore.id === choreId) {
-                    return { ...chore, done: isDone };
-                }
-                return chore;
-            }));
+            await updateChore(choreToUpdate.id, { done: isDone });
+            setChores(prevChores => prevChores.map(chore =>
+                chore.id === choreToUpdate.id ? { ...chore, done: isDone } : chore
+            ));
         } catch (err) {
             console.error("Exception updating chore:", err);
-            e.target.checked = !isDone;
         }
     }
 
     async function handleDeleteChore(choreToDelete) {
         try {
-            await db('chores').where('id', choreToDelete.id).del();
-            setChores((currentChores) => currentChores.filter(chore => chore.id !== choreToDelete.id));
+            await deleteChore(choreToDelete.id);
+            setChores(currentChores => currentChores.filter(chore => chore.id !== choreToDelete.id));
         } catch (err) {
             console.error("Exception deleting chore:", err);
         }
     }
 
     async function handleAddNewChore(newChoreFromModal) {
-        const user = currentUser();
-        if (!user || !user.uid) {
+        if (!currentUser || !currentUser.uid) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
+
+        console.log('handleAddNewChore called with:', newChoreFromModal);
+
+        let recurrence = null;
+        if (typeof newChoreFromModal.schedule === 'object' && newChoreFromModal.schedule !== null && !(newChoreFromModal.schedule instanceof Date)) {
+            // Handle recurrence
+            const scheduleStart = newChoreFromModal.schedule.start;
+            console.log('Processing recurrence with start:', scheduleStart, 'typeof:', typeof scheduleStart);
+
+            // Convert start to ISO string - handle both Date objects and Dayspan Day objects
+            let startISO;
+            if (scheduleStart instanceof Date) {
+                startISO = scheduleStart.toISOString();
+            } else if (scheduleStart && typeof scheduleStart.toDate === 'function') {
+                // Dayspan Day object
+                startISO = scheduleStart.toDate().toISOString();
+            } else if (scheduleStart && scheduleStart.valueOf) {
+                // Try to convert via valueOf and create Date
+                startISO = new Date(scheduleStart.valueOf() * 24 * 60 * 60 * 1000).toISOString();
+            } else {
+                console.error('Unable to convert start to ISO string:', scheduleStart);
+                startISO = new Date().toISOString(); // fallback
+            }
+
+            recurrence = { ...newChoreFromModal.schedule, start: startISO };
+            console.log('Final recurrence object:', recurrence);
+        }
+
         const choreToAdd = {
             title: newChoreFromModal.title,
             description: newChoreFromModal.description,
             priority: parseInt(newChoreFromModal.priority, 10),
             done: false,
-            user_id: user.uid,
+            user_id: currentUser.uid,
             due_date: newChoreFromModal.schedule instanceof Date ? newChoreFromModal.schedule.toISOString() : null,
-            recurrence: typeof newChoreFromModal.schedule === 'object' && newChoreFromModal.schedule !== null ? newChoreFromModal.schedule : null,
+            recurrence: recurrence,
         };
 
+        console.log('choreToAdd:', JSON.stringify(choreToAdd, null, 2));
+        console.log('choreToAdd.recurrence:', choreToAdd.recurrence);
+
         try {
-            const [newChore] = await db('chores').insert(choreToAdd).returning('*');
-            setChores((prevChores) => [...prevChores, newChore]);
+            const newChore = await addChore(choreToAdd);
+            console.log('newChore from API:', newChore);
+            console.log('newChore.recurrence exists?:', !!newChore.recurrence);
+            console.log('newChore.recurrence value:', newChore.recurrence);
+            console.log('newChore keys:', Object.keys(newChore));
+            console.log('Full newChore JSON:', JSON.stringify(newChore, null, 2));
+
+            setChores(prevChores => {
+                const updated = [...prevChores, { ...newChore, done: !!newChore.done }];
+                console.log('Updated chores array length:', updated.length);
+                console.log('Last chore in array:', updated[updated.length - 1]);
+                console.log('Last chore recurrence:', updated[updated.length - 1]?.recurrence);
+                return updated;
+            });
             setNewChoreModalOpen(false);
         } catch (err) {
             console.error("Exception adding new chore:", err);
@@ -123,23 +154,22 @@ function Chores() { // Removed props
 
     async function handleQuickAddChore(e) {
         if (e) e.preventDefault();
-        const user = currentUser();
-        if (!user || !user.uid) {
+        if (!currentUser || !currentUser.uid) {
             console.error("User not logged in. Cannot add chore.");
             return;
         }
-        const title = quickChoreTitle().trim();
+        const title = quickChoreTitle.trim();
         if (title) {
             const newChore = {
                 title: title,
                 description: '',
                 priority: 4,
                 done: false,
-                user_id: user.uid,
+                user_id: currentUser.uid,
             };
             try {
-                const [addedChore] = await db('chores').insert(newChore).returning('*');
-                setChores((prevChores) => [...prevChores, addedChore]);
+                const addedChore = await addChore(newChore);
+                setChores(prevChores => [...prevChores, { ...addedChore, done: !!addedChore.done }]);
                 setQuickChoreTitle('');
             } catch (err) {
                 console.error("Exception quick adding chore:", err);
@@ -147,41 +177,71 @@ function Chores() { // Removed props
         }
     }
 
+    function handleEditChore(chore) {
+        setChoreToEdit(chore);
+        setEditChoreModalOpen(true);
+    }
+
+    function handleEditChoreClose() {
+        setEditChoreModalOpen(false);
+        setChoreToEdit(null);
+    }
+
+    async function handleUpdateChore(choreId, updates) {
+        try {
+            const updatedChore = await updateChore(choreId, updates);
+            setChores(prevChores => prevChores.map(chore =>
+                chore.id === choreId ? { ...chore, ...updatedChore, done: !!updatedChore.done } : chore
+            ));
+            handleEditChoreClose();
+        } catch (err) {
+            console.error("Exception updating chore:", err);
+        }
+    }
+
     return (
         <>
-            <ul class="instructions">
+            <ul className="instructions">
                 <li>This is a list of chores split into ones that need to be done today and the rest.</li>
                 <li>If you see something that you can do, assign it to youself and get it done.</li>
                 <li>If you see something that has been done already, please mark it as done.</li>
                 <li>Reminders for chores will continuously be sent out until they are marked as done.</li>
             </ul>
-            <form onSubmit={handleQuickAddChore} class="quick-add-form">
+            <form onSubmit={handleQuickAddChore} className="quick-add-form">
                 <input
-                    class="input"
+                    className="input"
                     type="text"
                     placeholder="Search chores or add new and press Enter..."
-                    value={quickChoreTitle()}
-                    onInput={(e) => setQuickChoreTitle(e.target.value)}
+                    value={quickChoreTitle}
+                    onChange={(e) => setQuickChoreTitle(e.target.value)}
                     aria-label="Search chores or add new chore title"
                 />
-                <button type="submit" class="outline submit" title="Add chore">
+                <button type="submit" className="outline submit" title="Add chore">
                     <FontAwesomeIcon icon={faPaperPlane} />
                 </button>
             </form>
-            <Show when={!loadingChores()} fallback={<p>Loading chores...</p>}>
+            {loadingChores ? (
+                <p>Loading chores...</p>
+            ) : (
                 <ChoresList
-                    chores={displayedChores()}
+                    chores={displayedChores}
                     onChoreDone={handleChoreDone}
                     onDeleteChore={handleDeleteChore}
+                    onEditChore={handleEditChore}
                     isChoreForToday={isChoreForToday}
                     choreSortFn={choreSortFn}
                 />
-            </Show>
-            {/* </main> */}
+            )}
             <AddChoreModal
                 open={newChoreModalOpen}
                 onClose={handleAddChoreClose}
                 onAddNewChore={handleAddNewChore}
+            />
+            <EditChoreModal
+                open={editChoreModalOpen}
+                onClose={handleEditChoreClose}
+                onUpdateChore={handleUpdateChore}
+                chore={choreToEdit}
             />
             <AddChoreFloatButton onClick={handleAddChoreClick} />
         </>

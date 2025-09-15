@@ -60,25 +60,22 @@ const requestNotificationPermissionAndToken = async () => {
   }
 };
 
-import db from './db';
+import { saveFCMToken as saveFCMTokenAPI } from '../api';
 
 async function saveFCMToken(userId, token) {
-  if (!userId || !token) {
-    console.error('User ID and token are required to save FCM token.');
-    return null;
-  }
+    if (!userId || !token) {
+        console.error('User ID and token are required to save FCM token.');
+        return null;
+    }
 
-  try {
-    const data = await db('user_fcm_tokens')
-      .insert({ user_id: userId, fcm_token: token })
-      .onConflict('fcm_token')
-      .merge();
-    console.log('FCM token saved to database:', data);
-    return data;
-  } catch (err) {
-    console.error('Unexpected error saving FCM token:', err);
-    return null;
-  }
+    try {
+        const data = await saveFCMTokenAPI(userId, token);
+        console.log('FCM token saved to database:', data);
+        return data;
+    } catch (err) {
+        console.error('Unexpected error saving FCM token:', err);
+        return null;
+    }
 }
 
 

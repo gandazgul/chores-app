@@ -1,25 +1,23 @@
 /* @refresh reload */
-import { render } from 'solid-js/web'
+import { createRoot } from 'react-dom/client';
 import './utils/firebaseConfig.js'; // Initialize Firebase
-import App from './App.jsx'
+import App from './App.jsx';
 // Use the virtual module for PWA registration
-import { registerSW } from 'virtual:pwa-register'
+import { registerSW } from 'virtual:pwa-register';
 
-const root = document.getElementById('root')
-
-render(() => <App />, root)
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(<App />);
 
 // Register the service worker
 const updateSW = registerSW({
   onNeedRefresh() {
     // Show a prompt to the user asking them to refresh the page.
-    // You can use a confirm dialog or a more sophisticated UI element.
     if (confirm('New content available, reload?')) {
-      updateSW(true); // Reloads the page and activates the new service worker
+      updateSW(true);
     }
   },
   onOfflineReady() {
-    // Content has been cached for offline use.
     console.log('App is ready to work offline.');
   },
   onRegistered(registration) {

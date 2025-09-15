@@ -4,7 +4,7 @@ import ChoresList from './ChoresList';
 import AddChoreModal from './AddChoreModal';
 import EditChoreModal from './EditChoreModal';
 import AddChoreFloatButton from './AddChoreFloatButton';
-import { getChores, addChore, updateChore, deleteChore } from '../api';
+import { getChores, addChore, updateChore, deleteChore } from '../apiClient';
 import { isChoreForToday, choreSortFn } from '../utils/scheduleUtils.js';
 import { initializeFuzzySearch, fuzzySearchChores } from '../utils/fuzzySearchUtils.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';

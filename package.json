@@ -17,7 +17,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon src/server.js",
     "build": "vite build",
     "preview": "vite preview",
     "db:seed": "npx knex seed:run",
@@ -31,6 +31,7 @@
     "classnames": "^2.5.1",
     "dayspan": "^1.1.0",
     "express": "^4.19.2",
+    "express-jsdoc-swagger": "^1.8.0",
     "firebase": "^11.8.1",
     "fuse.js": "^7.1.0",
     "knex": "^3.1.0",
@@ -52,6 +53,6 @@
     "dotenv": "^16.4.5",
     "less": "^4.2.2",
     "vite": "^7.1.5",
-    "vite-plugin-pwa": "^1.0.0"
+    "vite-plugin-pwa": "^1.0.3"
   }
 }

@@ -19,7 +19,7 @@ To get started with the project, clone the repository and install the dependenci
 ```bash
 git clone https://github.com/gandazgul/chores-app.git
 cd chores-app
-pnpm install
+deno install
 ```
 
 ## Usage
@@ -27,14 +27,14 @@ pnpm install
 ### Running the development server:
 
 ```bash
-pnpm dev
+deno run dev
 ```
 This will start the development server. Open [http://localhost:5173](http://localhost:5173) (or the port specified in your console) to view it in the browser.
 
 ### Building for production:
 
 ```bash
-pnpm build
+deno run build
 ```
 This command builds the app for production to the `dist` folder. It correctly bundles the application in production mode and optimizes the build for the best performance. The build is minified, and the filenames include hashes. Your app is ready to be deployed!
 
@@ -61,6 +61,10 @@ We welcome contributions to the Chores App! If you'd like to contribute, please 
 5.  Open a pull request to the `main` branch of the original repository.
 6.  Ensure your PR description clearly explains the changes and why they are needed.
 7.  Link any relevant issues in your PR description.
+
+## Acknowledgments
+
+This project was created with help from [opencode](https://github.com/opencodeco/opencode) and Gemini.
 
 ## License
 

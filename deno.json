@@ -1,0 +1,44 @@
+{
+  "name": "chores-app",
+  "version": "0.1.0",
+  "exports": "./dist/server/entry.mjs",
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
+    "@unocss/astro": "npm:@unocss/astro@^66.6.6",
+    "@unocss/reset": "npm:@unocss/reset@^66.6.6",
+    "astro": "npm:astro@^6.0.8",
+    "unocss": "npm:unocss@^66.6.6",
+    "fuse.js": "npm:fuse.js@^7.1.0",
+    "rrule": "npm:rrule@^2.8.1"
+  },
+  "tasks": {
+    "dev": "deno run -A --env npm:astro dev",
+    "start": "deno -WREN dist/server/entry.mjs",
+    "build": "deno run -A --env npm:astro build",
+    "preview": "deno run -A --env npm:astro preview",
+    "astro": "deno run -A --env npm:astro",
+    "test": "deno test -A",
+    "ci": "deno lint && deno fmt --check && deno check && deno test -A",
+    "db:setup": "deno run -A scripts/setup_db.js"
+  },
+  "fmt": {
+    "exclude": [
+      ".idea"
+    ]
+  },
+  "exclude": [
+    ".astro",
+    "dist",
+    ".idea"
+  ],
+  "compilerOptions": {
+    "checkJs": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "solid-js"
+  },
+  "allowScripts": {
+    "allow": ["npm:esbuild@0.27.4", "npm:fsevents@2.3.2", "npm:fsevents@2.3.3"],
+    "deny": ["npm:sharp@0.34.5"]
+  }
+}

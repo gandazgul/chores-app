@@ -7,11 +7,11 @@ yarn-error.log*
 node_modules/
 dist/
 playwright-report/
-*.sqlite3
-*.local
-.env*
+*.db
+.env
 
 # Editor directories and files
 .DS_Store
 
 .opencode/.beacon/
+.astro/

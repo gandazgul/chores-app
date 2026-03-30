@@ -2,6 +2,8 @@
   "version": "5",
   "specifiers": {
     "npm:@deno/astro-adapter@~0.3.2": "0.3.2_astro@6.0.8__typescript@5.9.3_typescript@5.9.3",
+    "npm:@iconify-json/mdi@*": "1.2.3",
+    "npm:@iconify-json/mdi@^1.2.1": "1.2.3",
     "npm:@unocss/astro@^66.6.6": "66.6.7_vite@7.3.1",
     "npm:@unocss/reset@^66.6.6": "66.6.7",
     "npm:astro@*": "6.0.8_typescript@5.9.3",
@@ -263,6 +265,12 @@
       "integrity": "sha512-+knoa0BDoeXgkNvvV1vvbZX4+hizelrkwmGJBdT17t8FNPwG2lKemmuMZlmaNQ3ws3DKKCxpb4zRZEIp3UxFCg==",
       "os": ["win32"],
       "cpu": ["x64"]
+    },
+    "@iconify-json/mdi@1.2.3": {
+      "integrity": "sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==",
+      "dependencies": [
+        "@iconify/types"
+      ]
     },
     "@iconify/types@2.0.0": {
       "integrity": "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="
@@ -2667,6 +2675,7 @@
   "workspace": {
     "dependencies": [
       "npm:@deno/astro-adapter@~0.3.2",
+      "npm:@iconify-json/mdi@^1.2.1",
       "npm:@unocss/astro@^66.6.6",
       "npm:@unocss/reset@^66.6.6",
       "npm:astro@^6.0.8",

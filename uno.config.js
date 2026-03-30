@@ -1,4 +1,5 @@
 import { defineConfig, presetIcons, presetAttributify, presetWind3 } from 'unocss';
+import mdi from "@iconify-json/mdi/icons.json" with { type: "json" };
 
 export default defineConfig({
   presets: [
@@ -6,8 +7,7 @@ export default defineConfig({
     presetAttributify(),
     presetIcons({
       collections: {
-        // You can auto-install icon sets by using the collection name (e.g. mdi, carbon, fa)
-        // or add specific ones you need.
+        mdi: () => mdi,
       },
     }),
   ],

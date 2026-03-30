@@ -10,7 +10,8 @@
     "astro": "npm:astro@^6.0.8",
     "unocss": "npm:unocss@^66.6.6",
     "fuse.js": "npm:fuse.js@^7.1.0",
-    "rrule": "npm:rrule@^2.8.1"
+    "rrule": "npm:rrule@^2.8.1",
+    "@iconify-json/mdi": "npm:@iconify-json/mdi@^1.2.1"
   },
   "tasks": {
     "dev": "deno run -A --env npm:astro dev",

@@ -199,17 +199,66 @@ application.
 **Goal**: Port the Express API to Astro API routes and update the database
 querying to handle `rrule` based recurrence strings instead of `dayspan`.
 
-- [ ] Re-write `src/utils/scheduleUtils.js` to use `rrule` instead of `dayspan`.
-- [ ] Create Astro API routes:
-  - `src/pages/api/chores/index.ts` (GET all chores, POST new chore)
-  - `src/pages/api/chores/[id].ts` (PUT update, DELETE)
-- [ ] Ensure the DB schema handles the Gotify notification requirement (the
-      `remind_until_done` boolean already exists).
+### Task 3.1: Migrate Recurrence Logic to `rrule`
+
+**Description**: Replace the deprecated `dayspan` library with `rrule` in `src/utils/scheduleUtils.js` for handling recurring chores. Update the logic to parse, generate, and calculate next occurrences using the standard RFC 5545 iCalendar format.
+**Outcome**: The application will use a standard, well-maintained library for recurrence, ensuring accurate and reliable scheduling of daily and weekly chores.
+
+- [ ] Install the `rrule` package (e.g., `deno add npm:rrule`).
+- [ ] Refactor `src/utils/scheduleUtils.js` (rename to `.ts`) to implement `calculateNextOccurrence(rruleString, lastCompletedDate)`.
+- [ ] Add unit tests for `scheduleUtils.ts` covering daily, weekly, and edge cases.
+- **Dependencies**: None.
+- **Acceptance Criteria**:
+  - `scheduleUtils.ts` exports a robust function for calculating the next due date based on an RRULE string.
+  - Unit tests pass via `deno test` for various RRULE scenarios (e.g., `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`).
+
+### Task 3.2: Create GET and POST Chores API Endpoints
+
+**Description**: Implement the `GET` (list all chores for the user) and `POST` (create a new chore) handlers in an Astro API route.
+**Outcome**: The frontend will be able to retrieve the user's chores and add new ones, establishing the core data flow for the application.
+
+- [ ] Create file `src/pages/api/chores/index.ts`.
+- [ ] Implement `GET` handler: Fetch all chores for the authenticated user from the database.
+- [ ] Implement `POST` handler: Validate incoming payload (name, description, rrule string), and insert a new chore into the database.
+- [ ] Integrate authentication middleware to ensure only logged-in users can access or modify their chores.
+- **Dependencies**: Phase 2 (Auth Middleware), Task 3.1 (`rrule` logic for initial due date).
+- **Acceptance Criteria**:
+  - `GET /api/chores` returns a JSON array of chores for the current user.
+  - `POST /api/chores` successfully creates a database entry and returns the new chore object (201 Created).
+  - Unauthenticated requests return a 401 Unauthorized status.
+
+### Task 3.3: Create PUT and DELETE Chores API Endpoints
+
+**Description**: Implement the `PUT` (update a chore or mark as done) and `DELETE` (remove a chore) handlers for specific chore IDs.
+**Outcome**: Users will be able to manage their existing chores, editing details or completing them, which dynamically updates their schedule.
+
+- [ ] Create file `src/pages/api/chores/[id].ts`.
+- [ ] Implement `PUT` handler: Update chore details. If marking as "done", use `scheduleUtils.ts` to calculate the new `next_due_date` and create a completion log entry.
+- [ ] Implement `DELETE` handler: Remove the chore and its associated completion logs from the database.
+- [ ] Ensure the endpoints verify that the requested chore belongs to the authenticated user.
+- **Dependencies**: Task 3.2.
+- **Acceptance Criteria**:
+  - `PUT /api/chores/:id` correctly updates fields. When marking as completed, the `next_due_date` is properly advanced based on the `rrule`.
+  - `DELETE /api/chores/:id` successfully removes the chore (204 No Content).
+  - Attempting to modify another user's chore returns a 403 Forbidden or 404 Not Found.
+
+### Task 3.4: Finalize DB Schema for Notifications
+
+**Description**: Review and verify the database schema to ensure it fully supports the planned Gotify notification features, even though the actual notification pushing is deferred.
+**Outcome**: The database foundation is solid, preventing the need for complex migrations later when the notification system is actively implemented.
+
+- [ ] Inspect the current `chores` table schema in `data/migrations`.
+- [ ] Ensure fields like `remind_until_done` (boolean) and a `notification_sent_at` timestamp (or similar state tracking) exist to support future worker processes.
+- [ ] If necessary, create a new Knex migration to add these columns via `deno task db:make`.
+- **Dependencies**: Phase 1 (Database Setup).
+- **Acceptance Criteria**:
+  - The database schema has the necessary columns to track notification preferences and state for recurring chores.
 
 **Phase 3 Verification Plan**:
 
-- Use `curl` or Postman or write integration tests via `deno test` to hit the
-  Astro API endpoints and verify CRUD operations work.
+- [ ] Write integration tests via `deno test` to hit the Astro API endpoints and verify CRUD operations work.
+- [ ] Verify that unauthenticated requests to the API endpoints are properly rejected.
+- [ ] Verify that `rrule` based scheduling correctly advances dates when a chore is completed via the API.
 
 ---
 

@@ -264,24 +264,76 @@ querying to handle `rrule` based recurrence strings instead of `dayspan`.
 
 ## Phase 4: UI/UX Implementation (SolidJS Islands)
 
-**Goal**: Rebuild the UI using Astro pages and SolidJS components.
+**Goal**: Rebuild the UI using Astro pages and SolidJS components for an interactive, performant user experience.
 
-- [ ] Rebuild the Chore List on `src/pages/index.astro` as a server-rendered
-      list by default.
-- [ ] Implement a `<ChoreSearch client:load />` SolidJS component for
-      client-side fuzzy searching (using `fuse.js`).
-- [ ] Implement a `<ChoreItem client:visible />` SolidJS component to allow
-      marking a chore as done interactively via `fetch`.
-- [ ] Build the Add/Edit Chore Modal logic: It will be a form in a modal that
-      visually appears as a modal but submits an HTML `<form method="POST">` to
-      an Astro endpoint, which processes the POST and redirects back to `/`.
+### Task 4.1: Implement Server-Rendered Chore List
+
+**Description**: Fetch the user's chores on the server and render the main dashboard layout in `src/pages/index.astro`.
+**Outcome**: Users will see a fast, SEO-friendly initial load of their current chores immediately upon logging in, forming the foundation of the dashboard.
+
+- [ ] Update `src/pages/index.astro` to fetch chores for the authenticated user in the frontmatter (either directly from the DB or via an internal API call).
+- [ ] Design and implement the main page layout using UnoCSS classes, including a header and a main content area.
+- [ ] Render a static list of chores as a fallback or initial state before client-side hydration.
+- **Dependencies**: Phase 2 (Authentication), Phase 3 (Core API / DB access).
+- **Acceptance Criteria**:
+  - Authenticated users see their chores listed on the home page upon load.
+  - The page loads quickly with no client-side JavaScript required for the initial display.
+  - The layout is responsive and matches the intended design system using UnoCSS.
+
+### Task 4.2: Build Interactive Chore Item Component
+
+**Description**: Create a SolidJS component (`<ChoreItem client:visible />`) to represent individual chores, enabling users to mark them as done without a full page reload.
+**Outcome**: Users can smoothly interact with their chores, experiencing immediate visual feedback when completing tasks, enhancing the application's perceived performance.
+
+- [ ] Create `src/components/ChoreItem.tsx` as a SolidJS component.
+- [ ] Implement a toggle button (checkbox/circle) to mark the chore as done.
+- [ ] Write a `fetch` call to the `PUT /api/chores/[id]` endpoint when the toggle is clicked.
+- [ ] Implement optimistic UI updates (visually mark as done immediately, revert on API error) or loading states during the API call.
+- [ ] Integrate the component into the `index.astro` chore list.
+- **Dependencies**: Task 4.1, Task 3.3 (PUT endpoint).
+- **Acceptance Criteria**:
+  - Clicking a chore's completion toggle successfully updates the database via the API.
+  - The UI updates immediately or shows a clear loading indicator.
+  - Errors during the update process are gracefully handled and communicated to the user.
+
+### Task 4.3: Implement Client-Side Fuzzy Search
+
+**Description**: Develop a SolidJS search bar component (`<ChoreSearch client:load />`) that filters the displayed chores instantly as the user types, using `fuse.js`.
+**Outcome**: Users can quickly find specific chores within long lists, significantly improving navigability and user efficiency.
+
+- [ ] Install `fuse.js` (`deno add npm:fuse.js`).
+- [ ] Create `src/components/ChoreSearch.tsx` as a SolidJS component containing an input field.
+- [ ] Implement logic to initialize Fuse.js with the list of chores and the search query state.
+- [ ] Plumb the search state so it can filter the rendered `<ChoreItem>` components (this may require lifting state or wrapping the chore list in a parent SolidJS component).
+- **Dependencies**: Task 4.1, Task 4.2.
+- **Acceptance Criteria**:
+  - Typing in the search bar instantly filters the visible chores based on name or description.
+  - The search handles typos gracefully (fuzzy matching).
+  - Clearing the search restores the full list of chores.
+
+### Task 4.4: Create Add/Edit Chore Modal
+
+**Description**: Build a modal interface for creating and editing chores. The modal will contain a standard HTML form that POSTs to an Astro endpoint for processing.
+**Outcome**: Users have a focused, clean interface for data entry without navigating away from their dashboard context, while relying on robust server-side form processing.
+
+- [ ] Create an Astro or SolidJS component for the modal layout (`src/components/ChoreModal.astro` or `.tsx`).
+- [ ] Implement a `<form method="POST" action="/api/chores">` within the modal.
+- [ ] Add form fields for chore name, description, and recurrence rules (frequency, days of week, etc.) styled with UnoCSS.
+- [ ] Implement client-side validation to ensure required fields are filled before submission.
+- [ ] Ensure the Astro endpoint (`/api/chores`) handles the POST request, creates/updates the chore, and returns a 302 Redirect back to `/`.
+- [ ] Add state management to open/close the modal from the main dashboard.
+- **Dependencies**: Task 4.1, Task 3.2 (POST endpoint).
+- **Acceptance Criteria**:
+  - A "New Chore" button opens the modal.
+  - Submitting a valid form creates a new chore and refreshes the page to show it.
+  - The modal can also be opened in "edit mode" populated with existing chore data.
+  - Validation errors prevent submission and display helpful messages.
 
 **Phase 4 Verification Plan**:
 
-- Run Playwright tests (`deno task test:playwright`) to verify chores can be
-  listed, added, edited, and toggled as done.
-- Manually test the fuzzy search to ensure client-side filtering responds
-  instantly.
+- [ ] Run Playwright tests (`deno task test:playwright`) to verify the full user flow: viewing the list, adding a chore, editing it, and toggling it as done.
+- [ ] Manually test the fuzzy search to ensure client-side filtering responds instantly and accurately.
+- [ ] Verify form submissions work with JavaScript disabled (if using Astro native forms) or gracefully degrade.
 
 ---
 

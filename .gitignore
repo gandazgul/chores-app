@@ -16,3 +16,5 @@ playwright-report/
 
 .opencode/.beacon/
 .astro/
+
+old_app/

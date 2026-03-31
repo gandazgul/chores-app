@@ -8,3 +8,5 @@
 /dataSources.local.xml
 
 copilot.data.migration.*
+
+db-forest-config.xml

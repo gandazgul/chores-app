@@ -1,6 +1,6 @@
 # Roadmap
 
-- User authentication via Google Sign-In.
+- [x] User authentication via Google Sign-In.
 - Gotify notifications for chores.
 - Displaying a list of chores.
 - Adding new chores.

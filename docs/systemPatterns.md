@@ -14,8 +14,9 @@
 - `dayspan` for handling recurring schedules.
 - Knex.js for database migrations and queries.
 - SQLite for local database.
-- Google Cloud for authentication.
+- Google Cloud for authentication via secure JWT cookies.
 - Gotify for push notifications.
+- Deno native environment variables (`Deno.env.get()`) instead of generic environment modes, using feature-specific flags (`ENABLE_AUTH`, `COOKIE_SECURE`).
 
 ## Design Patterns in Use
 
@@ -120,11 +121,12 @@
 ## Critical Implementation Paths
 
 1. **User Authentication:**
-   - User visits the app and is presented with the `LoginPage.jsx` component.
-   - User clicks the "Sign in (Demo)" button.
-   - A fake user is created and dispatched via a custom event.
-   - The main application content is rendered.
-   - **Note:** Google Sign-In integration is planned but not yet implemented.
+   - Astro middleware intercepts all incoming requests.
+   - It enforces authentication via a secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
+   - If the cookie is valid, the user is authenticated and the main application content is rendered.
+   - Developers can bypass Google Auth locally by setting `ENABLE_AUTH=false` in their `.env` file. This injects a dummy user payload into `Astro.locals`.
+   - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication.
+   - Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
 
 2. **Adding a New Chore (via Modal):**
    - User clicks `AddChoreFloatButton`.

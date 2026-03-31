@@ -3,11 +3,12 @@
 ## Technologies Used
 
 - AstroJS (Web Framework)
+- SolidJS (Reactive UI)
 - Deno (Runtime)
 - UnoCSS (CSS framework)
 - Knex.js (SQL query builder)
 - SQLite3 (local database)
-- Google Sign-In (Authentication — not yet implemented, using fake user)
+- Google Sign-In (Authentication implemented via Astro middleware and jose JWT)
 
 ## Development Setup
 
@@ -23,18 +24,12 @@ _(To be defined)_
 ### Core Dependencies
 
 - `classnames`: ^2.5.1 (Utility for conditionally joining classNames together)
-- `dayspan`: ^1.1.0 (for handling recurring events)
-- `express`: ^5.2.1 (API server)
-- `express-jsdoc-swagger`: ^1.8.0 (API documentation)
 - `fuse.js`: ^7.1.0 (Fuzzy search library)
-- `knex`: ^3.1.0 (SQL query builder)
-- `sqlite3`: ^6.0.1 (SQLite database driver)
+- `jose`: ^5.9.6 (JWT signing and verification)
 - `uuid`: ^13.0.0 (UUID generation)
 
 ### Development Dependencies
 
-- `dotenv`: ^17.3.1
-- `jest`: ^30.1.3
 - `mockdate`: ^3.0.5
 - `supertest`: ^7.1.4
 
@@ -51,12 +46,12 @@ _(To be defined)_
 
 ## Authentication
 
-- **Provider:** Google Sign-In (not yet implemented — currently using a fake
-  demo user)
-- **Method:** Google Identity Services (planned)
-- **UI Integration:**
-  - `src/old_components/LoginPage.jsx`: Displays a fake login button that sets a
-    hardcoded demo user.
+- **Provider:** Google Sign-In
+- **Method:** Google Auth and JWT cookies
+- **Implementation:**
+  - An Astro middleware intercepts requests. It enforces authentication via a secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
+  - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication. Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
+  - A mock user can be used by setting `ENABLE_AUTH=false` in the `.env` file, which injects a dummy user payload into `Astro.locals`.
 
 ## Database
 

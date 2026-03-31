@@ -64,23 +64,133 @@ Knex.js.
 
 **Goal**: Implement Google Sign-in and the fake user fallback.
 
-- [ ] Add Google API credentials to `.env`.
-- [ ] Create an Astro middleware or a shared authentication utility to verify
-      Google identity tokens.
-- [ ] Implement a login page (`src/pages/login.astro`) with the Google Sign-In
-      button.
-- [ ] Implement the `MOCK_AUTH=true` bypass logic that injects a fake user
-      session.
-- [ ] Set up session cookies or JWTs to maintain the auth state across Astro
-      page requests in SSR mode.
-- [ ] Restrict `src/pages/index.astro` to logged-in users only.
+### Task 2.1: Configure Environment Variables for Authentication
+
+**Description**: Set up the necessary environment variables to support Google
+OAuth and the mock authentication toggle. **Outcome**: The application
+environment is configured to securely hold Google API credentials and manage the
+authentication mode, enabling subsequent auth features to function.
+
+- [x] Add `GOOGLE_CLIENT_ID` to `.env.example` and `.env` (with a placeholder in
+      `.env.example`).
+- [x] Add `ENABLE_AUTH` (default `true`) to `.env.example` and `.env`.
+- [x] Add `SESSION_SECRET` (for JWT/cookie signing) to `.env.example` and
+      `.env`.
+- **Dependencies**: None.
+- **Acceptance Criteria**:
+  - `.env` and `.env.example` contain the required variables.
+  - The application can read these variables using Deno's `Deno.env`.
+
+### Task 2.2: Implement Authentication Utility and JWT/Cookie Management
+
+**Description**: Create core utilities for verifying Google identity tokens,
+generating session JWTs, and setting/reading secure HTTP-only cookies.
+**Outcome**: The system can securely verify user identities from Google and
+establish persistent, secure sessions across page requests.
+
+- [x] Install a lightweight JWT library compatible with Deno/Astro (e.g.,
+      `jose`).
+- [x] Create `src/utils/auth.ts` containing functions:
+  - `verifyGoogleToken(token: string)`: Verifies the Google ID token.
+  - `createSession(userPayload)`: Generates a signed JWT.
+  - `getSession(request)`: Parses and verifies the JWT from cookies.
+- **Dependencies**: Task 2.1
+- **Acceptance Criteria**:
+  - Utility functions are unit tested.
+  - Token verification correctly rejects invalid tokens.
+  - Session creation sets secure, HTTP-only cookies.
+
+### Task 2.3: Create Astro Authentication Middleware
+
+**Description**: Implement Astro middleware to intercept incoming requests,
+check for valid sessions, and handle redirects for protected routes.
+**Outcome**: Routes are automatically protected. Unauthenticated users trying to
+access protected pages are seamlessly redirected to the login page, while
+authenticated users proceed normally.
+
+- [x] Create `src/middleware.ts`.
+- [x] Implement logic to read the session cookie using `context.cookies`.
+- [x] Verify the session using the utility from Task 2.2.
+- [x] If on a protected route (e.g., `/`) and not authenticated, redirect to
+      `/login`.
+- [x] Attach user information to `context.locals` for use in Astro pages and API
+      routes.
+- **Dependencies**: Task 2.2
+- **Acceptance Criteria**:
+  - Unauthenticated access to `/` redirects to `/login`.
+  - Authenticated access to `/` succeeds and user data is available in
+    `Astro.locals`.
+
+### Task 2.4: Implement Mock Authentication Bypass
+
+**Description**: Build a bypass mechanism for local development and testing that
+injects a fake user session when `ENABLE_AUTH=false`. **Outcome**: Developers
+can work on the application without needing active internet access or
+configuring real Google credentials, streamlining the development process.
+
+- [x] Update `src/middleware.ts` to check the `ENABLE_AUTH` environment
+      variable.
+- [x] If `ENABLE_AUTH === 'false'`, bypass the token verification.
+- [x] Inject a predefined mock user payload (e.g.,
+      `{ id: 'mock-user-1', email: 'test@example.com', name: 'Test User' }`)
+      into `context.locals`.
+- **Dependencies**: Task 2.1, Task 2.3
+- **Acceptance Criteria**:
+  - When `ENABLE_AUTH=false`, navigating to `/` does not redirect to `/login`,
+    even without a real session cookie.
+  - `Astro.locals` contains the mock user data.
+
+### Task 2.5: Build the Login Page with Google Sign-In
+
+**Description**: Create the user-facing login interface integrating the Google
+Identity Services script and rendering the sign-in button. **Outcome**: Users
+have a functional interface to authenticate themselves via Google, providing
+entry into the application.
+
+- [x] Create `src/pages/login.astro`.
+- [x] Add the Google Identity Services script
+      (`<script src="https://accounts.google.com/gsi/client" async defer></script>`).
+- [x] Implement the Google Sign-In button UI using UnoCSS for styling.
+- [x] Create a client-side script to handle the Google credential response and
+      POST it to a new API endpoint.
+- **Dependencies**: Task 2.1, Task 2.3
+- **Acceptance Criteria**:
+  - The login page renders correctly with the Google button.
+  - Clicking the button initiates the Google auth flow.
+
+### Task 2.6: Implement Authentication API Endpoint
+
+**Description**: Create an Astro API endpoint to receive the Google credential,
+verify it, create a session, and set the session cookie. **Outcome**: The
+backend successfully processes the authentication request from the client,
+establishes a secure session, and signals the client to redirect to the main
+application.
+
+- [x] Create `src/pages/api/auth/login.ts`.
+- [x] Handle POST requests containing the Google ID token.
+- [x] Use `verifyGoogleToken` (Task 2.2) to validate the token.
+- [x] If valid, use `createSession` (Task 2.2) to set the HTTP-only cookie.
+- [x] Return a success response so the client-side script (Task 2.5) can
+      redirect to `/`.
+- [x] Create `src/pages/api/auth/logout.ts` to clear the session cookie.
+- **Dependencies**: Task 2.2, Task 2.5
+- **Acceptance Criteria**:
+  - POSTing a valid token results in a `Set-Cookie` header and a 200 OK
+    response.
+  - POSTing an invalid token results in a 401 Unauthorized response.
+  - Accessing the logout endpoint clears the cookie.
 
 **Phase 2 Verification Plan**:
 
-- With `ENABLE_AUTH=false`, navigate to `/` and verify automatic login as the
-  fake user.
-- With `ENABLE_AUTH=true`, navigate to `/`, verify redirect to `/login`, sign in
-  with a real Google account, and verify successful redirect back to `/`.
+- [x] Run unit tests for `src/utils/auth.ts`.
+- [x] With `ENABLE_AUTH=false`, navigate to `/` and verify access is granted and
+      the mock user is active.
+- [x] With `ENABLE_AUTH=true`:
+  - [x] Navigate to `/` and verify redirect to `/login`.
+  - [x] Perform Google Sign-In on `/login`.
+  - [x] Verify successful redirect to `/` after authentication.
+  - [x] Verify session cookie is set correctly as HTTP-only.
+  - [x] Test logout functionality and verify redirect back to `/login`.
 
 ---
 

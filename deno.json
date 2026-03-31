@@ -5,9 +5,11 @@
   "nodeModulesDir": "auto",
   "imports": {
     "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
     "@unocss/astro": "npm:@unocss/astro@^66.6.6",
     "@unocss/reset": "npm:@unocss/reset@^66.6.6",
     "astro": "npm:astro@^6.0.8",
+    "jose": "npm:jose@^6.2.2",
     "unocss": "npm:unocss@^66.6.6",
     "fuse.js": "npm:fuse.js@^7.1.0",
     "rrule": "npm:rrule@^2.8.1",
@@ -15,7 +17,7 @@
   },
   "tasks": {
     "dev": "deno run -A --env npm:astro dev",
-    "start": "deno -WREN dist/server/entry.mjs",
+    "start": "deno run -A --env dist/server/entry.mjs",
     "build": "deno run -A --env npm:astro build",
     "preview": "deno run -A --env npm:astro preview",
     "astro": "deno run -A --env npm:astro",
@@ -31,7 +33,12 @@
   "exclude": [
     ".astro",
     "dist",
-    ".idea"
+    ".idea",
+    "old_components",
+    "old_server.js",
+    "src/__tests__",
+    "playwright.config.js",
+    "scripts"
   ],
   "compilerOptions": {
     "checkJs": true,

@@ -1,0 +1,62 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+// Get Google Client ID from environment
+const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
+---
+
+<Layout title="Login">
+  <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full text-center">
+      <div class="i-mdi-check-circle text-6xl text-blue-500 mx-auto mb-4"></div>
+      <h1 class="text-2xl font-bold mb-2">Chores App</h1>
+      <p class="text-gray-600 mb-8">Please sign in to continue</p>
+      
+      <div id="g_id_onload"
+         data-client_id={GOOGLE_CLIENT_ID}
+         data-context="signin"
+         data-ux_mode="popup"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+      </div>
+
+      <div class="g_id_signin flex justify-center"
+         data-type="standard"
+         data-shape="rectangular"
+         data-theme="outline"
+         data-text="signin_with"
+         data-size="large"
+         data-logo_alignment="left">
+      </div>
+      
+      <div id="login-error" class="mt-4 text-red-500 text-sm hidden">
+        Authentication failed. Please try again.
+      </div>
+    </div>
+  </div>
+
+  <script is:inline src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <script is:inline>
+    async function handleCredentialResponse(response) {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        
+        if (res.ok) {
+          window.location.href = "/";
+        } else {
+          document.getElementById('login-error').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    }
+  </script>
+</Layout>

@@ -1,4 +1,9 @@
-import { defineConfig, presetIcons, presetAttributify, presetWind3 } from 'unocss';
+import {
+  defineConfig,
+  presetAttributify,
+  presetIcons,
+  presetWind3,
+} from "unocss";
 import mdi from "@iconify-json/mdi/icons.json" with { type: "json" };
 
 export default defineConfig({

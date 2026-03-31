@@ -1,6 +1,9 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/assert@*": "1.0.19",
+    "jsr:@std/assert@^1.0.19": "1.0.19",
+    "jsr:@std/internal@^1.0.12": "1.0.12",
     "npm:@deno/astro-adapter@~0.3.2": "0.3.2_astro@6.0.8__typescript@5.9.3_typescript@5.9.3",
     "npm:@iconify-json/mdi@*": "1.2.3",
     "npm:@iconify-json/mdi@^1.2.1": "1.2.3",
@@ -9,8 +12,20 @@
     "npm:astro@*": "6.0.8_typescript@5.9.3",
     "npm:astro@^6.0.8": "6.0.8_typescript@5.9.3",
     "npm:fuse.js@^7.1.0": "7.1.0",
+    "npm:jose@^6.2.2": "6.2.2",
     "npm:rrule@^2.8.1": "2.8.1",
     "npm:unocss@^66.6.6": "66.6.7_@unocss+astro@66.6.7__vite@7.3.1_vite@7.3.1"
+  },
+  "jsr": {
+    "@std/assert@1.0.19": {
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.12": {
+      "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
+    }
   },
   "npm": {
     "@antfu/install-pkg@1.1.0": {
@@ -1517,6 +1532,9 @@
       "integrity": "sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==",
       "bin": true
     },
+    "jose@6.2.2": {
+      "integrity": "sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ=="
+    },
     "js-yaml@4.1.1": {
       "integrity": "sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==",
       "dependencies": [
@@ -2674,12 +2692,14 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/assert@^1.0.19",
       "npm:@deno/astro-adapter@~0.3.2",
       "npm:@iconify-json/mdi@^1.2.1",
       "npm:@unocss/astro@^66.6.6",
       "npm:@unocss/reset@^66.6.6",
       "npm:astro@^6.0.8",
       "npm:fuse.js@^7.1.0",
+      "npm:jose@^6.2.2",
       "npm:rrule@^2.8.1",
       "npm:unocss@^66.6.6"
     ]

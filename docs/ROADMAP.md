@@ -13,4 +13,5 @@
 - Advanced features for recurring chores
 - Error handling and validation.
 - Testing (unit, integration, e2e).
-- Deployment setup. Likely containerized with docker, deployed to my home server.
+- Deployment setup. Likely containerized with docker, deployed to my home
+  server.

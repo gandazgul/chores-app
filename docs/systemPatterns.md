@@ -13,12 +13,14 @@
 
 - Use of SolidJS for reactive UI development.
 - `UnoCSS` for CSS framework.
-- `dayspan` for handling recurring schedules.
+- `rrule` for handling recurring schedules.
 - Knex.js for database migrations and queries.
 - SQLite for local database.
 - Google Cloud for authentication via secure JWT cookies.
 - Gotify for push notifications.
-- Deno native environment variables (`Deno.env.get()`) instead of generic environment modes, using feature-specific flags (`ENABLE_AUTH`, `COOKIE_SECURE`).
+- Deno native environment variables (`Deno.env.get()`) instead of generic
+  environment modes, using feature-specific flags (`ENABLE_AUTH`,
+  `COOKIE_SECURE`).
 
 ## Design Patterns in Use
 
@@ -124,9 +126,12 @@
 
 1. **User Authentication:**
    - Astro middleware intercepts all incoming requests.
-   - It enforces authentication via a secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
-   - If the cookie is valid, the user is authenticated and the main application content is rendered.
-   - Developers can bypass Google Auth locally by setting `ENABLE_AUTH=false` in their `.env` file. This injects a dummy user payload into `Astro.locals`.
+   - It enforces authentication via a secure, HTTP-only cookie containing a
+     signed JWT (using the `jose` library).
+   - If the cookie is valid, the user is authenticated and the main application
+     content is rendered.
+   - Developers can bypass Google Auth locally by setting `ENABLE_AUTH=false` in
+     their `.env` file. This injects a dummy user payload into `Astro.locals`.
    - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication.
    - Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
 
@@ -212,9 +217,9 @@
    - Chores can be created with a `recurrence` property, which is an object
      defining the recurrence rule (e.g., frequency, interval, specific
      days/dates, start date, count/until). This structure is compatible with
-     `dayspan`.
+     `rrule`.
    - `AddChoreModal.jsx` provides UI elements for users to define these
-     recurrence rules, which are then transformed into `Rule` objects or stored
+     recurrence rules, which are then transformed into `rrule` strings or stored
      appropriately.
    - Utility functions in `src/utils/scheduleUtils.js` (e.g.,
      `getEffectiveDueDate`, `isChoreForToday`, `getScheduleDisplayString`,

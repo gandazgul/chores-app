@@ -2,6 +2,6 @@
 
 declare namespace App {
   interface Locals {
-    user: import("./utils/auth.ts").UserPayload | null;
+    user: import("./utils/auth.js").UserPayload | null;
   }
 }

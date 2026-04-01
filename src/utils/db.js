@@ -15,6 +15,7 @@ switch (Deno.env.get("DB_ENV")) {
 }
 
 const db = new DatabaseSync(dbPath);
+db.exec("PRAGMA foreign_keys = ON;");
 
 // Ensure tables exist
 db.exec(`
@@ -34,9 +35,16 @@ db.exec(`
     done BOOLEAN DEFAULT 0,
     due_date TIMESTAMP,
     remind_until_done BOOLEAN DEFAULT 0,
+    notification_sent_at TIMESTAMP,
     recurrence JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS completion_logs (
+    id TEXT PRIMARY KEY,
+    chore_id TEXT NOT NULL REFERENCES chores(id) ON DELETE CASCADE,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `);
 

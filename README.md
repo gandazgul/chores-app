@@ -50,7 +50,8 @@ is ready to be deployed!
 
 ### Running the container locally:
 
-The application can also be run locally using the provided `Containerfile` via Docker or Podman:
+The application can also be run locally using the provided `Containerfile` via
+Docker or Podman:
 
 ```bash
 # Build the container image

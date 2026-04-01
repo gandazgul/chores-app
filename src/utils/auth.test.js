@@ -1,7 +1,10 @@
-import { createSession, getSession, type UserPayload } from "./auth.ts";
+import { createSession, getSession } from "./auth.js";
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
 
-const MOCK_USER: UserPayload = {
+/** @typedef {import('./auth.js').UserPayload} UserPayload */
+
+/** @type {UserPayload} */
+const MOCK_USER = {
   id: "test-123",
   email: "test@example.com",
   name: "Test User",

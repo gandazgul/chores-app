@@ -41,16 +41,20 @@ _(To be defined)_
 
 - **Platform:** GitHub
 - **Repository URL:** https://github.com/gandazgul/chores-app.git
-- **Key Features:** Version control, issue tracking, collaboration, CI/CD (GitHub Actions configured for Docker publishing).
+- **Key Features:** Version control, issue tracking, collaboration, CI/CD
+  (GitHub Actions configured for Docker publishing).
 
 ## Authentication
 
 - **Provider:** Google Sign-In
 - **Method:** Google Auth and JWT cookies
 - **Implementation:**
-  - An Astro middleware intercepts requests. It enforces authentication via a secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
-  - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication. Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
-  - A mock user can be used by setting `ENABLE_AUTH=false` in the `.env` file, which injects a dummy user payload into `Astro.locals`.
+  - An Astro middleware intercepts requests. It enforces authentication via a
+    secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
+  - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication.
+    Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
+  - A mock user can be used by setting `ENABLE_AUTH=false` in the `.env` file,
+    which injects a dummy user payload into `Astro.locals`.
 
 ## Database
 

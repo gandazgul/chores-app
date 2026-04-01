@@ -1,9 +1,12 @@
 import { defineMiddleware } from "astro:middleware";
-import { getSession, type UserPayload } from "./utils/auth.ts";
+import { getSession } from "./utils/auth.js";
 
-const MOCK_USER: UserPayload = {
-  id: "mock-user-1",
-  email: "test@example.com",
+/** @typedef {import('./utils/auth.js').UserPayload} UserPayload */
+
+/** @type {UserPayload} */
+const MOCK_USER = {
+  id: "r0wk2VvPQFhW7bpLpq3MxMhjodD2",
+  email: "demo@example.com",
   name: "Test User",
   picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=TestUser",
 };
@@ -19,8 +22,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const sessionCookie = context.cookies.get("session")?.value;
 
     if (sessionCookie) {
-      const user = await getSession(sessionCookie);
-      context.locals.user = user;
+      context.locals.user = await getSession(sessionCookie);
     } else {
       context.locals.user = null;
     }

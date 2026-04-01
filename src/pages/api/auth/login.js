@@ -1,7 +1,10 @@
-import type { APIRoute } from "astro";
-import { createSession, verifyGoogleToken } from "../../../utils/auth.ts";
+/** @typedef {import('astro').APIRoute} APIRoute */
+import { createSession, verifyGoogleToken } from "../../../utils/auth.js";
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+/**
+ * @param {import('astro').APIContext} context
+ */
+export const POST = async ({ request, cookies }) => {
   try {
     const { credential } = await request.json();
 

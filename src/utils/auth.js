@@ -3,14 +3,19 @@ import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 const JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
-export interface UserPayload {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-}
+/**
+ * @typedef {Object} UserPayload
+ * @property {string} id
+ * @property {string} email
+ * @property {string} name
+ * @property {string} [picture]
+ */
 
-export async function verifyGoogleToken(token: string): Promise<UserPayload> {
+/**
+ * @param {string} token
+ * @returns {Promise<UserPayload>}
+ */
+export async function verifyGoogleToken(token) {
   const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
   if (!clientId) {
     throw new Error("GOOGLE_CLIENT_ID environment variable is missing");
@@ -27,13 +32,17 @@ export async function verifyGoogleToken(token: string): Promise<UserPayload> {
 
   return {
     id: payload.sub,
-    email: payload.email as string,
-    name: payload.name as string,
-    picture: payload.picture as string,
+    email: /** @type {string} */ (payload.email),
+    name: /** @type {string} */ (payload.name),
+    picture: /** @type {string} */ (payload.picture),
   };
 }
 
-export async function createSession(user: UserPayload): Promise<string> {
+/**
+ * @param {UserPayload} user
+ * @returns {Promise<string>}
+ */
+export async function createSession(user) {
   const secretStr = Deno.env.get("SESSION_SECRET");
   if (!secretStr) {
     throw new Error("SESSION_SECRET environment variable is missing");
@@ -41,16 +50,18 @@ export async function createSession(user: UserPayload): Promise<string> {
 
   const secret = new TextEncoder().encode(secretStr);
 
-  const jwt = await new SignJWT({ ...user })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("30d") // 30 days
-    .sign(secret);
-
-  return jwt;
+  return await new SignJWT({ ...user })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("30d") // 30 days
+      .sign(secret);
 }
 
-export async function getSession(token: string): Promise<UserPayload | null> {
+/**
+ * @param {string} token
+ * @returns {Promise<UserPayload | null>}
+ */
+export async function getSession(token) {
   if (!token) return null;
 
   const secretStr = Deno.env.get("SESSION_SECRET");
@@ -63,10 +74,10 @@ export async function getSession(token: string): Promise<UserPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
     return {
-      id: payload.id as string,
-      email: payload.email as string,
-      name: payload.name as string,
-      picture: payload.picture as string,
+      id: /** @type {string} */ (payload.id),
+      email: /** @type {string} */ (payload.email),
+      name: /** @type {string} */ (payload.name),
+      picture: /** @type {string} */ (payload.picture),
     };
   } catch (_e) {
     return null;

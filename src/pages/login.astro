@@ -6,11 +6,11 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
 ---
 
 <Layout title="Login">
-  <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full text-center">
+  <div class="min-h-screen bg-primary-bg flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full text-center border border-gray-100">
       <img src="/icon.png" alt="Chores App Logo" class="w-24 h-24 mx-auto mb-4 rounded-2xl shadow-sm" />
-      <h1 class="text-2xl font-bold mb-2">Chores App</h1>
-      <p class="text-gray-600 mb-8">Please sign in to continue</p>
+      <h1 class="text-2xl font-bold mb-2 text-primary">Chores App</h1>
+      <p class="text-muted-text mb-8">Please sign in to continue</p>
       
       <div id="g_id_onload"
          data-client_id={GOOGLE_CLIENT_ID}

@@ -41,8 +41,7 @@ _(To be defined)_
 
 - **Platform:** GitHub
 - **Repository URL:** https://github.com/gandazgul/chores-app.git
-- **Key Features:** Version control, issue tracking, collaboration, CI/CD (if
-  configured).
+- **Key Features:** Version control, issue tracking, collaboration, CI/CD (GitHub Actions configured for Docker publishing).
 
 ## Authentication
 

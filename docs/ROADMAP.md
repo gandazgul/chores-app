@@ -13,5 +13,6 @@
 - Advanced features for recurring chores
 - Error handling and validation.
 - Testing (unit, integration, e2e).
-- Deployment setup. Likely containerized with docker, deployed to my home
-  server.
+- [x] Deployment setup. Containerized with docker, CI/CD pipeline set up.
+- [x] PWA installability (manifest and meta tags).
+- [x] UI/UX polish with UnoCSS (design styling).

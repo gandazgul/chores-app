@@ -7,22 +7,22 @@ const chores = db.prepare('SELECT * FROM chores LIMIT 5').all();
 ---
 
 <Layout>
-  <div class="bg-white p-6 rounded-lg shadow-sm">
-    <h2 class="text-xl font-semibold mb-4 text-blue-800">Welcome to Astro Chores!</h2>
+  <div class="bg-primary-bg p-6 rounded-lg shadow-sm">
+    <h2 class="text-xl font-semibold mb-4 text-primary">Welcome to Astro Chores!</h2>
     <p class="mb-4">This is a dummy page to verify Deno, Astro, SolidJS, UnoCSS, and Knex are working properly.</p>
     
     <div class="bg-gray-50 border border-gray-200 p-4 rounded-md">
-      <h3 class="font-bold text-gray-700 mb-2">DB Test: Existing Chores in DB</h3>
+      <h3 class="font-bold text-primary-text mb-2">DB Test: Existing Chores in DB</h3>
       {chores.length === 0 ? (
-        <p class="text-gray-500 italic">No chores found in database yet.</p>
+        <p class="text-muted-text italic">No chores found in database yet.</p>
       ) : (
         <ul class="list-disc pl-5">
           {chores.map(chore => (
             <li class="py-1">
-              <span class={chore.done ? 'line-through text-gray-400' : 'text-gray-800'}>
+              <span class={chore.done ? 'line-through text-muted-text' : 'text-primary-text'}>
                 {chore.title}
               </span> 
-              <span class="text-xs ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+              <span class="text-xs ml-2 px-2 py-0.5 bg-primary text-white rounded-full">
                 Priority: {chore.priority}
               </span>
             </li>
@@ -32,10 +32,10 @@ const chores = db.prepare('SELECT * FROM chores LIMIT 5').all();
     </div>
     
     <div class="mt-8">
-      <h3 class="font-bold text-gray-700 mb-2">UnoCSS Icons Test</h3>
+      <h3 class="font-bold text-primary-text mb-2">UnoCSS Icons Test</h3>
       <div class="flex gap-4 items-center">
         <span>Icons should render:</span>
-        <button class="bg-blue-500 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-600 transition-colors">
+        <button class="bg-accent text-primary-text px-4 py-2 rounded flex items-center gap-2 hover:opacity-90 transition-opacity">
           <div class="i-mdi-plus w-5 h-5"></div>
           Add Chore
         </button>

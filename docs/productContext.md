@@ -37,3 +37,29 @@ on the schedule)
 
 This document details the purpose and goals of the project from a product
 perspective. It should align with the `projectbrief.md`.
+
+## Branding
+
+- Primary color: #005F6A
+- Accent: #FFBF00
+- Background: #FFFFFF
+- Main text: #1f2937
+- Muted text: #6b7280
+
+The image features two main views of your app:
+
+The Icon (Left): This is the crucial nautical reimagining. It's the circular icon (/android-chrome-192x192.png) you need for the Android home screen. It uses a strong, friendly deep teal background. The central graphic is a stylized tugboat—a powerful symbol of steady, persistent pulling. The rope attaching it to the hypothetical "chore" forms a subtle, hidden "T" shape for "Tow."
+
+The App UI (Right): The nautical theme is integrated throughout the interface, not just the logo:
+
+Header: The background uses your specified #005f6a deep teal. The app name "Tow" is prominent, with the subtitle "STEADY HOUSEHOLD MANAGEMENT." The little anchor next to the logo helps reinforce the theme.
+
+Chores List: A clean, mobile-first design focused on "Chores For Today."
+
+Nautical Details:
+
+Icons: Instead of boring checkboxes, tasks can use stylized icons like a life preserver for "Laundry" or an anchor for critical, grounding tasks (like "Check Budget").
+
+Gotify Notifications: Crucially, a bright orange "Gotify" notification banner is shown at the top of the interface, demonstrating the core feature: "TOW: REMEMBER: Do Laundry! (Persistent until done)."
+
+<img src="app_concept.png" alt="Tow App Concept" width="600">

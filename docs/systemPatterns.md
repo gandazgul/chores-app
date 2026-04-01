@@ -6,6 +6,8 @@
 - Component-based architecture.
 - Auth provided by Google Cloud
 - A local SQLite database is used for data persistence, managed by Knex.js.
+- Containerized deployment with CI/CD via GitHub Actions.
+- PWA-enabled with a web app manifest for mobile installability.
 
 ## Key Technical Decisions
 

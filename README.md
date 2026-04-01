@@ -48,6 +48,20 @@ bundles the application in production mode and optimizes the build for the best
 performance. The build is minified, and the filenames include hashes. Your app
 is ready to be deployed!
 
+### Running the container locally:
+
+The application can also be run locally using the provided `Containerfile` via Docker or Podman:
+
+```bash
+# Build the container image
+docker build -f Containerfile -t chores-app .
+
+# Run the container
+docker run -p 8080:8080 --env-file .env chores-app
+```
+
+This will run the built production application on `http://localhost:8080`.
+
 ## Contributing
 
 We welcome contributions to the Chores App! If you'd like to contribute, please

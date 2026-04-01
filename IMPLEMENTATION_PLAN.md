@@ -46,6 +46,13 @@ migrating from an Express backend with React components.
 - Implemented Astro API endpoints for login and logout functionality with secure HTTP-only cookies.
 - Verified all authentication flows, including mock user bypass and Google Sign-In.
 
+**Phase 5: Final Polish, PWA, and Deployment**
+
+- Implemented `manifest.json` and necessary PWA meta tags in layouts to make the app installable on mobile devices.
+- Refined the application's appearance using UnoCSS, applying the primary color palette (`#005F6A`, `#FFBF00`) and ensuring responsive, mobile-first design.
+- Created a `Containerfile` optimized for production and set up a GitHub Actions workflow (`docker-publish.yml`) for building and publishing the container image.
+- Verified PWA installability via Lighthouse and container execution locally.
+
 ---
 
 ## Phase 3: Core API and Data Fetching
@@ -113,6 +120,38 @@ querying to handle `rrule` based recurrence strings instead of `dayspan`.
 - [ ] Write integration tests via `deno test` to hit the Astro API endpoints and verify CRUD operations work.
 - [ ] Verify that unauthenticated requests to the API endpoints are properly rejected.
 - [ ] Verify that `rrule` based scheduling correctly advances dates when a chore is completed via the API.
+
+---
+
+## Phase 3.5: Testing Infrastructure (Playwright)
+
+**Goal**: Initialize Playwright and establish a core End-to-End testing suite before building out the frontend UI, ensuring all new UI components are test-driven.
+
+### Task 3.5.1: Initialize Playwright Environment
+
+**Description**: Install Playwright and configure it to run against the local Deno/Astro development server.
+**Outcome**: The project will have a robust framework for simulating real user interactions, preventing UI regressions.
+
+- [ ] Install Playwright (`npm init playwright@latest` or equivalent via Deno).
+- [ ] Create `playwright.config.ts` configured for the Astro dev server (e.g., `webServer` command: `deno task dev`, port: `4321`).
+- [ ] Update `deno.json` with a `test:e2e` task to run Playwright.
+- **Dependencies**: Phase 1, Phase 2.
+- **Acceptance Criteria**:
+  - `deno task test:e2e` successfully launches Playwright and can hit the local development server.
+
+### Task 3.5.2: Write Core E2E Test Suite
+
+**Description**: Write a foundational E2E test suite covering the primary user journey: Logging in, creating a chore, and marking it as complete.
+**Outcome**: Core functionality is automatically verified on every test run, giving confidence for Phase 4 UI development.
+
+- [ ] Create `tests/e2e/core-journey.spec.ts`.
+- [ ] Write a test that bypasses actual Google Auth (using the mock bypass `ENABLE_AUTH=false`).
+- [ ] Write a test that creates a new chore via the API (or initial UI if available) and verifies it exists.
+- [ ] Write a test that marks a chore as completed and verifies the state change.
+- **Dependencies**: Task 3.5.1, Phase 3.
+- **Acceptance Criteria**:
+  - The E2E test suite passes reliably.
+  - Tests use Playwright best practices (locators, auto-waiting).
 
 ---
 
@@ -189,20 +228,3 @@ querying to handle `rrule` based recurrence strings instead of `dayspan`.
 - [ ] Manually test the fuzzy search to ensure client-side filtering responds instantly and accurately.
 - [ ] Verify form submissions work with JavaScript disabled (if using Astro native forms) or gracefully degrade.
 
----
-
-## Phase 5: Final Polish and PWA
-
-**Goal**: Ensure the app meets PWA requirements, styles are polished with
-UnoCSS, and everything is tested.
-
-- [ ] Add `manifest.json` and optionally a Service Worker if offline support is
-      desired (or just basic PWA prompts).
-- [ ] Refine the UnoCSS styling to look modern and adhere to the project brief.
-- [ ] Validate Playwright E2E tests and Deno unit tests passing.
-- [ ] Document deployment commands (Docker / K8s preparations).
-
-**Phase 5 Verification Plan**:
-
-- Run Lighthouse in Chrome DevTools to verify PWA installability.
-- Run all test suites (`deno test` and Playwright).

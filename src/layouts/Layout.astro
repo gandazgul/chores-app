@@ -13,12 +13,12 @@ import 'uno.css';
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <meta name="theme-color" content="#ffffff" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#005f6a" />
     <meta name="description" content="Manage household chores with constant reminders." />
-    <!-- manifest.json to be added in future phase -->
   </head>
-  <body class="bg-gray-100 text-gray-900 font-sans min-h-screen">
-    <header class="bg-blue-600 text-white p-4 shadow-md">
+  <body class="bg-primary-bg text-primary-text font-sans min-h-screen">
+    <header class="bg-primary text-white p-4 shadow-md">
       <div class="container mx-auto max-w-4xl flex justify-between items-center">
         <a href="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <img src="/icon.png" alt="Chores App Logo" class="w-8 h-8 rounded-lg shadow-sm" />
@@ -31,7 +31,7 @@ import 'uno.css';
       <slot />
     </main>
     
-    <footer class="text-center text-gray-500 mt-12 pb-8">
+    <footer class="text-center text-muted-text mt-12 pb-8">
       <p>&copy; {new Date().getFullYear()} Chores App Astro Editon</p>
     </footer>
   </body>

@@ -11,13 +11,11 @@ playwright-report/
 *.db
 .env
 .astro/
+.history/
 
 # Editor directories and files
 .DS_Store
 
-# Opencode
-.opencode/.beacon/
-.vera/
-
 # Remove after is gone
 old_app/
+

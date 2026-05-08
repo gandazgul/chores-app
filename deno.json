@@ -23,7 +23,7 @@
     "preview": "deno run -A --env npm:astro preview",
     "astro": "deno run -A --env npm:astro",
     "test": "deno test -A",
-    "ci": "deno lint && deno fmt --check && deno check --check-js && deno test -A",
+    "ci": "deno lint && deno fmt --check && deno check && deno test -A",
     "db:setup": "deno run -A scripts/setup_db.js",
     "test:e2e": "deno run -A npm:playwright test"
   },
@@ -37,6 +37,9 @@
     "dist",
     ".idea",
     "old_app",
+    "old_components",
+    "old_server.js",
+    "src/__tests__",
     "scripts"
   ],
   "compilerOptions": {

@@ -12,6 +12,8 @@ playwright-report/
 .env
 .astro/
 .history/
+.vera/
+.opencode/
 
 # Editor directories and files
 .DS_Store

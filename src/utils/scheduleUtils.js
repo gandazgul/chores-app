@@ -24,7 +24,7 @@ export function calculateNextOccurrence(
 
     // rrule returns times in UTC based on the input date.
     // If we want the *next* occurrence strictly after the start date, we use `after`.
-     // false means strictly after
+    // false means strictly after
     return rule.after(startDate, false);
   } catch (error) {
     console.error(`Invalid RRULE string: ${rruleString}`, error);

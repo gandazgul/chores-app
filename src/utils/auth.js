@@ -51,10 +51,10 @@ export async function createSession(user) {
   const secret = new TextEncoder().encode(secretStr);
 
   return await new SignJWT({ ...user })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("30d") // 30 days
-      .sign(secret);
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30d") // 30 days
+    .sign(secret);
 }
 
 /**

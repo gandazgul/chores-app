@@ -80,9 +80,25 @@ export const PUT = async ({ params, request, locals }) => {
             new Date(),
           );
           if (nextDueDate) {
-            dueDateStr = nextDueDate.toISOString();
-            // It resets to not done for the next occurrence
-            isDone = 0;
+            // Spawn a new chore for the next occurrence
+            const newChoreId = crypto.randomUUID();
+            db.prepare(`
+              INSERT INTO chores (id, user_id, title, description, due_date, recurrence, done)
+              VALUES (?, ?, ?, ?, ?, ?, 0)
+            `).run(
+              newChoreId,
+              existingChore.user_id,
+              existingChore.title,
+              existingChore.description,
+              nextDueDate.toISOString(),
+              recurrenceJson
+            );
+            
+            // Mark current chore as done and remove its recurrence
+            recurrenceJson = null;
+            isDone = 1;
+            // keep the same dueDateStr
+            dueDateStr = existingChore.due_date;
           }
         }
 

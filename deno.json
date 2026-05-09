@@ -4,6 +4,7 @@
   "exports": "./dist/server/entry.mjs",
   "nodeModulesDir": "auto",
   "imports": {
+    "@astrojs/solid-js": "npm:@astrojs/solid-js@^6.0.1",
     "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
     "@playwright/test": "npm:@playwright/test@^1.59.0",
     "@std/assert": "jsr:@std/assert@^1.0.19",
@@ -11,6 +12,7 @@
     "@unocss/reset": "npm:@unocss/reset@^66.6.6",
     "astro": "npm:astro@^6.0.8",
     "jose": "npm:jose@^6.2.2",
+    "solid-js": "npm:solid-js@^1.9.12",
     "unocss": "npm:unocss@^66.6.6",
     "fuse.js": "npm:fuse.js@^7.1.0",
     "rrule": "npm:rrule@^2.8.1",

@@ -12,26 +12,31 @@
 
 ## Development Setup
 
-- **Seed the database:** `yarn db:seed`
-- **Run tests:** `NODE_OPTIONS='--experimental-vm-modules' jest`
+- **Seed the database:** `deno task db:setup`
+- **Run tests (Unit/Integration):** `deno test -A`
+- **Run E2E tests (Playwright):** `deno task test:e2e`
+- **Type Checking (JS/JSX with JSDoc):** `deno check --check-js`
 
 ## Technical Constraints
 
-_(To be defined)_
+- **Language:** Code is authored in standard JS/JSX (no TypeScript). Type checking is strictly enforced using Deno's native `--check-js` flag, backed by comprehensive JSDoc annotations.
+- **E2E Testing:** Playwright is used for full-system E2E testing against the running Deno server, avoiding legacy Node.js/Jest dependencies.
 
 ## Dependencies
 
 ### Core Dependencies
 
-- `classnames`: ^2.5.1 (Utility for conditionally joining classNames together)
-- `fuse.js`: ^7.1.0 (Fuzzy search library)
-- `jose`: ^5.9.6 (JWT signing and verification)
-- `uuid`: ^13.0.0 (UUID generation)
+- `astro`: ^6.0.8 (Web Framework)
+- `solid-js`: ^1.9.12 (Reactive UI components)
+- `unocss`: ^66.6.6 (Atomic CSS engine)
+- `fuse.js`: ^7.1.0 (Fuzzy search library for client-side filtering)
+- `rrule`: ^2.8.1 (Recurrence rule parsing and scheduling)
+- `jose`: ^6.2.2 (JWT signing and verification)
 
-### Development Dependencies
+### Development & Testing Dependencies
 
-- `mockdate`: ^3.0.5
-- `supertest`: ^7.1.4
+- `@playwright/test`: ^1.59.0 (E2E Testing framework)
+- `@std/assert`: ^1.0.19 (Deno standard library assertions)
 
 ## Tool Usage Patterns
 

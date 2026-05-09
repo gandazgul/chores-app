@@ -47,7 +47,7 @@ export const GET = ({ locals }) => {
 /**
  * @param {import('astro').APIContext} context
  */
-export const POST = async ({ request, locals }) => {
+export const POST = async ({ request, locals, redirect }) => {
   /** @type {UserPayload | null} */
   const user = /** @type {any} */ (locals).user;
   if (!user) {
@@ -57,10 +57,25 @@ export const POST = async ({ request, locals }) => {
   }
 
   try {
-    const data = await request.json();
+    const contentType = request.headers.get("content-type") || "";
+    let data;
+    let isForm = false;
+
+    if (
+      contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")
+    ) {
+      const formData = await request.formData();
+      data = Object.fromEntries(formData.entries());
+      isForm = true;
+    } else {
+      data = await request.json();
+    }
+
     const { title, description, rrule } = data;
 
     if (!title) {
+      if (isForm) return redirect("/?error=Title+is+required", 302);
       return new Response(JSON.stringify({ error: "Title is required" }), {
         status: 400,
       });
@@ -72,6 +87,7 @@ export const POST = async ({ request, locals }) => {
     if (rrule) {
       nextDueDate = calculateNextOccurrence(rrule);
       if (!nextDueDate) {
+        if (isForm) return redirect("/?error=Invalid+RRULE", 302);
         return new Response(JSON.stringify({ error: "Invalid RRULE" }), {
           status: 400,
         });
@@ -95,6 +111,10 @@ export const POST = async ({ request, locals }) => {
       recurrenceJson,
     );
 
+    if (isForm) {
+      return redirect("/", 302);
+    }
+
     const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
     const newChore = getStmt.get(id);
 
@@ -112,6 +132,9 @@ export const POST = async ({ request, locals }) => {
     });
   } catch (error) {
     console.error("Failed to create chore:", error);
+    if (request.headers.get("content-type")?.includes("form")) {
+      return redirect("/?error=Internal+Server+Error", 302);
+    }
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
     });

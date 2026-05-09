@@ -54,8 +54,9 @@ test.describe("Core Journey", () => {
 
     expect(completeRes.status()).toBe(200);
     const updatedChore = await completeRes.json();
-    // Since it's DAILY, marking it done should advance the due date and set done back to 0
-    expect(updatedChore.done).toBe(0);
+    // Since it's DAILY, marking it done should spawn a new task and leave this one done: 1
+    expect(updatedChore.done).toBe(1);
+    expect(updatedChore.recurrence).toBeNull();
 
     // Delete the chore so it doesn't clutter
     const deleteRes = await request.delete(`/api/chores/${choreId}`);

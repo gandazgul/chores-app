@@ -19,8 +19,9 @@
 - Users can view a list of their chores.
 - Users can add new chores with titles, descriptions, priorities, due dates, and
   recurrence rules.
-- Users can mark chores as complete.
+- Users can mark chores as complete via responsive interactive UI components.
 - Users can delete chores.
+- Users can quickly find specific chores using client-side fuzzy search.
 - Chores may have descriptions.
 - Chores may have due dates and potentially recurring schedules.
 - Due dates can be long periods like a week or month. e.g. every June you need

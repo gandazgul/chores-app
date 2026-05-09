@@ -99,8 +99,9 @@ Deno.test({
       assertEquals(putRes.status, 200);
       const updatedChore = await putRes.json();
       assertEquals(updatedChore.title, "Updated Chore");
-      // Since it's DAILY, it should reset to done=0 and set next_due_date
-      assertEquals(updatedChore.done, 0);
+      // Since it's DAILY, it should spawn a new task and leave this one done: 1
+      assertEquals(updatedChore.done, 1);
+      assertEquals(updatedChore.recurrence, null);
 
       // Check completion logs
       const logs = db.prepare(
@@ -117,12 +118,12 @@ Deno.test({
       ));
       assertEquals(deleteRes.status, 204);
 
-      // Verify deletion
+      // Verify deletion (the spawned chore will still remain, so length is 1)
       const finalGetRes = /** @type {Response} */ (await GET(
         /** @type {any} */ ({ locals: MOCK_LOCALS }),
       ));
       const finalChores = await finalGetRes.json();
-      assertEquals(finalChores.length, 0);
+      assertEquals(finalChores.length, 1);
     } finally {
       cleanup();
     }

@@ -7,6 +7,8 @@ import { defineConfig, passthroughImageService } from "astro/config";
 import deno from "@deno/astro-adapter";
 import unocss from "unocss/astro";
 
+import solidJs from "@astrojs/solid-js";
+
 // https://astro.build/config
 export default defineConfig({
   output: "server",
@@ -18,7 +20,7 @@ export default defineConfig({
     port: 8080,
     hostname: "0.0.0.0",
   }),
-  integrations: [unocss({ injectReset: true })],
+  integrations: [unocss({ injectReset: true }), solidJs()],
   security: {
     checkOrigin: false,
   },

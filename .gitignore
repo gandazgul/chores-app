@@ -4,20 +4,19 @@ logs
 yarn-debug.log*
 yarn-error.log*
 
+# Build artifacts
 node_modules/
 dist/
 playwright-report/
 .playwright-cli/
 *.db
-.env
 .astro/
-.history/
-.vera/
-.opencode/
+
+# Secrets
+.env
+
+# RunWield
+.wld/worktrees.json
 
 # Editor directories and files
 .DS_Store
-
-# Remove after is gone
-old_app/
-

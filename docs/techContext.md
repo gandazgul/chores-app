@@ -1,77 +1,242 @@
 # Tech Context
 
+This document records the tools, versions, configuration, and constraints that
+the repository uses today. The reasons behind the durable choices are in the
+architectural decision records in [`adr/`](adr/).
+
 ## Technologies Used
 
-- AstroJS (Web Framework)
-- SolidJS (Reactive UI)
-- Deno (Runtime)
-- UnoCSS (CSS framework)
-- Knex.js (SQL query builder)
-- SQLite3 (local database)
-- Google Sign-In (Authentication implemented via Astro middleware and jose JWT)
+| Concern            | Choice                             | Notes                                                                                                                           |
+| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime            | Deno                               | No Node.js, no `package.json`, no `node_modules` checked in                                                                     |
+| Web framework      | Astro 6, server output             | `output: "server"` with the Deno adapter                                                                                        |
+| Interactive UI     | SolidJS 1                          | Islands only, mounted with `client:load`                                                                                        |
+| Styling            | UnoCSS 66                          | `presetWind3`, `presetAttributify`, `presetIcons` — see [Styling](#styling)                                                     |
+| Database           | SQLite through `node:sqlite`       | `DatabaseSync`, hand-written SQL, no query builder — [ADR 0003](adr/0003-sqlite-through-node-sqlite-without-a-query-builder.md) |
+| Authentication     | Google Sign-In, then a session JWT | Verified with `jose` — [ADR 0004](adr/0004-google-sign-in-with-a-self-issued-session-jwt.md)                                    |
+| Recurrence         | `rrule`                            | RFC 5545 recurrence rules                                                                                                       |
+| Search             | `fuse.js`                          | Client side, in the browser only                                                                                                |
+| End-to-end testing | Playwright                         | Chromium only                                                                                                                   |
+
+## Language
+
+Source is authored in JavaScript and JSX with types in JSDoc comments. Deno type
+checks it through the `checkJs` compiler option in `deno.json`.
+
+**This is changing.**
+[ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md) accepts
+TypeScript as the target language for all application source. The conversion has
+not started. Until it lands, expect JavaScript source, `checkJs` on, and the
+duplicate `.ts` files listed in that ADR still present and still dead.
 
 ## Development Setup
 
-- **Seed the database:** `deno task db:setup`
-- **Run tests (Unit/Integration):** `deno test -A`
-- **Run E2E tests (Playwright):** `deno task test:e2e`
-- **Type Checking (JS/JSX with JSDoc):** `deno check --check-js`
+Deno resolves every dependency from the `imports` map in `deno.json` against
+`deno.lock`. There is no install step for application code.
 
-## Technical Constraints
+| Task               | Command              | What it does                                                  |
+| ------------------ | -------------------- | ------------------------------------------------------------- |
+| Development server | `deno task dev`      | Astro dev server on port 8080                                 |
+| Seed the database  | `deno task db:setup` | Creates the tables and seeds a mock user and sample chores    |
+| Build              | `deno task build`    | Writes `dist/server/entry.mjs` and the client assets          |
+| Run the build      | `deno task start`    | Serves `dist/server/entry.mjs`                                |
+| Unit tests         | `deno task test`     | `deno test -A`                                                |
+| Full local gate    | `deno task ci`       | `deno lint && deno fmt --check && deno check && deno test -A` |
+| End-to-end tests   | `deno task test:e2e` | Playwright; starts `deno task dev` itself                     |
 
-- **Language:** Code is authored in standard JS/JSX (no TypeScript). Type checking is strictly enforced using Deno's native `--check-js` flag, backed by comprehensive JSDoc annotations.
-- **E2E Testing:** Playwright is used for full-system E2E testing against the running Deno server, avoiding legacy Node.js/Jest dependencies.
+`deno task ci` is the gate to run before pushing. Nothing in continuous
+integration runs it — see [Continuous integration](#continuous-integration).
 
-## Dependencies
+## Configuration
 
-### Core Dependencies
+### `deno.json`
 
-- `astro`: ^6.0.8 (Web Framework)
-- `solid-js`: ^1.9.12 (Reactive UI components)
-- `unocss`: ^66.6.6 (Atomic CSS engine)
-- `fuse.js`: ^7.1.0 (Fuzzy search library for client-side filtering)
-- `rrule`: ^2.8.1 (Recurrence rule parsing and scheduling)
-- `jose`: ^6.2.2 (JWT signing and verification)
+- `imports` — the dependency map. It replaces `package.json` entirely.
+- `compilerOptions` — `checkJs: true`, `jsx: "react-jsx"`,
+  `jsxImportSource: "solid-js"`.
+- `exclude` — `.astro`, `dist`, `.idea`, `scripts`, and several `old_*` paths
+  are outside lint, format, and type check. Note that `scripts` is excluded, so
+  `scripts/setup_db.js` is never type checked.
+- `allowScripts` — `esbuild` and `fsevents` may run install scripts; `sharp` is
+  denied, which is why the Astro image service is set to
+  `passthroughImageService`.
 
-### Development & Testing Dependencies
+### `astro.config.js`
 
-- `@playwright/test`: ^1.59.0 (E2E Testing framework)
-- `@std/assert`: ^1.0.19 (Deno standard library assertions)
+- Server output on port 8080, host `0.0.0.0`, through `@deno/astro-adapter`. The
+  port is set twice, once for the development server and once for the adapter.
+- UnoCSS is registered as an Astro integration with `injectReset: true`.
+- `security.checkOrigin: false`. This turns off Astro's cross-site request
+  forgery origin check. `ChoreModal` posts a real HTML form to `/api/chores`, so
+  the check would otherwise need a token. Treat this as a known exposure, not a
+  setting to copy.
+- `node:sqlite` is marked external for both the Rollup build and server-side
+  rendering, so the bundler leaves the built-in module alone.
+- A `globalThis.module` / `globalThis.exports` polyfill sits at the top of the
+  file, above the imports, for Astro's Vite CommonJS evaluator under Deno. It
+  must stay first.
 
-## Tool Usage Patterns
+### `tsconfig.json`
 
-_(To be defined)_
+Extends `astro/tsconfigs/strict`, includes `.astro/types.d.ts` and everything
+else, and sets `jsx: "preserve"` with `jsxImportSource: "solid-js"`. This is an
+Astro scaffold artifact: it was created in the same commit as `deno.json`
+(`c7187fd`), and nothing in the current toolchain reads it. Deno's CLI and
+language server use the `compilerOptions` in `deno.json`, and no Astro language
+tooling (`@astrojs/check` or the Astro editor extension) is installed. Keep the
+file anyway: it becomes load-bearing in the TypeScript conversion (see
+[ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md)), because
+the Astro language server and `astro check` are the only tools that type-check
+`.astro` frontmatter, and they read only this file. Until the conversion
+reconciles them, the two files state the JSX settings separately and can drift —
+`deno.json` says `jsx: "react-jsx"`, this file says `preserve`.
+
+## Styling
+
+UnoCSS is configured in `uno.config.js` with three presets:
+
+- `presetWind3` — the Tailwind-like utility classes.
+- `presetAttributify` — the same utilities usable as HTML attributes.
+- `presetIcons` — the `mdi` collection, imported from
+  `@iconify-json/mdi/icons.json` as a JSON module rather than resolved at run
+  time.
+
+The theme defines the palette used across the app:
+
+| Token          | Value     | Use                     |
+| -------------- | --------- | ----------------------- |
+| `primary`      | `#005f6a` | Deep teal, brand colour |
+| `accent`       | `#ffbf00` | Amber, highlights       |
+| `primary-bg`   | `#ffffff` | Page background         |
+| `primary-text` | `#1f2937` | Body text               |
+| `muted-text`   | `#6b7280` | Secondary text          |
+
+`public/manifest.json` repeats `#005f6a` as `theme_color` and `#ffffff` as
+`background_color`. The two files must be changed together; nothing links them.
+
+The design intent is mobile first and responsive.
+
+### Environment variables
+
+Read from `.env` in development through the `--env` flag on every task.
+
+| Variable           | Read by                                      | Effect                                                                   |
+| ------------------ | -------------------------------------------- | ------------------------------------------------------------------------ |
+| `ENABLE_AUTH`      | `src/middleware.js`                          | The exact string `false` injects a mock user and skips verification      |
+| `COOKIE_SECURE`    | `src/pages/api/auth/login.js`                | The exact string `false` drops the `Secure` flag from the session cookie |
+| `SESSION_SECRET`   | `src/utils/auth.js`                          | HS256 signing key for the session JWT                                    |
+| `GOOGLE_CLIENT_ID` | `src/utils/auth.js`, `src/pages/login.astro` | Audience for credential verification, and the Sign-In button             |
+| `DB_ENV`           | `src/utils/db.js`                            | Selects the database file: `test`, `production`, or anything else        |
+
+Both boolean flags compare against the exact string `false`, so a missing or
+misspelled value selects the safe behavior.
+
+`.env.example` also lists `GOOGLE_CLIENT_SECRET` and `PUBLIC_URL`. **No code
+reads either one.** The Google Identity Services flow used here verifies an
+identity token in the browser and never performs a server-side code exchange, so
+the client secret is not needed. Remove both from the example file or start
+using them.
+
+## Database
+
+- **Driver:** `node:sqlite` `DatabaseSync`, a Deno built-in. No third-party
+  driver and no query builder. Queries are hand-written SQL through
+  `db.prepare(...)` with bound parameters.
+- **Connection:** one shared handle, created at module load in `src/utils/db.js`
+  and exported as the default. Every server module imports it.
+- **Foreign keys:** enabled with `PRAGMA foreign_keys = ON` immediately after
+  opening.
+- **File:** chosen by `DB_ENV` — `./chores.test.db`, `./chores.db`, or
+  `./chores.dev.db` for development and any unset value.
+- **Migrations:** none. `src/utils/db.js` runs `CREATE TABLE IF NOT EXISTS` for
+  all three tables at import. A column added later will not appear in an
+  existing database file, because `IF NOT EXISTS` skips the whole statement.
+  This is the main limitation of
+  [ADR 0003](adr/0003-sqlite-through-node-sqlite-without-a-query-builder.md).
+- **Schema duplication:** `scripts/setup_db.js` repeats the same three
+  `CREATE TABLE` statements. The two copies must be edited together, and
+  `scripts` is excluded from type checking, so nothing catches a divergence.
+
+### Tables
+
+- `users` — `id`, `email` (unique), `created_at`, `updated_at`.
+- `chores` — `id`, `user_id` (foreign key to `users(id)`), `title`,
+  `description`, `priority`, `done`, `due_date`, `remind_until_done`,
+  `notification_sent_at`, `recurrence` (a JSON string), `created_at`,
+  `updated_at`.
+- `completion_logs` — `id`, `chore_id` (foreign key to `chores(id)`,
+  `ON DELETE CASCADE`), `completed_at`.
+
+`priority`, `remind_until_done`, and `notification_sent_at` exist in the schema
+and no code reads or writes them.
+
+## Authentication
+
+- **Provider:** Google Sign-In through Google Identity Services.
+- **Method:** the Google credential is verified once at login; the server then
+  issues its own HS256 session JWT and sets it as an `httpOnly`, `sameSite=lax`
+  cookie for 30 days. Astro middleware resolves it on every request.
+- **Development bypass:** `ENABLE_AUTH=false` injects a fixed mock user into
+  `Astro.locals` and skips all verification.
+- **Known gap:** no code path inserts a row into `users`. Because
+  `chores.user_id` has a foreign key to `users(id)` and foreign keys are on, a
+  real Google account that is not the seeded mock user cannot create a chore.
+  Detail in
+  [ADR 0004](adr/0004-google-sign-in-with-a-self-issued-session-jwt.md).
+
+## Testing
+
+- **Unit and integration:** the Deno test runner. `src/utils/auth.test.js`,
+  `src/utils/scheduleUtils.test.js`, `src/pages/api/chores/chores.test.js`.
+- **End to end:** Playwright, configured in `playwright.config.js`. Chromium
+  only, base URL `http://127.0.0.1:8080`, and it starts `deno task dev` itself
+  through `webServer`. In continuous integration it retries twice and runs a
+  single worker. Specs live in `tests/e2e/`.
+- Duplicate `.test.ts` and `.spec.ts` copies of some of these files are still
+  tracked and still processed by `deno check` and `deno test`, and
+  `playwright.config.ts` sits next to `playwright.config.js`. See
+  [ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md).
+
+## Deployment
+
+- **Image:** `Containerfile`, a two-stage build on `denoland/deno:latest`. The
+  builder caches dependencies from `deno.json` and `deno.lock`, then runs
+  `deno task build`. The final stage copies only `dist/`, `deno.json`, and
+  `deno.lock`, runs as the non-root `deno` user, exposes 8080, and starts
+  `dist/server/entry.mjs`.
+- **Target:** Kubernetes.
+- **Persistence caveat:** the SQLite file is written to the working directory
+  inside the container. It needs a mounted volume to survive a restart, and it
+  confines the application to a single writer.
+
+## Continuous integration
+
+`.github/workflows/docker-publish.yml` is the only workflow. On a push to `main`
+or a `v*.*.*` tag it builds `Containerfile` and pushes the image to
+`ghcr.io/gandazgul/chores-app`.
+
+**It does not run `deno task ci`.** Lint, format, type check, and tests are not
+enforced anywhere automatically, and neither are the end-to-end tests. An image
+can be built and published from a commit that does not type check.
+
+## Project origin
+
+The current stack replaced an Express server with React components, built with
+Vite and served by `vite-express`. The old source is still in the repository
+under `old_app/` — `old_server.js`, `old_components/`, `fuzzySearchUtils.js`,
+`scheduleUtils.js`, `utils.js`, and a `playwright/` directory. It does not run,
+it is excluded from lint, format, and type check in `deno.json`, and it should
+be deleted.
+
+Two things carried over from that app and still shape the code:
+
+- Recurrence used `dayspan`. It was replaced by `rrule` during the migration —
+  see [ADR 0005](adr/0005-recurring-chores-spawn-a-new-row-on-completion.md).
+- Fuzzy search lived in `fuzzySearchUtils.js`. In the current app the Fuse.js
+  instance is built inline in `ChoreList.jsx`; no such utility module exists.
 
 ## Project Hosting
 
 - **Platform:** GitHub
-- **Repository URL:** https://github.com/gandazgul/chores-app.git
-- **Key Features:** Version control, issue tracking, collaboration, CI/CD
-  (GitHub Actions configured for Docker publishing).
-
-## Authentication
-
-- **Provider:** Google Sign-In
-- **Method:** Google Auth and JWT cookies
-- **Implementation:**
-  - An Astro middleware intercepts requests. It enforces authentication via a
-    secure, HTTP-only cookie containing a signed JWT (using the `jose` library).
-  - Missing or `true` `ENABLE_AUTH` defaults to enforcing authentication.
-    Missing or `true` `COOKIE_SECURE` defaults to secure cookies.
-  - A mock user can be used by setting `ENABLE_AUTH=false` in the `.env` file,
-    which injects a dummy user payload into `Astro.locals`.
-
-## Database
-
-- **Query Builder:** Knex.js
-- **Driver:** SQLite3
-- **Configuration:** `knexfile.js`
-- **Migrations:** Located in the `data/migrations` directory. The initial
-  migration creates `users` and `chores` tables.
-- **Schema:**
-  - `users`: Stores user information (`id`, `email`).
-  - `chores`: Stores chore details, linked to a user. Includes fields for title,
-    description, priority, due date, and recurrence.
-
-This document covers the technical landscape of the project, including tools,
-technologies, and constraints.
+- **Repository:** https://github.com/gandazgul/chores-app.git
+- **Registry:** GitHub Container Registry, `ghcr.io`

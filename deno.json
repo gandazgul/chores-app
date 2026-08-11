@@ -4,15 +4,19 @@
   "exports": "./dist/server/entry.mjs",
   "nodeModulesDir": "auto",
   "imports": {
+    "@astrojs/check": "npm:@astrojs/check@^0.9.10",
     "@astrojs/solid-js": "npm:@astrojs/solid-js@^6.0.1",
     "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2",
     "@playwright/test": "npm:@playwright/test@^1.59.0",
     "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@types/deno": "npm:@types/deno@^2.7.0",
+    "@types/node": "npm:@types/node@^26.2.0",
     "@unocss/astro": "npm:@unocss/astro@^66.6.6",
     "@unocss/reset": "npm:@unocss/reset@^66.6.6",
     "astro": "npm:astro@^6.0.8",
     "jose": "npm:jose@^6.2.2",
     "solid-js": "npm:solid-js@^1.9.12",
+    "typescript": "npm:typescript@^5.9.3",
     "unocss": "npm:unocss@^66.6.6",
     "fuse.js": "npm:fuse.js@^7.1.0",
     "rrule": "npm:rrule@^2.8.1",
@@ -25,7 +29,7 @@
     "preview": "deno run -A --env npm:astro preview",
     "astro": "deno run -A --env npm:astro",
     "test": "deno test -A",
-    "ci": "deno lint && deno fmt --check && deno check && deno test -A",
+    "ci": "deno lint && deno fmt --check && deno check && deno run -A --env npm:astro check && deno test -A",
     "db:setup": "deno run -A scripts/setup_db.js",
     "test:e2e": "deno run -A npm:playwright test"
   },
@@ -45,12 +49,17 @@
     "scripts"
   ],
   "compilerOptions": {
-    "checkJs": true,
     "jsx": "react-jsx",
     "jsxImportSource": "solid-js"
   },
   "allowScripts": {
-    "allow": ["npm:esbuild@0.27.4", "npm:fsevents@2.3.2", "npm:fsevents@2.3.3"],
-    "deny": ["npm:sharp@0.34.5"]
+    "allow": [
+      "npm:esbuild@0.27.4",
+      "npm:fsevents@2.3.2",
+      "npm:fsevents@2.3.3"
+    ],
+    "deny": [
+      "npm:sharp@0.34.5"
+    ]
   }
 }

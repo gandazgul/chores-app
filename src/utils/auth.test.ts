@@ -1,29 +1,27 @@
-import { createSession, getSession } from "./auth.js";
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
+import type { UserPayload } from "../types.ts";
+import { createSession, getSession } from "./auth.ts";
 
-/** @typedef {import('./auth.js').UserPayload} UserPayload */
-
-/** @type {UserPayload} */
-const MOCK_USER = {
+const MOCK_USER: UserPayload = {
   id: "test-123",
   email: "test@example.com",
   name: "Test User",
 };
 
 Deno.test("auth utilities - Session encoding and decoding", async () => {
-  // Set required env vars for tests
   Deno.env.set("SESSION_SECRET", "super-secret-key-for-tests-12345");
 
-  const token = await createSession(MOCK_USER);
-  assertNotEquals(token, "");
+  try {
+    const token = await createSession(MOCK_USER);
+    assertNotEquals(token, "");
 
-  const decoded = await getSession(token);
-  assertEquals(decoded?.id, MOCK_USER.id);
-  assertEquals(decoded?.email, MOCK_USER.email);
-  assertEquals(decoded?.name, MOCK_USER.name);
-
-  // Cleanup
-  Deno.env.delete("SESSION_SECRET");
+    const decoded = await getSession(token);
+    assertEquals(decoded?.id, MOCK_USER.id);
+    assertEquals(decoded?.email, MOCK_USER.email);
+    assertEquals(decoded?.name, MOCK_USER.name);
+  } finally {
+    Deno.env.delete("SESSION_SECRET");
+  }
 });
 
 Deno.test("auth utilities - Missing SESSION_SECRET throws error", async () => {
@@ -41,8 +39,10 @@ Deno.test("auth utilities - Missing SESSION_SECRET throws error", async () => {
 Deno.test("auth utilities - Invalid token returns null", async () => {
   Deno.env.set("SESSION_SECRET", "super-secret-key-for-tests-12345");
 
-  const decoded = await getSession("invalid.token.here");
-  assertEquals(decoded, null);
-
-  Deno.env.delete("SESSION_SECRET");
+  try {
+    const decoded = await getSession("invalid.token.here");
+    assertEquals(decoded, null);
+  } finally {
+    Deno.env.delete("SESSION_SECRET");
+  }
 });

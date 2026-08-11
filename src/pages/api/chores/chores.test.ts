@@ -1,128 +1,212 @@
-import { assertEquals } from "@std/assert";
-import { GET, POST } from "./index.ts";
-import { DELETE, PUT } from "./[id].ts";
-import db from "../../../utils/db.js";
-
+import "../../../env.d.ts";
+import { assertEquals, assertExists } from "@std/assert";
 import type { APIContext } from "astro";
+import type { Chore, UserPayload } from "../../../types.ts";
+import db from "../../../utils/db.ts";
+import { DELETE, PUT } from "./[id].ts";
+import { GET, POST } from "./index.ts";
 
-const MOCK_LOCALS = {
-  user: {
-    id: "mock-user-test-1",
-    email: "test@example.com",
-    name: "Test User",
-  },
+const MOCK_USER: UserPayload = {
+  id: "mock-user-test-1",
+  email: "test@example.com",
+  name: "Test User",
 };
 
-const UNAUTH_LOCALS = {
-  user: null,
+const OTHER_USER: UserPayload = {
+  id: "mock-user-test-2",
+  email: "other@example.com",
+  name: "Other User",
 };
 
-function setupUser() {
-  const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(
-    MOCK_LOCALS.user.id,
+const MOCK_LOCALS = { user: MOCK_USER };
+const OTHER_LOCALS = { user: OTHER_USER };
+const UNAUTH_LOCALS = { user: null };
+
+function ensureUser(user: UserPayload) {
+  db.prepare("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)").run(
+    user.id,
+    user.email,
   );
-  if (!existing) {
-    db.prepare("INSERT INTO users (id, email) VALUES (?, ?)").run(
-      MOCK_LOCALS.user.id,
-      MOCK_LOCALS.user.email,
-    );
-  }
 }
 
 function cleanup() {
-  db.prepare("DELETE FROM chores WHERE user_id = ?").run(MOCK_LOCALS.user.id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(MOCK_LOCALS.user.id);
+  db.prepare("DELETE FROM chores WHERE user_id IN (?, ?)").run(
+    MOCK_USER.id,
+    OTHER_USER.id,
+  );
+  db.prepare("DELETE FROM users WHERE id IN (?, ?)").run(
+    MOCK_USER.id,
+    OTHER_USER.id,
+  );
+}
+
+function context(fields: Partial<APIContext>): APIContext {
+  return fields as unknown as APIContext;
+}
+
+function redirect(path: string, status = 302): Response {
+  return new Response(null, { status, headers: { location: path } });
 }
 
 Deno.test({
-  name: "Chores API CRUD",
+  name: "Chores API CRUD preserves recurring completion spawning",
   sanitizeResources: false,
   sanitizeOps: false,
   async fn() {
-    setupUser();
+    cleanup();
+    ensureUser(MOCK_USER);
     try {
-      // 1. Unauthenticated request
       const unauthGetRes = await GET(
-        { locals: UNAUTH_LOCALS } as unknown as APIContext,
+        context({ locals: UNAUTH_LOCALS }),
       ) as Response;
       assertEquals(unauthGetRes.status, 401);
 
-      // 2. GET empty chores list
       const emptyGetRes = await GET(
-        { locals: MOCK_LOCALS } as unknown as APIContext,
+        context({ locals: MOCK_LOCALS }),
       ) as Response;
       assertEquals(emptyGetRes.status, 200);
-      const emptyChores = await emptyGetRes.json();
+      const emptyChores = await emptyGetRes.json() as Chore[];
       assertEquals(emptyChores.length, 0);
 
-      // 3. POST new chore
-      const reqBody = {
-        title: "Test Chore",
-        description: "Test Description",
-        rrule: "FREQ=DAILY",
-      };
       const postReq = new Request("http://localhost/api/chores", {
         method: "POST",
-        body: JSON.stringify(reqBody),
+        body: JSON.stringify({
+          title: "Test Chore",
+          description: "Test Description",
+          rrule: "FREQ=DAILY",
+        }),
       });
       const postRes = await POST(
-        { request: postReq, locals: MOCK_LOCALS } as unknown as APIContext,
+        context({ request: postReq, locals: MOCK_LOCALS }),
       ) as Response;
       assertEquals(postRes.status, 201);
-      const createdChore = await postRes.json();
+      const createdChore = await postRes.json() as Chore;
       assertEquals(createdChore.title, "Test Chore");
-      assertEquals(createdChore.recurrence.rrule, "FREQ=DAILY");
+      assertEquals(
+        typeof createdChore.recurrence === "object" &&
+          createdChore.recurrence?.rrule,
+        "FREQ=DAILY",
+      );
       const choreId = createdChore.id;
 
-      // 4. GET chores list with item
-      const getRes = await GET(
-        { locals: MOCK_LOCALS } as unknown as APIContext,
-      ) as Response;
+      const getRes = await GET(context({ locals: MOCK_LOCALS })) as Response;
       assertEquals(getRes.status, 200);
-      const choresList = await getRes.json();
+      const choresList = await getRes.json() as Chore[];
       assertEquals(choresList.length, 1);
       assertEquals(choresList[0].id, choreId);
 
-      // 5. PUT update chore
-      const updateBody = { title: "Updated Chore", done: true };
       const putReq = new Request(`http://localhost/api/chores/${choreId}`, {
         method: "PUT",
-        body: JSON.stringify(updateBody),
+        body: JSON.stringify({ title: "Updated Chore", done: true }),
       });
       const putRes = await PUT(
-        {
+        context({
           params: { id: choreId },
           request: putReq,
           locals: MOCK_LOCALS,
-        } as unknown as APIContext,
+        }),
       ) as Response;
       assertEquals(putRes.status, 200);
-      const updatedChore = await putRes.json();
+      const updatedChore = await putRes.json() as Chore;
       assertEquals(updatedChore.title, "Updated Chore");
-      // Since it's DAILY, it should reset to done=0 and set next_due_date
-      assertEquals(updatedChore.done, 0);
+      assertEquals(updatedChore.done, 1);
+      assertEquals(updatedChore.recurrence, null);
+      assertEquals(updatedChore.due_date, createdChore.due_date);
 
-      // Check completion logs
       const logs = db.prepare(
         "SELECT * FROM completion_logs WHERE chore_id = ?",
       ).all(choreId);
       assertEquals(logs.length, 1);
 
-      // 6. DELETE chore
+      const spawnedRows = db.prepare(
+        "SELECT * FROM chores WHERE user_id = ? AND id != ?",
+      ).all(MOCK_USER.id, choreId);
+      assertEquals(spawnedRows.length, 1);
+
       const deleteRes = await DELETE(
-        {
-          params: { id: choreId },
-          locals: MOCK_LOCALS,
-        } as unknown as APIContext,
+        context({ params: { id: choreId }, locals: MOCK_LOCALS }),
       ) as Response;
       assertEquals(deleteRes.status, 204);
 
-      // Verify deletion
       const finalGetRes = await GET(
-        { locals: MOCK_LOCALS } as unknown as APIContext,
+        context({ locals: MOCK_LOCALS }),
       ) as Response;
-      const finalChores = await finalGetRes.json();
-      assertEquals(finalChores.length, 0);
+      const finalChores = await finalGetRes.json() as Chore[];
+      assertEquals(finalChores.length, 1);
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name: "Chores API preserves form redirects and ownership errors",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    ensureUser(OTHER_USER);
+    try {
+      const missingTitleRes = await POST(
+        context({
+          request: new Request("http://localhost/api/chores", {
+            method: "POST",
+            body: new URLSearchParams({ title: "" }),
+          }),
+          locals: MOCK_LOCALS,
+          redirect,
+        }),
+      ) as Response;
+      assertEquals(missingTitleRes.status, 302);
+      assertEquals(
+        missingTitleRes.headers.get("location"),
+        "/?error=Title+is+required",
+      );
+
+      const invalidRuleRes = await POST(
+        context({
+          request: new Request("http://localhost/api/chores", {
+            method: "POST",
+            body: new URLSearchParams({ title: "Bad rule", rrule: "INVALID" }),
+          }),
+          locals: MOCK_LOCALS,
+          redirect,
+        }),
+      ) as Response;
+      assertEquals(invalidRuleRes.status, 302);
+      assertEquals(
+        invalidRuleRes.headers.get("location"),
+        "/?error=Invalid+RRULE",
+      );
+
+      const createRes = await POST(
+        context({
+          request: new Request("http://localhost/api/chores", {
+            method: "POST",
+            body: new URLSearchParams({ title: "Form Chore" }),
+          }),
+          locals: MOCK_LOCALS,
+          redirect,
+        }),
+      ) as Response;
+      assertEquals(createRes.status, 302);
+      assertEquals(createRes.headers.get("location"), "/");
+
+      const created = db.prepare(
+        "SELECT id FROM chores WHERE user_id = ? AND title = ?",
+      ).get(MOCK_USER.id, "Form Chore") as { id: string } | undefined;
+      assertExists(created);
+
+      const forbiddenRes = await DELETE(
+        context({ params: { id: created.id }, locals: OTHER_LOCALS }),
+      ) as Response;
+      assertEquals(forbiddenRes.status, 403);
+
+      const missingRes = await DELETE(
+        context({ params: { id: crypto.randomUUID() }, locals: MOCK_LOCALS }),
+      ) as Response;
+      assertEquals(missingRes.status, 404);
     } finally {
       cleanup();
     }

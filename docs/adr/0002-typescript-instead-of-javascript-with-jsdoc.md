@@ -1,6 +1,6 @@
 # ADR 0002: TypeScript instead of JavaScript with JSDoc types
 
-- **Status:** Accepted, not yet implemented
+- **Status:** Accepted and implemented
 - **Date:** 2026-08-10
 - **Reverses:** the earlier position, recorded below, that all application
   source stays in `.js` and `.jsx` with types in JSDoc comments.
@@ -20,15 +20,15 @@ Three things made the JSDoc approach cost more than it saved:
    and imported types (`@typedef {import('...').Type}`) need more text and give
    less. Casts need the `/** @type {X} */ (value)` form.
 2. **Database rows have no types.** `node:sqlite` returns untyped records, so
-   the chore row is effectively `any` everywhere it travels — through the Astro
-   page, both application programming interface (API) routes, and the props of
-   every island. The type checker gives no help on column names or value types.
-   This is the largest single gap, and it is the one a shared `Chore` interface
-   closes. See
+   the chore row was effectively `any` everywhere it travelled — through the
+   Astro page, both application programming interface (API) routes, and the
+   props of every island. The type checker gave no help on column names or value
+   types. This was the largest single gap, and it is the one the shared row and
+   boundary types close. See
    [ADR 0003](0003-sqlite-through-node-sqlite-without-a-query-builder.md).
 3. **The repository never fully committed to it.** TypeScript copies of several
-   files are still tracked alongside their JavaScript versions, and the two have
-   diverged. The codebase is already partly TypeScript, in the worst way:
+   files were tracked alongside their JavaScript versions, and the two had
+   diverged. The codebase was already partly TypeScript, in the worst way:
    duplicated rather than converted.
 
 ## Decision
@@ -38,26 +38,23 @@ Author all application source in TypeScript: `.ts` for modules and API routes,
 keeping both forms.
 
 - Keep `jsx: "react-jsx"` and `jsxImportSource: "solid-js"` in `deno.json`. The
-  per-file `/** @jsxImportSource solid-js */` pragma is no longer needed once
+  per-file `/** @jsxImportSource solid-js */` pragma is no longer needed because
   the compiler option covers `.tsx`.
-- Remove `checkJs` when no `.js` source remains. Until then it stays on, so the
-  conversion can proceed file by file without a flag day.
-- Define the shared domain types — the chore row, the completion log row, and
-  the session user payload — in one place, and use them at every boundary that
-  reads a database row.
+- Remove `checkJs` after the source conversion.
+- Define the shared domain types — the chore row, the completion log row, the
+  parsed recurrence, and the session user payload — in `src/types.ts`, and use
+  them at database, API, Astro, and island boundaries.
 - Type the `Astro.locals.user` slot in `src/env.d.ts` so the page and middleware
   stop casting.
-- `deno check` stays in the `ci` task and keeps the same meaning.
+- Keep `deno check` in the `ci` task and add `astro check` so `.astro`
+  frontmatter is checked by the normal local gate.
 
-A `tsconfig.json` already exists and extends `astro/tsconfigs/strict`. It is an
-Astro scaffold artifact from the same commit as `deno.json`, and nothing in the
-current toolchain reads it: Deno's CLI and language server use `deno.json`, and
-no Astro language tooling is installed. Keep it anyway. The Astro language
-server and `astro check` are the only tools that type-check `.astro`
-frontmatter, and they read only `tsconfig.json`. The conversion must wire up
-that tooling and reconcile the two files — `tsconfig.json` sets
-`jsx: "preserve"`, `deno.json` sets `jsx: "react-jsx"` — instead of assuming the
-strict settings are already enforced or deleting the file as unused.
+A `tsconfig.json` already existed and extends `astro/tsconfigs/strict`. It is an
+Astro scaffold artifact from the same commit as `deno.json`. Deno's CLI and
+language server use `deno.json`; the Astro language server and `astro check`
+read `tsconfig.json`. The two files deliberately have different JSX emit modes:
+Deno uses `react-jsx`, while Astro checking preserves JSX. Both select Solid as
+the JSX import source.
 
 ## Consequences
 
@@ -65,50 +62,44 @@ strict settings are already enforced or deleting the file as unused.
 
 - One way to express a type, and the concise one. Generics and unions stop being
   a chore to write.
-- A single `Chore` type replaces the implicit `any` that flows from SQLite
-  through the API routes into island props. A renamed or dropped column becomes
-  a type error instead of `undefined` at runtime.
-- The duplicate `.ts` / `.js` file pairs resolve by conversion instead of by
+- Shared row and boundary types replace the implicit `any` that flowed from
+  SQLite through the API routes into island props. A renamed or dropped column
+  becomes a type error instead of `undefined` at runtime.
+- The duplicate `.ts` / `.js` file pairs resolved by conversion instead of by
   deletion of one side.
 - Editor support is uniform across editors.
+- `deno task ci` now checks TypeScript modules, TSX islands, Astro frontmatter,
+  formatting, lint, and tests.
 
 **Bad or limiting**
 
 - What is on disk is no longer exactly what runs. Stack traces and debugging go
   through a transform. Deno maps this well, but it is a real change.
-- The conversion touches nearly every source file. During the conversion the
-  repository holds both languages, and `checkJs` must stay on.
 - `.astro` frontmatter is a separate type-checking path from `deno check`; the
-  Astro page needs its own attention, not just a file rename.
+  CI task must keep invoking `astro check`.
 - Third-party types must exist or be written. `node:sqlite` is typed by Deno,
   but the row shapes it returns are still the project's responsibility to
   declare and to keep true.
 
-## Migration
+## Migration outcome
 
-The code is JavaScript with JSDoc today. This ADR records the target, not the
-current state. The conversion is a planned change, not yet started. Until it
-lands, the patterns in `systemPatterns.md` describe JavaScript source, and both
-of the following remain true:
+The conversion preserved the JavaScript behavior and reconciled the dead twins
+that had drifted:
 
-- The duplicate TypeScript files listed below are dead code, not the start of
-  the conversion. They must be deleted or reconciled deliberately, because their
-  content has diverged from the `.js` files that actually run.
-- `checkJs` stays on, so mixed source keeps type checking during the transition.
-
-### Duplicate files to resolve first
-
-Astro resolves the `.js` route files, so these `.ts` copies never execute, but
-`deno check` and `deno test` still process them and can fail the `ci` task for
-code that does not run:
-
-- `src/pages/api/chores/index.ts` and `src/pages/api/chores/[id].ts`
-- `src/utils/scheduleUtils.ts`
-- `src/pages/api/chores/chores.test.ts` and `src/utils/scheduleUtils.test.ts`
-- `tests/e2e/core-journey.spec.ts`
-
-Whichever version is correct must be chosen per file before the wider conversion
-begins. Converting on top of an unresolved pair silently picks a winner.
+- `src/pages/api/chores/index.ts` keeps the form and JSON create paths in one
+  route. Forms redirect on success and validation errors; JSON callers receive
+  JSON status responses.
+- `src/pages/api/chores/[id].ts` keeps the ADR 0005 recurrence behavior:
+  completing a recurring chore marks the current row done, clears its
+  recurrence, writes a completion log, and spawns a new open row for the next
+  occurrence. The obsolete row-recycling branch from the dead TypeScript twin
+  was not kept.
+- `src/utils/scheduleUtils.ts` keeps strict next-occurrence calculation and logs
+  invalid RRULE input before returning `null`.
+- `src/pages/api/chores/chores.test.ts`, `src/utils/scheduleUtils.test.ts`, and
+  the Playwright specs now test the TypeScript implementation and the preserved
+  behavior.
+- `playwright.config.ts` is the only Playwright config.
 
 ## Superseded position
 

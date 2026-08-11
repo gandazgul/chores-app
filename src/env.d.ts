@@ -1,7 +1,11 @@
 /// <reference types="astro/client" />
 
-declare namespace App {
-  interface Locals {
-    user: import("./utils/auth.js").UserPayload | null;
+import type { UserPayload } from "./types.ts";
+
+declare global {
+  namespace App {
+    interface Locals {
+      user: UserPayload | null;
+    }
   }
 }

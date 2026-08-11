@@ -1,21 +1,18 @@
 import { expect, test } from "@playwright/test";
 
+interface ChoreResponse {
+  id: string;
+  title: string;
+  done: 0 | 1;
+  recurrence: { rrule: string } | string | null;
+}
+
 test.describe("Core Journey", () => {
-  // Use a common timestamp to make titles unique per test run
   const testId = Date.now().toString();
 
   test("User can view chores, create a new one, and mark it as done", async ({ page, request }) => {
-    // Navigate to the app (assuming mock auth bypasses login automatically if ENABLE_AUTH=false)
     await page.goto("/");
-
-    // We verify we are on the home page and not redirected to /login
     await expect(page).toHaveURL("/");
-
-    // Optionally check if a "chores" related heading is present
-    // Let's create a chore via the API first if there's no UI yet,
-    // or wait, the instructions say "via the API (or initial UI if available)".
-    // Currently, there is no UI for creating a chore in Phase 3,
-    // it will be built in Phase 4. We can test the API using playwright's request fixture.
 
     const newChoreTitle = `Test Chore E2E ${testId}`;
 
@@ -28,36 +25,47 @@ test.describe("Core Journey", () => {
     });
 
     expect(createRes.status()).toBe(201);
-    const createdChore = await createRes.json();
+    const createdChore = await createRes.json() as ChoreResponse;
     expect(createdChore.title).toBe(newChoreTitle);
 
     const choreId = createdChore.id;
 
-    // Verify it exists in GET /api/chores
-    const getRes = await request.get("/api/chores");
-    expect(getRes.status()).toBe(200);
-    const choresList = await getRes.json();
+    try {
+      const getRes = await request.get("/api/chores");
+      expect(getRes.status()).toBe(200);
+      const choresList = await getRes.json() as ChoreResponse[];
 
-    // Ensure our newly created chore is in the list
-    // deno-lint-ignore no-explicit-any
-    const foundChore = choresList.find((c: any) => c.id === choreId);
-    expect(foundChore).toBeDefined();
-    expect(foundChore.title).toBe(newChoreTitle);
+      const foundChore = choresList.find((chore) => chore.id === choreId);
+      expect(foundChore).toBeDefined();
+      expect(foundChore?.title).toBe(newChoreTitle);
 
-    // Mark as completed
-    const completeRes = await request.put(`/api/chores/${choreId}`, {
-      data: {
-        done: true,
-      },
-    });
+      const completeRes = await request.put(`/api/chores/${choreId}`, {
+        data: {
+          done: true,
+        },
+      });
 
-    expect(completeRes.status()).toBe(200);
-    const updatedChore = await completeRes.json();
-    // Since it's DAILY, marking it done should advance the due date and set done back to 0
-    expect(updatedChore.done).toBe(0);
+      expect(completeRes.status()).toBe(200);
+      const updatedChore = await completeRes.json() as ChoreResponse;
+      expect(updatedChore.done).toBe(1);
+      expect(updatedChore.recurrence).toBeNull();
 
-    // Delete the chore so it doesn't clutter
-    const deleteRes = await request.delete(`/api/chores/${choreId}`);
-    expect(deleteRes.status()).toBe(204);
+      const afterCompleteRes = await request.get("/api/chores");
+      const choresAfterComplete = await afterCompleteRes
+        .json() as ChoreResponse[];
+      const spawnedChore = choresAfterComplete.find((chore) =>
+        chore.title === newChoreTitle && chore.id !== choreId
+      );
+      expect(spawnedChore).toBeDefined();
+      expect(spawnedChore?.done).toBe(0);
+    } finally {
+      const cleanupRes = await request.get("/api/chores");
+      const chores = await cleanupRes.json() as ChoreResponse[];
+      for (const chore of chores) {
+        if (chore.title.includes(testId)) {
+          await request.delete(`/api/chores/${chore.id}`);
+        }
+      }
+    }
   });
 });

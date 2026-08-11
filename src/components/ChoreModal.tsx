@@ -1,4 +1,3 @@
-/** @jsxImportSource solid-js */
 import { createSignal, Show } from "solid-js";
 
 export function ChoreModal() {
@@ -17,10 +16,9 @@ export function ChoreModal() {
     setError("");
   };
 
-  /** @param {any} e */
-  const handleSubmit = (e) => {
+  const handleSubmit = (event: SubmitEvent) => {
     if (!title().trim()) {
-      e.preventDefault();
+      event.preventDefault();
       setError("Title is required");
     }
   };
@@ -82,8 +80,7 @@ export function ChoreModal() {
                   id="title"
                   name="title"
                   value={title()}
-                  /** @param {any} e */
-                  onInput={(e) => setTitle(e.currentTarget.value)}
+                  onInput={(event) => setTitle(event.currentTarget.value)}
                   placeholder="e.g. Wash dishes"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   required
@@ -101,8 +98,7 @@ export function ChoreModal() {
                   id="description"
                   name="description"
                   value={description()}
-                  /** @param {any} e */
-                  onInput={(e) => setDescription(e.currentTarget.value)}
+                  onInput={(event) => setDescription(event.currentTarget.value)}
                   rows="3"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
@@ -120,8 +116,7 @@ export function ChoreModal() {
                   id="rrule"
                   name="rrule"
                   value={rrule()}
-                  /** @param {any} e */
-                  onChange={(e) => setRrule(e.currentTarget.value)}
+                  onChange={(event) => setRrule(event.currentTarget.value)}
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
                 >
                   <option value="">Once (No recurrence)</option>

@@ -37,7 +37,6 @@ executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T12:07:51-04:00"
 updatedAt: "2026-08-10T22:29:34.571Z"
-status: "ready_for_work"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 1
@@ -45,6 +44,7 @@ dependencies:
   []
 userVerifiedAt: null
 planId: "4e3176d4-f377-45c5-b19e-7e222b6bd189"
+status: "validated_reviewer"
 ---
 
 # Convert Source and Tests to TypeScript

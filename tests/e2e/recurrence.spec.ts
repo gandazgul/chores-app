@@ -26,6 +26,9 @@ test.describe("Recurrence Tasks", () => {
 
     try {
       await page.goto("/");
+      await page.locator(
+        'astro-island[component-url*="ChoreList"][client-render-time]',
+      ).waitFor();
 
       for (const rrule of recurrences) {
         const title = `Recurrence Test ${rrule} ${testId}`;

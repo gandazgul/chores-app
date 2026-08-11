@@ -9,6 +9,7 @@
     "npm:@deno/astro-adapter@~0.3.2": "0.3.2_astro@6.0.8__@types+node@26.2.0_@types+node@26.2.0",
     "npm:@iconify-json/mdi@*": "1.2.3",
     "npm:@iconify-json/mdi@^1.2.1": "1.2.3",
+    "npm:@playwright/test@*": "1.59.0",
     "npm:@playwright/test@^1.59.0": "1.59.0",
     "npm:@types/deno@^2.7.0": "2.7.0",
     "npm:@types/node@^26.2.0": "26.2.0",

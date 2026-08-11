@@ -77,7 +77,7 @@ objectiveChecksBaseline:
 executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T12:07:51-04:00"
-updatedAt: "2026-08-11T03:42:31.843Z"
+updatedAt: "2026-08-11T04:21:02.982Z"
 status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
@@ -85,7 +85,7 @@ order: 1
 dependencies:
     []
 implementedAt: "2026-08-11T01:47:56.140Z"
-verifiedAt: "2026-08-11T03:42:31.843Z"
+verifiedAt: "2026-08-11T04:21:02.982Z"
 userVerifiedAt: null
 executionReport: "- Implemented approved TypeScript conversion: source/routes/islands/utils/tests are canonical `.ts`/`.tsx`, JS/JSX twins and `playwright.config.js` removed, `scripts/setup_db.js` imports `db.ts`, and `src/types.ts` now owns shared app/session/row/parsed chore types.\n- Preserved current JS behavior over obsolete TS twins: mock auth/session flow, owner-scoped chore APIs, JSON/form create paths, invalid-RRULE logging fallback, optimistic UI rollback, Fuse search, completion logs, and recurring completion as done original + cleared recurrence + open successor.\n- Updated toolchain/docs: added Astro checking dependencies/types, removed `checkJs`, wired `deno task ci` to `astro check`, adjusted `tsconfig.json`, and updated ADR/current-state docs including kebab-case docs filenames.\n- Test coverage accounting: JS test files were replaced by TS equivalents; Deno unit/integration coverage remains 9 tests. E2E coverage remains 2 Playwright tests; recurrence E2E was rewritten from obsolete same-row “mark undone” behavior to the preserved successor-spawn behavior.\n- Verification passed: `deno task ci` (lint, fmt, check, astro check, 9 Deno tests), `deno task build`, `deno test -A --reporter=dot`, structural JS-twin/type-escape greps, and `deno run -A npm:playwright test --config=playwright.config.ts` with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` pointing at local system Chrome.\n- Note: Playwright’s bundled `chromium-headless-shell` install repeatedly hung after reaching 100% download in this local cache, so the config includes an optional executable-path fallback; normal CI remains on bundled browsers when the env var is unset."
 humanReviewMode: "ask"
@@ -95,9 +95,9 @@ executionMode: "worktree"
 deliveryEvidence:
     version: 1
     mode: "worktree_merge"
-    executionCommit: "6a8e089d5843b2eaec6749a5fb6b68624fafb76b"
+    executionCommit: "e4245848bfa375db23cb3b045cc2e34d50336dcf"
     targetBranch: "main"
-    targetHeadBeforeMerge: "b4e2b4a5529bc3b4ba736e6b64255f0034ed1607"
+    targetHeadBeforeMerge: "55ea9827912f10735c997138a5d84a5b35e46e23"
 validationCiAttempts: 0
 validationSemanticRounds: 1
 ---

@@ -6,8 +6,7 @@ those patterns, and their trade-offs, are in the architectural decision records:
 - [ADR 0001](adr/0001-astro-ssr-on-deno-with-solidjs-islands.md) — Astro
   server-side rendering on Deno with SolidJS islands
 - [ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md) —
-  TypeScript instead of JavaScript with JSDoc types (accepted, not yet
-  implemented; the source is still JavaScript)
+  TypeScript instead of JavaScript with JSDoc types
 - [ADR 0003](adr/0003-sqlite-through-node-sqlite-without-a-query-builder.md) —
   SQLite through `node:sqlite` without a query builder
 - [ADR 0004](adr/0004-google-sign-in-with-a-self-issued-session-jwt.md) — Google
@@ -61,14 +60,14 @@ those patterns, and their trade-offs, are in the architectural decision records:
   the end-to-end tests.
 
 - **Ownership check on every mutation.** `PUT` and `DELETE` in
-  `src/pages/api/chores/[id].js` load the chore first, return 404 when it is
+  `src/pages/api/chores/[id].ts` load the chore first, return 404 when it is
   missing, and 403 when `chore.user_id` does not match `locals.user.id`. The
   lookup is by id alone, so the ownership check is what enforces isolation.
 
-- **JSON column parsed at every boundary.** `chores.recurrence` is stored as a
-  JSON string. Each place that reads a chore row — the Astro page,
-  `GET /api/chores`, and both handlers in `[id].js` — parses it inside a `try`
-  block and ignores a parse failure. The parsing is repeated rather than shared.
+- **JSON column parsed through a shared boundary.** `chores.recurrence` is
+  stored as a JSON string. `src/types.ts` owns the row and response types plus
+  the parser that turns valid stored JSON into `{ rrule }` while preserving
+  malformed historical strings as a fallback.
 
 - **Conditional rendering.** `ChoreModal` uses SolidJS `<Show>` for the modal
   body. `ChoreList` and `ChoreItem` use ordinary JSX ternaries and `&&` for
@@ -80,7 +79,7 @@ those patterns, and their trade-offs, are in the architectural decision records:
   memo.
 
 - **Single shared database handle.** Every server module imports the default
-  export of `src/utils/db.js`, which is one `DatabaseSync` connection created at
+  export of `src/utils/db.ts`, which is one `DatabaseSync` connection created at
   module load. Queries are hand-written SQL through `db.prepare(...)` with bound
   parameters.
 
@@ -95,17 +94,17 @@ those patterns, and their trade-offs, are in the architectural decision records:
 
 ```mermaid
 graph TD
-  MW[src/middleware.js] --> IDX[src/pages/index.astro]
+  MW[src/middleware.ts] --> IDX[src/pages/index.astro]
   IDX --> LAY[src/layouts/Layout.astro]
-  IDX -- initialChores prop --> CL[ChoreList.jsx island]
-  IDX --> CM[ChoreModal.jsx island]
-  CL --> CI[ChoreItem.jsx]
-  IDX --> DB[(src/utils/db.js)]
-  CM -- form POST --> API1[api/chores/index.js]
-  CI -- fetch PUT --> API2[api/chores/id.js]
+  IDX -- initialChores prop --> CL[ChoreList.tsx island]
+  IDX --> CM[ChoreModal.tsx island]
+  CL --> CI[ChoreItem.tsx]
+  IDX --> DB[(src/utils/db.ts)]
+  CM -- form POST --> API1[api/chores/index.ts]
+  CI -- fetch PUT --> API2[api/chores/id.ts]
   API1 --> DB
   API2 --> DB
-  API1 --> SU[scheduleUtils.js]
+  API1 --> SU[scheduleUtils.ts]
   API2 --> SU
 ```
 
@@ -113,7 +112,7 @@ The arrows are the only paths that exist. `ChoreList` and `ChoreModal` are
 siblings with no connection between them, and `ChoreModal` reaches the server
 through a browser form navigation rather than through `fetch`.
 
-- **`src/middleware.js`** — runs before every request. Resolves
+- **`src/middleware.ts`** — runs before every request. Resolves
   `context.locals.user` and applies the login redirects.
 - **`src/pages/index.astro`** — reads `Astro.locals.user`, queries the chores
   for that user ordered by `due_date`, parses each `recurrence` value, and
@@ -122,24 +121,24 @@ through a browser form navigation rather than through `fetch`.
 - **`src/layouts/Layout.astro`** — the HTML shell: UnoCSS reset, favicons, the
   web app manifest link, the theme color, the header, and the footer. It takes
   no props.
-- **`ChoreList.jsx`** — the search input and the list. Owns the search query and
+- **`ChoreList.tsx`** — the search input and the list. Owns the search query and
   the filtered memo. Renders one `ChoreItem` per chore and an empty-state row,
   with different text for "no results" and "no chores".
-- **`ChoreItem.jsx`** — one row: the toggle button, the title, the optional
+- **`ChoreItem.tsx`** — one row: the toggle button, the title, the optional
   description, the optional due date, and a recurrence badge.
   `getRRuleFrequency` reads the `FREQ=` part of the rule with a regular
   expression for the badge label. It accepts an optional `onUpdate` callback,
   which no caller passes today.
-- **`ChoreModal.jsx`** — the "New Chore" button and the add-chore dialog.
+- **`ChoreModal.tsx`** — the "New Chore" button and the add-chore dialog.
   Fields: title (required), description, and a recurrence `<select>` with four
   fixed options (none, `FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=MONTHLY`). It creates
   only; it does not edit or delete.
-- **`src/utils/auth.js`** — `verifyGoogleToken`, `createSession`, `getSession`,
-  and the `UserPayload` typedef.
-- **`src/utils/db.js`** — opens the SQLite file chosen by `DB_ENV`, enables
+- **`src/utils/auth.ts`** — `verifyGoogleToken`, `createSession`, and
+  `getSession`. `UserPayload` lives in `src/types.ts`.
+- **`src/utils/db.ts`** — opens the SQLite file chosen by `DB_ENV`, enables
   foreign keys, creates the tables if they do not exist, and exports the
   connection.
-- **`src/utils/scheduleUtils.js`** — exports one function,
+- **`src/utils/scheduleUtils.ts`** — exports one function,
   `calculateNextOccurrence(rruleString, lastCompletedDate)`. It parses the rule
   with `rrulestr`, anchors it with `dtstart`, and returns the first occurrence
   strictly after the start date, or `null` when the rule is invalid or has
@@ -149,7 +148,7 @@ through a browser form navigation rather than through `fetch`.
 
 ### 1. Authentication on every request
 
-1. `src/middleware.js` intercepts the request.
+1. `src/middleware.ts` intercepts the request.
 2. If `ENABLE_AUTH` is the string `false`, it sets a fixed mock user on
    `context.locals.user` and skips verification.
 3. Otherwise it reads the `session` cookie and calls `getSession`, which
@@ -222,14 +221,14 @@ this route.** Only the end-to-end tests use it, for cleanup.
 
 ## Verification
 
-- `deno task ci` — lint, format check, type check (`deno check`), and unit
-  tests.
+- `deno task ci` — lint, format check, Deno type check (`deno check`), Astro
+  frontmatter check (`astro check`), and unit tests.
 - `deno task test:e2e` — Playwright against the running Deno server.
-  `tests/e2e/core-journey.spec.js` covers create, list, and complete through the
-  API. `tests/e2e/recurrence.spec.js` drives the toggle in the browser for
+  `tests/e2e/core-journey.spec.ts` covers create, list, and complete through the
+  API. `tests/e2e/recurrence.spec.ts` drives the toggle in the browser for
   daily, weekly, and monthly rules.
-- Unit tests: `src/utils/auth.test.js`, `src/utils/scheduleUtils.test.js`,
-  `src/pages/api/chores/chores.test.js`.
+- Unit tests: `src/utils/auth.test.ts`, `src/utils/scheduleUtils.test.ts`,
+  `src/pages/api/chores/chores.test.ts`.
 
 ## Not implemented yet
 

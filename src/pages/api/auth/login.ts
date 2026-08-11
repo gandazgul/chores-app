@@ -1,12 +1,13 @@
-/** @typedef {import('astro').APIRoute} APIRoute */
-import { createSession, verifyGoogleToken } from "../../../utils/auth.js";
+import type { APIRoute } from "astro";
+import { createSession, verifyGoogleToken } from "../../../utils/auth.ts";
 
-/**
- * @param {import('astro').APIContext} context
- */
-export const POST = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const { credential } = await request.json();
+    const body: unknown = await request.json();
+    const credential = typeof body === "object" && body !== null &&
+        "credential" in body && typeof body.credential === "string"
+      ? body.credential
+      : undefined;
 
     if (!credential) {
       return new Response(JSON.stringify({ error: "Missing credential" }), {
@@ -23,7 +24,7 @@ export const POST = async ({ request, cookies }) => {
       secure: Deno.env.get("COOKIE_SECURE") !== "false",
       sameSite: "lax",
       path: "/",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 30 * 24 * 60 * 60,
     });
 
     return new Response(JSON.stringify({ success: true }), {

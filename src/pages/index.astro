@@ -1,24 +1,19 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import db from '../utils/db.js';
-import ChoreList from '../components/ChoreList.jsx';
-import { ChoreModal } from '../components/ChoreModal.jsx';
+import ChoreList from "../components/ChoreList.tsx";
+import { ChoreModal } from "../components/ChoreModal.tsx";
+import Layout from "../layouts/Layout.astro";
+import type { Chore, ChoreRow } from "../types.ts";
+import { parseChoreRows } from "../types.ts";
+import db from "../utils/db.ts";
 
 const user = Astro.locals.user;
 
-let chores = [];
+let chores: Chore[] = [];
 if (user) {
-  const stmt = db.prepare('SELECT * FROM chores WHERE user_id = ? ORDER BY due_date');
-  chores = stmt.all(user.id).map((chore) => {
-    try {
-      if (chore && typeof chore.recurrence === "string") {
-        chore.recurrence = JSON.parse(chore.recurrence);
-      }
-    } catch (_e) {
-      // ignore
-    }
-    return chore;
-  });
+  const stmt = db.prepare(
+    "SELECT * FROM chores WHERE user_id = ? ORDER BY due_date",
+  );
+  chores = parseChoreRows(stmt.all(user.id) as unknown as ChoreRow[]);
 }
 ---
 
@@ -31,8 +26,10 @@ if (user) {
       </div>
       {user && <ChoreModal client:load />}
     </header>
-    
-    <main class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-[600px]">
+
+    <main
+      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-[600px]"
+    >
       {!user ? (
         <div class="p-8 text-center text-muted-text">
           <p>Please log in to view your chores.</p>

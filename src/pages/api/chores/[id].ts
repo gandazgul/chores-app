@@ -1,11 +1,51 @@
 import type { APIRoute } from "astro";
-import type { UserPayload } from "../../../utils/auth.ts";
-import db from "../../../utils/db.js";
+import type { ChoreRow, Recurrence } from "../../../types.ts";
+import { parseChoreRow, parseRecurrence } from "../../../types.ts";
+import db from "../../../utils/db.ts";
 import { calculateNextOccurrence } from "../../../utils/scheduleUtils.ts";
 
+interface ChoreUpdateInput {
+  title?: string;
+  description?: string | null;
+  rrule?: string | null;
+  done?: boolean;
+}
+
+function readUpdateInput(body: unknown): ChoreUpdateInput {
+  if (typeof body !== "object" || body === null) {
+    return {};
+  }
+
+  const record = body as Record<string, unknown>;
+  const input: ChoreUpdateInput = {};
+
+  if ("title" in record && typeof record.title === "string") {
+    input.title = record.title;
+  }
+  if ("description" in record) {
+    input.description = typeof record.description === "string"
+      ? record.description
+      : null;
+  }
+  if ("rrule" in record) {
+    input.rrule = typeof record.rrule === "string" ? record.rrule : null;
+  }
+  if ("done" in record && typeof record.done === "boolean") {
+    input.done = record.done;
+  }
+
+  return input;
+}
+
+function hasRRule(
+  recurrence: Recurrence | string | null,
+): recurrence is Recurrence {
+  return typeof recurrence === "object" && recurrence !== null &&
+    typeof recurrence.rrule === "string";
+}
+
 export const PUT: APIRoute = async ({ params, request, locals }) => {
-  // deno-lint-ignore no-explicit-any
-  const user = (locals as any).user as UserPayload | null;
+  const user = locals.user;
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -21,8 +61,9 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 
   try {
     const existingStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
-    // deno-lint-ignore no-explicit-any
-    const existingChore = existingStmt.get(id) as any;
+    const existingChore = existingStmt.get(id) as unknown as
+      | ChoreRow
+      | undefined;
 
     if (!existingChore) {
       return new Response(JSON.stringify({ error: "Chore not found" }), {
@@ -36,58 +77,65 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
-    const data = await request.json();
-    const { title, description, rrule, done } = data;
+    const data = readUpdateInput(await request.json());
 
+    let title = existingChore.title;
+    let description = existingChore.description;
     let dueDateStr = existingChore.due_date;
     let recurrenceJson = existingChore.recurrence;
-    let isDone = existingChore.done;
+    let isDone: boolean | number = existingChore.done;
 
-    if (title !== undefined) existingChore.title = title;
-    if (description !== undefined) existingChore.description = description;
+    if (data.title !== undefined) title = data.title;
+    if (data.description !== undefined) description = data.description;
 
-    if (rrule !== undefined) {
-      recurrenceJson = rrule ? JSON.stringify({ rrule }) : null;
-      if (rrule) {
-        const nextDueDate = calculateNextOccurrence(rrule);
+    if (data.rrule !== undefined) {
+      recurrenceJson = data.rrule
+        ? JSON.stringify({ rrule: data.rrule })
+        : null;
+      if (data.rrule) {
+        const nextDueDate = calculateNextOccurrence(data.rrule);
         dueDateStr = nextDueDate ? nextDueDate.toISOString() : null;
       } else {
         dueDateStr = null;
       }
     }
 
-    if (done !== undefined) {
-      isDone = done;
-      if (done) {
-        // Chore marked as completed
-        let parsedRecurrence = null;
-        try {
-          if (typeof recurrenceJson === "string") {
-            parsedRecurrence = JSON.parse(recurrenceJson);
-          } else {
-            parsedRecurrence = recurrenceJson;
-          }
-        } catch (_e) {
-          // ignore
-        }
+    if (data.done !== undefined) {
+      isDone = data.done;
+      if (data.done) {
+        const parsedRecurrence = parseRecurrence(recurrenceJson);
 
-        if (parsedRecurrence && parsedRecurrence.rrule) {
-          // Calculate next due date
+        if (hasRRule(parsedRecurrence)) {
           const nextDueDate = calculateNextOccurrence(
             parsedRecurrence.rrule,
             new Date(),
           );
           if (nextDueDate) {
-            dueDateStr = nextDueDate.toISOString();
-            // It resets to not done for the next occurrence
-            isDone = false;
+            const newChoreId = crypto.randomUUID();
+            db.prepare(`
+              INSERT INTO chores (id, user_id, title, description, due_date, recurrence, done)
+              VALUES (?, ?, ?, ?, ?, ?, 0)
+            `).run(
+              newChoreId,
+              existingChore.user_id,
+              title,
+              description,
+              nextDueDate.toISOString(),
+              recurrenceJson,
+            );
+
+            recurrenceJson = null;
+            isDone = 1;
+            dueDateStr = existingChore.due_date;
           }
         }
 
-        // Create completion log
         const logId = crypto.randomUUID();
         db.prepare(`INSERT INTO completion_logs (id, chore_id) VALUES (?, ?)`)
-          .run(logId, id);
+          .run(
+            logId,
+            id,
+          );
       }
     }
 
@@ -98,8 +146,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     `);
 
     updateStmt.run(
-      existingChore.title,
-      existingChore.description,
+      title,
+      description,
       dueDateStr,
       recurrenceJson,
       isDone ? 1 : 0,
@@ -107,21 +155,15 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     );
 
     const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
-    // deno-lint-ignore no-explicit-any
-    const updatedChore = getStmt.get(id) as any;
+    const updatedChore = getStmt.get(id) as unknown as ChoreRow | undefined;
 
-    try {
-      if (updatedChore && typeof updatedChore.recurrence === "string") {
-        updatedChore.recurrence = JSON.parse(updatedChore.recurrence);
-      }
-    } catch (_e) {
-      // ignore
-    }
-
-    return new Response(JSON.stringify(updatedChore), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify(updatedChore && parseChoreRow(updatedChore)),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   } catch (error) {
     console.error("Failed to update chore:", error);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
@@ -131,8 +173,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 };
 
 export const DELETE: APIRoute = ({ params, locals }) => {
-  // deno-lint-ignore no-explicit-any
-  const user = (locals as any).user as UserPayload | null;
+  const user = locals.user;
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -148,8 +189,9 @@ export const DELETE: APIRoute = ({ params, locals }) => {
 
   try {
     const existingStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
-    // deno-lint-ignore no-explicit-any
-    const existingChore = existingStmt.get(id) as any;
+    const existingChore = existingStmt.get(id) as unknown as
+      | ChoreRow
+      | undefined;
 
     if (!existingChore) {
       return new Response(JSON.stringify({ error: "Chore not found" }), {

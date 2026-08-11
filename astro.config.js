@@ -30,7 +30,7 @@ export default defineConfig({
   vite: {
     build: {
       rollupOptions: {
-        external: ["node:sqlite"],
+        external: ["node:sqlite", "@std/assert"],
       },
     },
     ssr: {

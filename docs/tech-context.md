@@ -20,29 +20,26 @@ architectural decision records in [`adr/`](adr/).
 
 ## Language
 
-Source is authored in JavaScript and JSX with types in JSDoc comments. Deno type
-checks it through the `checkJs` compiler option in `deno.json`.
-
-**This is changing.**
-[ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md) accepts
-TypeScript as the target language for all application source. The conversion has
-not started. Until it lands, expect JavaScript source, `checkJs` on, and the
-duplicate `.ts` files listed in that ADR still present and still dead.
+Application source is authored in TypeScript: `.ts` for middleware, utilities,
+and API routes, and `.tsx` for SolidJS islands. Shared row, recurrence, API, and
+session boundary types live in `src/types.ts`. Deno type checks TypeScript and
+TSX from `deno.json`; Astro frontmatter is checked through `astro check` and
+`tsconfig.json`. `checkJs` is no longer enabled.
 
 ## Development Setup
 
 Deno resolves every dependency from the `imports` map in `deno.json` against
 `deno.lock`. There is no install step for application code.
 
-| Task               | Command              | What it does                                                  |
-| ------------------ | -------------------- | ------------------------------------------------------------- |
-| Development server | `deno task dev`      | Astro dev server on port 8080                                 |
-| Seed the database  | `deno task db:setup` | Creates the tables and seeds a mock user and sample chores    |
-| Build              | `deno task build`    | Writes `dist/server/entry.mjs` and the client assets          |
-| Run the build      | `deno task start`    | Serves `dist/server/entry.mjs`                                |
-| Unit tests         | `deno task test`     | `deno test -A`                                                |
-| Full local gate    | `deno task ci`       | `deno lint && deno fmt --check && deno check && deno test -A` |
-| End-to-end tests   | `deno task test:e2e` | Playwright; starts `deno task dev` itself                     |
+| Task               | Command              | What it does                                                |
+| ------------------ | -------------------- | ----------------------------------------------------------- |
+| Development server | `deno task dev`      | Astro dev server on port 8080                               |
+| Seed the database  | `deno task db:setup` | Creates the tables and seeds a mock user and sample chores  |
+| Build              | `deno task build`    | Writes `dist/server/entry.mjs` and the client assets        |
+| Run the build      | `deno task start`    | Serves `dist/server/entry.mjs`                              |
+| Unit tests         | `deno task test`     | `deno test -A`                                              |
+| Full local gate    | `deno task ci`       | Lint, format check, Deno check, Astro check, and Deno tests |
+| End-to-end tests   | `deno task test:e2e` | Playwright; starts `deno task dev` itself                   |
 
 `deno task ci` is the gate to run before pushing. Nothing in continuous
 integration runs it — see [Continuous integration](#continuous-integration).
@@ -52,8 +49,7 @@ integration runs it — see [Continuous integration](#continuous-integration).
 ### `deno.json`
 
 - `imports` — the dependency map. It replaces `package.json` entirely.
-- `compilerOptions` — `checkJs: true`, `jsx: "react-jsx"`,
-  `jsxImportSource: "solid-js"`.
+- `compilerOptions` — `jsx: "react-jsx"` and `jsxImportSource: "solid-js"`.
 - `exclude` — `.astro`, `dist`, `.idea`, `scripts`, and several `old_*` paths
   are outside lint, format, and type check. Note that `scripts` is excluded, so
   `scripts/setup_db.js` is never type checked.
@@ -79,17 +75,12 @@ integration runs it — see [Continuous integration](#continuous-integration).
 ### `tsconfig.json`
 
 Extends `astro/tsconfigs/strict`, includes `.astro/types.d.ts` and everything
-else, and sets `jsx: "preserve"` with `jsxImportSource: "solid-js"`. This is an
-Astro scaffold artifact: it was created in the same commit as `deno.json`
-(`c7187fd`), and nothing in the current toolchain reads it. Deno's CLI and
-language server use the `compilerOptions` in `deno.json`, and no Astro language
-tooling (`@astrojs/check` or the Astro editor extension) is installed. Keep the
-file anyway: it becomes load-bearing in the TypeScript conversion (see
-[ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md)), because
-the Astro language server and `astro check` are the only tools that type-check
-`.astro` frontmatter, and they read only this file. Until the conversion
-reconciles them, the two files state the JSX settings separately and can drift —
-`deno.json` says `jsx: "react-jsx"`, this file says `preserve`.
+else, and sets `jsx: "preserve"` with `jsxImportSource: "solid-js"`. Deno's CLI
+and language server use the `compilerOptions` in `deno.json`. The Astro language
+server and `astro check` type-check `.astro` frontmatter through this file, and
+`astro check` runs in `deno task ci`. `deno.json` says `jsx: "react-jsx"`; this
+file says `jsx: "preserve"`. That difference is intentional because Deno and
+Astro have different JSX consumers, but both use `jsxImportSource: "solid-js"`.
 
 ## Styling
 
@@ -122,11 +113,11 @@ Read from `.env` in development through the `--env` flag on every task.
 
 | Variable           | Read by                                      | Effect                                                                   |
 | ------------------ | -------------------------------------------- | ------------------------------------------------------------------------ |
-| `ENABLE_AUTH`      | `src/middleware.js`                          | The exact string `false` injects a mock user and skips verification      |
-| `COOKIE_SECURE`    | `src/pages/api/auth/login.js`                | The exact string `false` drops the `Secure` flag from the session cookie |
-| `SESSION_SECRET`   | `src/utils/auth.js`                          | HS256 signing key for the session JWT                                    |
-| `GOOGLE_CLIENT_ID` | `src/utils/auth.js`, `src/pages/login.astro` | Audience for credential verification, and the Sign-In button             |
-| `DB_ENV`           | `src/utils/db.js`                            | Selects the database file: `test`, `production`, or anything else        |
+| `ENABLE_AUTH`      | `src/middleware.ts`                          | The exact string `false` injects a mock user and skips verification      |
+| `COOKIE_SECURE`    | `src/pages/api/auth/login.ts`                | The exact string `false` drops the `Secure` flag from the session cookie |
+| `SESSION_SECRET`   | `src/utils/auth.ts`                          | HS256 signing key for the session JWT                                    |
+| `GOOGLE_CLIENT_ID` | `src/utils/auth.ts`, `src/pages/login.astro` | Audience for credential verification, and the Sign-In button             |
+| `DB_ENV`           | `src/utils/db.ts`                            | Selects the database file: `test`, `production`, or anything else        |
 
 Both boolean flags compare against the exact string `false`, so a missing or
 misspelled value selects the safe behavior.
@@ -142,13 +133,13 @@ using them.
 - **Driver:** `node:sqlite` `DatabaseSync`, a Deno built-in. No third-party
   driver and no query builder. Queries are hand-written SQL through
   `db.prepare(...)` with bound parameters.
-- **Connection:** one shared handle, created at module load in `src/utils/db.js`
+- **Connection:** one shared handle, created at module load in `src/utils/db.ts`
   and exported as the default. Every server module imports it.
 - **Foreign keys:** enabled with `PRAGMA foreign_keys = ON` immediately after
   opening.
 - **File:** chosen by `DB_ENV` — `./chores.test.db`, `./chores.db`, or
   `./chores.dev.db` for development and any unset value.
-- **Migrations:** none. `src/utils/db.js` runs `CREATE TABLE IF NOT EXISTS` for
+- **Migrations:** none. `src/utils/db.ts` runs `CREATE TABLE IF NOT EXISTS` for
   all three tables at import. A column added later will not appear in an
   existing database file, because `IF NOT EXISTS` skips the whole statement.
   This is the main limitation of
@@ -186,15 +177,15 @@ and no code reads or writes them.
 
 ## Testing
 
-- **Unit and integration:** the Deno test runner. `src/utils/auth.test.js`,
-  `src/utils/scheduleUtils.test.js`, `src/pages/api/chores/chores.test.js`.
-- **End to end:** Playwright, configured in `playwright.config.js`. Chromium
-  only, base URL `http://127.0.0.1:8080`, and it starts `deno task dev` itself
-  through `webServer`. In continuous integration it retries twice and runs a
-  single worker. Specs live in `tests/e2e/`.
-- Duplicate `.test.ts` and `.spec.ts` copies of some of these files are still
-  tracked and still processed by `deno check` and `deno test`, and
-  `playwright.config.ts` sits next to `playwright.config.js`. See
+- **Unit and integration:** the Deno test runner. `src/utils/auth.test.ts`,
+  `src/utils/scheduleUtils.test.ts`, `src/pages/api/chores/chores.test.ts`.
+- **End to end:** Playwright, configured in `playwright.config.ts`. Chromium
+  only, base URL `http://127.0.0.1:8080`, and its `webServer` runs
+  `deno task db:setup` before starting `deno task dev` with `ENABLE_AUTH=false`.
+  In continuous integration it retries twice and runs a single worker. Specs
+  live in `tests/e2e/`.
+- There are no JavaScript test twins or duplicate Playwright configs left after
+  the TypeScript conversion in
   [ADR 0002](adr/0002-typescript-instead-of-javascript-with-jsdoc.md).
 
 ## Deployment
@@ -233,7 +224,7 @@ Two things carried over from that app and still shape the code:
 - Recurrence used `dayspan`. It was replaced by `rrule` during the migration —
   see [ADR 0005](adr/0005-recurring-chores-spawn-a-new-row-on-completion.md).
 - Fuzzy search lived in `fuzzySearchUtils.js`. In the current app the Fuse.js
-  instance is built inline in `ChoreList.jsx`; no such utility module exists.
+  instance is built inline in `ChoreList.tsx`; no such utility module exists.
 
 ## Project Hosting
 

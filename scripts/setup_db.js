@@ -1,4 +1,4 @@
-import db from '../src/utils/db.js';
+import db from "../src/utils/db.ts";
 
 console.log("Setting up the database...");
 

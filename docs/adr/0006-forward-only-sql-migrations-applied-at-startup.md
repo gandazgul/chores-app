@@ -19,22 +19,22 @@ There is no separate deployment pipeline that could run migrations out of band.
 
 ## Decision
 
-Adopt numbered, forward-only, hand-written SQL migrations, applied
-automatically when the server process starts, before it accepts requests.
+Adopt numbered, forward-only, hand-written SQL migrations, applied automatically
+when the server process starts, before it accepts requests.
 
 - Migrations live as numbered TypeScript modules whose bodies are hand-written
   SQL (for example `migrations/0001_baseline.ts`). A static registry imports
   them in order. This makes the Astro production bundle include every migration;
-  the runtime container does not need loose SQL files or filesystem discovery.
-  A `schema_migrations` ledger table records applied versions. On startup the
+  the runtime container does not need loose SQL files or filesystem discovery. A
+  `schema_migrations` ledger table records applied versions. On startup the
   runner applies every pending migration in order, each inside its own
   transaction.
-- Migration `0001` is the baseline: the current schema as it exists today.
-  Fresh databases and existing databases converge to the same schema through
-  the same chain. The `CREATE TABLE IF NOT EXISTS` bootstrap leaves
-  `src/utils/db.js`, and the duplicated DDL leaves `scripts/setup_db.js`; the
-  migration chain becomes the single source of schema truth. The seed task
-  keeps only its seed data.
+- Migration `0001` is the baseline: the current schema as it exists today. Fresh
+  databases and existing databases converge to the same schema through the same
+  chain. The `CREATE TABLE IF NOT EXISTS` bootstrap leaves `src/utils/db.js`,
+  and the duplicated DDL leaves `scripts/setup_db.js`; the migration chain
+  becomes the single source of schema truth. The seed task keeps only its seed
+  data.
 - Migration modules execute hand-written SQL through the same `node:sqlite`
   handle as the rest of the application. No migration framework and no query
   builder, per ADR 0003. The production-container verification must prove that
@@ -55,9 +55,9 @@ automatically when the server process starts, before it accepts requests.
   forgotten manual migration means a broken deploy. Startup application makes
   the running code and the schema it expects inseparable, which is safe
   precisely because there is exactly one writer.
-- **Up/down migrations.** Rejected. Down migrations are rarely tested and
-  rarely safe against data written after the up migration. Forward-only plus a
-  file backup is simpler and honest about what rollback means for SQLite.
+- **Up/down migrations.** Rejected. Down migrations are rarely tested and rarely
+  safe against data written after the up migration. Forward-only plus a file
+  backup is simpler and honest about what rollback means for SQLite.
 
 ## Consequences
 
@@ -72,11 +72,11 @@ automatically when the server process starts, before it accepts requests.
 
 **Bad or limiting**
 
-- A failed migration prevents the server from starting. With no down
-  migrations, recovery is restore-from-backup plus a fix-forward release.
-- Startup application is only safe with a single replica. If the deployment
-  ever scales beyond one writer, migration leadership must be revisited — but
-  SQLite already confines the application to one writer, so this adds no new
+- A failed migration prevents the server from starting. With no down migrations,
+  recovery is restore-from-backup plus a fix-forward release.
+- Startup application is only safe with a single replica. If the deployment ever
+  scales beyond one writer, migration leadership must be revisited — but SQLite
+  already confines the application to one writer, so this adds no new
   constraint.
 - Migration files accumulate and are never edited after merge; each one is an
   immutable historical record.

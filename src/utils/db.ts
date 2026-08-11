@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-let dbPath;
+let dbPath: string;
 switch (Deno.env.get("DB_ENV")) {
   case "test":
     dbPath = "./chores.test.db";
@@ -17,7 +17,6 @@ switch (Deno.env.get("DB_ENV")) {
 const db = new DatabaseSync(dbPath);
 db.exec("PRAGMA foreign_keys = ON;");
 
-// Ensure tables exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -48,5 +47,4 @@ db.exec(`
   );
 `);
 
-// Create helper functions that mirror simple Knex usage or keep it as-is for pure sql.
 export default db;

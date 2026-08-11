@@ -2,13 +2,21 @@
   "extends": "astro/tsconfigs/strict",
   "include": [
     ".astro/types.d.ts",
-    "**/*"
+    "src/**/*"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    "tests",
+    "scripts",
+    "playwright.config.ts",
+    "src/**/*.test.ts"
   ],
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+    "jsxImportSource": "solid-js",
+    "types": [
+      "deno",
+      "node"
+    ]
   }
 }

@@ -1,11 +1,60 @@
 import type { APIRoute } from "astro";
-import type { UserPayload } from "../../../utils/auth.ts";
-import db from "../../../utils/db.js";
+import type { ChoreRow } from "../../../types.ts";
+import { parseChoreRow, parseChoreRows } from "../../../types.ts";
+import db from "../../../utils/db.ts";
 import { calculateNextOccurrence } from "../../../utils/scheduleUtils.ts";
 
+interface ChoreCreateInput {
+  title?: string;
+  description?: string;
+  rrule?: string;
+}
+
+function readStringField(
+  input: Record<string, FormDataEntryValue | unknown>,
+  key: string,
+): string | undefined {
+  const value = input[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+async function readCreateInput(
+  request: Request,
+): Promise<{ data: ChoreCreateInput; isForm: boolean }> {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    const formData = await request.formData();
+    const entries = Object.fromEntries(formData.entries());
+    return {
+      data: {
+        title: readStringField(entries, "title"),
+        description: readStringField(entries, "description"),
+        rrule: readStringField(entries, "rrule"),
+      },
+      isForm: true,
+    };
+  }
+
+  const body: unknown = await request.json();
+  const record = typeof body === "object" && body !== null
+    ? body as Record<string, unknown>
+    : {};
+  return {
+    data: {
+      title: readStringField(record, "title"),
+      description: readStringField(record, "description"),
+      rrule: readStringField(record, "rrule"),
+    },
+    isForm: false,
+  };
+}
+
 export const GET: APIRoute = ({ locals }) => {
-  // deno-lint-ignore no-explicit-any
-  const user = (locals as any).user as UserPayload | null;
+  const user = locals.user;
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -14,24 +63,11 @@ export const GET: APIRoute = ({ locals }) => {
 
   try {
     const stmt = db.prepare(
-      `SELECT * FROM chores WHERE user_id = ? ORDER BY due_date ASC`,
+      `SELECT * FROM chores WHERE user_id = ? ORDER BY due_date`,
     );
-    // deno-lint-ignore no-explicit-any
-    const chores = stmt.all(user.id) as any[];
+    const chores = stmt.all(user.id) as unknown as ChoreRow[];
 
-    // Parse JSON columns if needed, SQLite returns them as strings usually if inserted as strings
-    const parsedChores = chores.map((chore) => {
-      try {
-        if (chore && typeof chore.recurrence === "string") {
-          chore.recurrence = JSON.parse(chore.recurrence);
-        }
-      } catch (_e) {
-        // ignore
-      }
-      return chore;
-    });
-
-    return new Response(JSON.stringify(parsedChores), {
+    return new Response(JSON.stringify(parseChoreRows(chores)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -43,9 +79,8 @@ export const GET: APIRoute = ({ locals }) => {
   }
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  // deno-lint-ignore no-explicit-any
-  const user = (locals as any).user as UserPayload | null;
+export const POST: APIRoute = async ({ request, locals, redirect }) => {
+  const user = locals.user;
   if (!user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -53,21 +88,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const data = await request.json();
+    const { data, isForm } = await readCreateInput(request);
     const { title, description, rrule } = data;
 
     if (!title) {
+      if (isForm) return redirect("/?error=Title+is+required", 302);
       return new Response(JSON.stringify({ error: "Title is required" }), {
         status: 400,
       });
     }
 
     const id = crypto.randomUUID();
-    let nextDueDate = null;
+    let nextDueDate: Date | null = null;
 
     if (rrule) {
       nextDueDate = calculateNextOccurrence(rrule);
       if (!nextDueDate) {
+        if (isForm) return redirect("/?error=Invalid+RRULE", 302);
         return new Response(JSON.stringify({ error: "Invalid RRULE" }), {
           status: 400,
         });
@@ -91,24 +128,22 @@ export const POST: APIRoute = async ({ request, locals }) => {
       recurrenceJson,
     );
 
-    const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
-    // deno-lint-ignore no-explicit-any
-    const newChore = getStmt.get(id) as any;
-
-    try {
-      if (newChore && typeof newChore.recurrence === "string") {
-        newChore.recurrence = JSON.parse(newChore.recurrence);
-      }
-    } catch (_e) {
-      // ignore
+    if (isForm) {
+      return redirect("/", 302);
     }
 
-    return new Response(JSON.stringify(newChore), {
+    const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
+    const newChore = getStmt.get(id) as unknown as ChoreRow | undefined;
+
+    return new Response(JSON.stringify(newChore && parseChoreRow(newChore)), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Failed to create chore:", error);
+    if (request.headers.get("content-type")?.includes("form")) {
+      return redirect("/?error=Internal+Server+Error", 302);
+    }
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
     });

@@ -1,12 +1,12 @@
-/** @jsxImportSource solid-js */
 import { createSignal } from "solid-js";
+import type { Chore } from "../types.ts";
 
-/**
- * @param {Object} props
- * @param {any} props.chore
- * @param {Function} [props.onUpdate]
- */
-export default function ChoreItem(props) {
+interface ChoreItemProps {
+  chore: Chore;
+  onUpdate?: (chore: Chore) => void;
+}
+
+export default function ChoreItem(props: ChoreItemProps) {
   const [isDone, setIsDone] = createSignal(!!props.chore.done);
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -17,7 +17,6 @@ export default function ChoreItem(props) {
     const previousState = isDone();
     const newState = !previousState;
 
-    // Optimistic UI update
     setIsDone(newState);
     setIsLoading(true);
     setError("");
@@ -35,18 +34,13 @@ export default function ChoreItem(props) {
         throw new Error("Failed to update chore");
       }
 
-      const updatedChore = await response.json();
-      // Server might have advanced the due date and set done to false for recurring chores
+      const updatedChore = await response.json() as Chore;
       setIsDone(!!updatedChore.done);
 
-      // We might want to trigger a refresh here if the server completely changed the chore,
-      // but for now, we just rely on the API response to set the correct isDone state.
-      // If the parent component needs to re-sort or re-render, we'd need a callback.
       if (props.onUpdate) {
         props.onUpdate(updatedChore);
       }
     } catch (err) {
-      // Revert optimistic update
       setIsDone(previousState);
       setError("Failed to update");
       console.error(err);
@@ -55,14 +49,14 @@ export default function ChoreItem(props) {
     }
   };
 
-  /**
-   * @param {string} rrule
-   */
-  const getRRuleFrequency = (rrule) => {
+  const getRRuleFrequency = (rrule: string) => {
     if (!rrule) return "Recurring";
     const match = rrule.match(/FREQ=([^;]+)/);
     return match ? match[1] : "Recurring";
   };
+
+  const recurrence = () =>
+    typeof props.chore.recurrence === "object" ? props.chore.recurrence : null;
 
   return (
     <li
@@ -111,7 +105,7 @@ export default function ChoreItem(props) {
             Due: {new Date(props.chore.due_date).toLocaleDateString()}
           </span>
         )}
-        {props.chore.recurrence?.rrule && (
+        {recurrence()?.rrule && (
           <span
             class={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1
             ${
@@ -122,7 +116,7 @@ export default function ChoreItem(props) {
           `}
           >
             <div class="i-mdi-sync w-3 h-3"></div>
-            {getRRuleFrequency(props.chore.recurrence.rrule)}
+            {getRRuleFrequency(recurrence()?.rrule ?? "")}
           </span>
         )}
       </div>

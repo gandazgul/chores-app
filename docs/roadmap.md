@@ -20,8 +20,8 @@ discussion of 2026-08-10, organized by milestone.
 - Displaying, adding, completing, and deleting chores.
 - Chore descriptions.
 - Data persistence in local SQLite via `node:sqlite`.
-- Recurring chores via `rrule`, including auto-advancing the next due date on
-  completion.
+- Recurring chores via `rrule`, including spawning the next occurrence as a new
+  row on completion.
 - Completion logging.
 - **Fuzzy search for chores** (Fuse.js, in `ChoreList`).
 - Error handling and validation.
@@ -38,8 +38,8 @@ Two claims in prior docs were wrong and are corrected here:
   use.
 - The former `IMPLEMENTATION_PLAN.md` described **Knex** as the database layer.
   The code uses raw `node:sqlite` (`DatabaseSync`) with no query builder. That
-  file is now deleted; what was still true in it moved into `techContext.md` and
-  the ADRs.
+  file is now deleted; what was still true in it moved into `tech-context.md`
+  and the ADRs.
 
 ### Known gaps in the current build
 
@@ -68,9 +68,9 @@ These are facts about the code today, not planned work:
   visibility filter; there is no assignee.
 - **`priority` is dead weight** — the column is written by nobody and displayed
   nowhere.
-- **Repo hygiene:** duplicate `.ts`/`.js` twins (`scheduleUtils`, `[id]`,
-  `chores.test`, `playwright.config`), a stale `old_app/` directory, and a
-  committed `chores.dev.db`.
+- **TypeScript baseline:** application source, Solid islands, tests, and the
+  Playwright config are canonical TypeScript. `deno task ci` includes Deno type
+  checking and Astro frontmatter checking.
 
 ---
 
@@ -101,25 +101,18 @@ These decisions frame every milestone below.
 
 Clears the ground before the first real schema change.
 
-1. Dead TypeScript duplicates are tracked in git — index.ts, [id].ts,
-   scheduleUtils.ts, two .test.ts, and core-journey.spec.ts. Astro resolves the
-   .js files, so the .ts copies never run, but deno check and deno test still
-   process them. Their content has already diverged. Recorded under "Known
-   drift" in ADR 0002; they should be deleted.
-2. New Google users cannot create a chore. chores.user_id has a foreign key to
+1. New Google users cannot create a chore. chores.user_id has a foreign key to
    users (id), and no code path ever inserts a users row. Only the seeded mock
    user works. In ADR 0004.
-3. Completion is not transactional and un-completing is lossy. Marking a
+2. Completion is not transactional and un-completing is lossy. Marking a
    recurring chore done runs three separate statements with no transaction, and
    toggling it back to not-done leaves the spawned occurrence in place while the
    cleared recurrence is never restored — the chore silently stops recurring. In
    ADR 0005.
 
-- completion_logs currently stores id, chore_id, completed_at
-  (src/utils/db.js:44-48). It records that a chore got done, but not what it was
-  due at the time — and since recurring chores advance their due_date on
-  completion (src/pages/api/chores/[id].js:107), the due date it was closing out
-  is gone the moment it's written.
+- completion_logs currently stores id, chore_id, completed_at. It records that a
+  chore got done, but not what it was due at the time, so the log does not
+  record which due date it closed.
 
   That's a one-column addition, and P0 is already building the migration
   mechanism, so it costs almost nothing to fold in. Do it and every completion
@@ -129,12 +122,10 @@ Clears the ground before the first real schema change.
 
 - Establish a **migration mechanism**. This is the prerequisite for everything
   in P1; without it, adding a column strands every existing database.
-- Remove the committed `chores.dev.db` — a stale-schema database in git is
-  actively dangerous the day migrations begin.
-- Resolve the duplicate `.ts`/`.js` twins (`scheduleUtils`, `[id]`,
-  `chores.test`, `playwright.config`).
-- Delete the stale `old_app/` directory.
-- Fold in the documentation corrections noted above.
+- Keep generated SQLite database files out of git — a stale-schema database in
+  git is actively dangerous the day migrations begin.
+- Fold in any documentation corrections discovered while implementing the P0
+  changes.
 - **Rename the product to Tow.** Settled 2026-08-10 — see
   [product-brief.md](product-brief.md#identity). Touches `public/manifest.json`,
   `src/layouts/Layout.astro`, `src/pages/login.astro`, `README.md`, and the icon

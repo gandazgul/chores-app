@@ -1,23 +1,25 @@
-/** @jsxImportSource solid-js */
+// deno-lint-ignore-file jsx-key -- Solid renders this local array with `.map()` to preserve the existing list pattern.
 import { createMemo, createSignal } from "solid-js";
 import Fuse from "fuse.js";
-import ChoreItem from "./ChoreItem.jsx";
+import type { Chore } from "../types.ts";
+import ChoreItem from "./ChoreItem.tsx";
 
-/**
- * @param {Object} props
- * @param {any[]} [props.initialChores]
- */
-export default function ChoreList(props) {
+interface ChoreListProps {
+  initialChores?: Chore[];
+}
+
+export default function ChoreList(props: ChoreListProps) {
   const [searchQuery, setSearchQuery] = createSignal("");
+  const chores = () => props.initialChores || [];
 
-  const fuse = new Fuse(props.initialChores || [], {
+  const fuse = new Fuse(chores(), {
     keys: ["title", "description"],
     threshold: 0.3,
   });
 
   const filteredChores = createMemo(() => {
     if (!searchQuery().trim()) {
-      return props.initialChores || [];
+      return chores();
     }
     const results = fuse.search(searchQuery());
     return results.map((result) => result.item);
@@ -34,8 +36,7 @@ export default function ChoreList(props) {
             type="text"
             placeholder="Search chores..."
             value={searchQuery()}
-            /** @param {any} e */
-            onInput={(e) => setSearchQuery(e.currentTarget.value)}
+            onInput={(event) => setSearchQuery(event.currentTarget.value)}
             class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
           />
         </div>
@@ -51,9 +52,7 @@ export default function ChoreList(props) {
             </li>
           )
           : (
-            filteredChores().map((/** @type {any} */ chore) => (
-              <ChoreItem chore={chore} />
-            ))
+            filteredChores().map((chore) => <ChoreItem chore={chore} />)
           )}
       </ul>
     </div>

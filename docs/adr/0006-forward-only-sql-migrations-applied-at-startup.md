@@ -31,10 +31,16 @@ when the server process starts, before it accepts requests.
   transaction.
 - Migration `0001` is the baseline: the current schema as it exists today. Fresh
   databases and existing databases converge to the same schema through the same
-  chain. The `CREATE TABLE IF NOT EXISTS` bootstrap leaves `src/utils/db.js`,
+  chain. The `CREATE TABLE IF NOT EXISTS` bootstrap leaves `src/utils/db.ts`,
   and the duplicated DDL leaves `scripts/setup_db.js`; the migration chain
   becomes the single source of schema truth. The seed task keeps only its seed
   data.
+- Migration history is strict. Startup rejects a ledger version that the running
+  binary does not know, and rejects a recorded version/name pair that no longer
+  matches the static registry. A current database with application tables but no
+  ledger is accepted only after migration `0001` validates the required columns,
+  primary keys, and foreign keys without losing rows. Partial or incompatible
+  pre-ledger schemas stop startup instead of being marked current.
 - Migration modules execute hand-written SQL through the same `node:sqlite`
   handle as the rest of the application. No migration framework and no query
   builder, per ADR 0003. The production-container verification must prove that

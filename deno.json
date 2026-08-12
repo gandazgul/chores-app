@@ -31,7 +31,8 @@
     "test": "deno test -A",
     "ci": "deno lint && deno fmt --check && deno check && deno run -A --env npm:astro check && deno test -A",
     "db:setup": "deno run -A scripts/setup_db.js",
-    "test:e2e": "deno run -A npm:playwright test"
+    "test:e2e": "deno run -A npm:playwright test",
+    "test:production-lifecycle": "deno test -A tests/production_lifecycle.ts"
   },
   "fmt": {
     "exclude": [

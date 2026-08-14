@@ -24,7 +24,7 @@
   },
   "tasks": {
     "dev": "deno run -A --env npm:astro dev",
-    "start": "deno run -A --env dist/server/entry.mjs",
+    "start": "deno run -A --env scripts/start_production.ts",
     "build": "deno run -A --env npm:astro build",
     "preview": "deno run -A --env npm:astro preview",
     "astro": "deno run -A --env npm:astro",

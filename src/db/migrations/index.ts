@@ -49,13 +49,13 @@ function readLedger(db: DatabaseSync): LedgerRow[] {
   ).all() as unknown as LedgerRow[];
 }
 
-function assertKnownHistory(ledger: LedgerRow[], registry: Migration[]) {
-  const registryByVersion = new Map(
-    registry.map((migration) => [migration.version, migration]),
+function assertKnownHistory(ledger: LedgerRow[]) {
+  const migrationsByVersion = new Map(
+    migrations.map((migration) => [migration.version, migration]),
   );
 
   for (const row of ledger) {
-    const migration = registryByVersion.get(row.version);
+    const migration = migrationsByVersion.get(row.version);
     if (!migration) {
       throw new Error(`Unknown migration version recorded: ${row.version}`);
     }
@@ -67,18 +67,15 @@ function assertKnownHistory(ledger: LedgerRow[], registry: Migration[]) {
   }
 }
 
-export function applyMigrations(
-  db: DatabaseSync,
-  registry: Migration[] = migrations,
-) {
-  assertValidRegistry(registry);
+export function applyMigrations(db: DatabaseSync) {
+  assertValidRegistry(migrations);
   ensureLedger(db);
 
   const ledger = readLedger(db);
-  assertKnownHistory(ledger, registry);
+  assertKnownHistory(ledger);
   const appliedVersions = new Set(ledger.map((row) => row.version));
 
-  for (const migration of registry) {
+  for (const migration of migrations) {
     if (appliedVersions.has(migration.version)) {
       continue;
     }

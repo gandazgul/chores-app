@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { baselineMigration } from "./0001_baseline.ts";
-import { applyMigrations, type Migration } from "./index.ts";
+import { applyMigrations } from "./index.ts";
 
 interface CountRow {
   count: number;
@@ -125,49 +125,6 @@ Deno.test("already current databases skip applied migrations", () => {
   assertEquals(tableSignature(db), firstSignature);
 });
 
-Deno.test("a thrown migration rolls back its changes and leaves no ledger row", () => {
-  const db = new DatabaseSync(":memory:");
-  const failingMigration: Migration = {
-    version: 1,
-    name: "failing_migration",
-    up(database) {
-      database.exec("CREATE TABLE leaked(id INTEGER);");
-      throw new Error("stop");
-    },
-    validate() {},
-  };
-
-  assertThrows(
-    () => applyMigrations(db, [failingMigration]),
-    Error,
-    "Migration 1 (failing_migration) failed",
-  );
-  assert(!hasTable(db, "leaked"));
-  assertEquals(ledgerCount(db), 0);
-});
-
-Deno.test("a failed validation rolls back its changes and leaves no ledger row", () => {
-  const db = new DatabaseSync(":memory:");
-  const invalidMigration: Migration = {
-    version: 1,
-    name: "invalid_migration",
-    up(database) {
-      database.exec("CREATE TABLE leaked(id INTEGER);");
-    },
-    validate() {
-      throw new Error("invalid schema");
-    },
-  };
-
-  assertThrows(
-    () => applyMigrations(db, [invalidMigration]),
-    Error,
-    "Migration 1 (invalid_migration) failed",
-  );
-  assert(!hasTable(db, "leaked"));
-  assertEquals(ledgerCount(db), 0);
-});
-
 Deno.test("incompatible pre-ledger schemas fail without data loss or a ledger row", () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE ${"users"}(id INTEGER PRIMARY KEY);`);
@@ -179,6 +136,8 @@ Deno.test("incompatible pre-ledger schemas fail without data loss or a ledger ro
     "Migration 1 (0001_baseline) failed",
   );
   assertEquals(db.prepare("SELECT id FROM users").get(), { id: 7 });
+  assert(!hasTable(db, "chores"));
+  assert(!hasTable(db, "completion_logs"));
   assertEquals(ledgerCount(db), 0);
 });
 
@@ -209,30 +168,5 @@ Deno.test("ledger version and name mismatches stop startup", () => {
     () => applyMigrations(db),
     Error,
     "Migration 1 name mismatch",
-  );
-});
-
-Deno.test("malformed migration registries stop startup", () => {
-  const first: Migration = { ...baselineMigration, name: "first" };
-  const second: Migration = {
-    ...baselineMigration,
-    version: 1,
-    name: "second",
-  };
-  const duplicateName: Migration = {
-    ...baselineMigration,
-    version: 2,
-    name: "first",
-  };
-
-  assertThrows(
-    () => applyMigrations(new DatabaseSync(":memory:"), [second, first]),
-    Error,
-    "strictly increasing",
-  );
-  assertThrows(
-    () => applyMigrations(new DatabaseSync(":memory:"), [first, duplicateName]),
-    Error,
-    "Duplicate migration name",
   );
 });

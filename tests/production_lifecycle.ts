@@ -133,6 +133,16 @@ function createLegacyDatabase(path: string) {
   db.close();
 }
 
+function createIncompatibleDatabase(path: string) {
+  const db = new DatabaseSync(path);
+  db.exec(`
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY
+    );
+  `);
+  db.close();
+}
+
 function assertMigrated(path: string, expectSentinel: boolean) {
   const db = new DatabaseSync(path);
   const ledger = db.prepare("SELECT version, name FROM schema_migrations")
@@ -180,6 +190,11 @@ async function startContainer(
 
 async function cleanupContainer(docker: string, name: string) {
   await runCommand(docker, ["rm", "--force", name], { check: false });
+}
+
+async function readContainerLogs(docker: string, name: string) {
+  const result = await runCommand(docker, ["logs", name], { check: false });
+  return `${result.stdout}${result.stderr}`;
 }
 
 Deno.test({
@@ -230,33 +245,23 @@ Deno.test({
       assertMigrated(legacyDb, true);
       await cleanupContainer(docker, legacyContainer);
 
-      const lockedDb = `${tempDir}/locked.db`;
-      createLegacyDatabase(lockedDb);
-      await Deno.chmod(lockedDb, 0o666);
-      const lock = new DatabaseSync(lockedDb);
-      lock.exec("BEGIN EXCLUSIVE;");
-      const lockedContainer = `chores-prod-locked-${id}`;
-      containers.push(lockedContainer);
-      const lockedPort = allocatePort();
-      try {
-        await startContainer(
-          docker,
-          image,
-          lockedContainer,
-          lockedDb,
-          lockedPort,
-        );
-        await assertNoHttp(lockedPort);
-        lock.exec("COMMIT;");
-        lock.close();
-        await waitForHttp(lockedPort);
-        assertMigrated(lockedDb, true);
-      } finally {
-        try {
-          lock.close();
-        } catch {
-          // The lock can already be closed after the normal path.
-        }
+      const incompatibleDb = `${tempDir}/incompatible.db`;
+      createIncompatibleDatabase(incompatibleDb);
+      await Deno.chmod(incompatibleDb, 0o666);
+      const incompatibleContainer = `chores-prod-incompatible-${id}`;
+      containers.push(incompatibleContainer);
+      const incompatiblePort = allocatePort();
+      await startContainer(
+        docker,
+        image,
+        incompatibleContainer,
+        incompatibleDb,
+        incompatiblePort,
+      );
+      await assertNoHttp(incompatiblePort, 4_000);
+      const logs = await readContainerLogs(docker, incompatibleContainer);
+      if (!logs.includes("Migration 1 (0001_baseline) failed")) {
+        throw new Error(`container did not report migration failure\n${logs}`);
       }
     } finally {
       for (const container of containers) {

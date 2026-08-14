@@ -17,7 +17,7 @@ objectiveCheckWaivers:
 executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T12:07:51-04:00"
-updatedAt: "2026-08-14T04:35:24.452Z"
+updatedAt: "2026-08-14T04:40:02.457Z"
 status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
@@ -25,7 +25,7 @@ order: 2
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
 implementedAt: "2026-08-12T18:09:35.834Z"
-verifiedAt: "2026-08-14T04:35:24.452Z"
+verifiedAt: "2026-08-14T04:40:02.457Z"
 userVerifiedAt: null
 executionReport: "- Implemented static startup migrations: `src/db/migrations/index.ts` imports `0001_baseline.ts`, applies pending migrations transactionally, and enforces strict ledger version/name history.\n- Moved application-table DDL out of `src/utils/db.ts` and `scripts/setup_db.js`; `db.ts` now enables foreign keys and applies migrations before export, and setup now seeds only.\n- Added direct migration coverage for fresh, legacy, idempotent, rollback, validation failure, partial-schema, unknown-version, name-mismatch, and malformed-registry behavior.\n- Added production lifecycle coverage and `deno task test:production-lifecycle`; it builds the actual container and verifies fresh, legacy, and lock-gated readiness cases.\n- Updated ADR 0006 with the strict migration-history policy.\n- Verification passed: `deno task ci` (18 Deno tests; +9 direct migration tests, no tests removed) and `deno task test:production-lifecycle` (1 Docker/Podman lifecycle test)."
 humanReviewMode: "ask"
@@ -35,7 +35,7 @@ executionMode: "worktree"
 deliveryEvidence:
   version: 1
   mode: "worktree_merge"
-  executionCommit: "8f829105e408b3792d5a197c40f8bfae6f21a238"
+  executionCommit: "9526c620d200554dd47670d2e3056d315a0cb8b7"
   targetBranch: "main"
   targetHeadBeforeMerge: "03e0eed7dc8ced0d9609ac1649a7602658327679"
 validationCiAttempts: 0

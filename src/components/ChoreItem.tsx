@@ -69,7 +69,7 @@ export default function ChoreItem(props: ChoreItemProps) {
           type="button"
           onClick={handleToggle}
           disabled={isLoading()}
-          class={`w-6 h-6 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center
+          class={`w-6 h-6 rounded-sm border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center
             ${
             isDone()
               ? "bg-green-500 border-green-500 text-white"
@@ -107,7 +107,7 @@ export default function ChoreItem(props: ChoreItemProps) {
         )}
         {recurrence()?.rrule && (
           <span
-            class={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1
+            class={`text-xs px-2 py-0.5 flex items-center gap-1
             ${
               isDone()
                 ? "bg-gray-100 text-gray-400"

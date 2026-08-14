@@ -48,7 +48,7 @@ test.describe("Core Journey", () => {
       expect(completeRes.status()).toBe(200);
       const updatedChore = await completeRes.json() as ChoreResponse;
       expect(updatedChore.done).toBe(1);
-      expect(updatedChore.recurrence).toBeNull();
+      expect(updatedChore.recurrence).toEqual({ rrule: "FREQ=DAILY" });
 
       const afterCompleteRes = await request.get("/api/chores");
       const choresAfterComplete = await afterCompleteRes

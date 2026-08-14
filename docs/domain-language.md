@@ -1,10 +1,15 @@
-# Chores App Domain Language
+# Tow Domain Language
 
-This glossary covers the implemented household chore management product:
+This glossary covers Tow, the implemented household chore management product:
 authenticated users manage their own chores, optionally schedule chores to
 recur, and record completions.
 
 ## Language
+
+### Product
+
+**Tow**: The implemented household chore management product. The name belongs to
+the product surface. It does not rename chore-management domain concepts.
 
 ### Chore Management
 
@@ -45,8 +50,3 @@ date.
 **Session**: The signed-in state that lets a user access their chores.
 
 **Mock User**: The local development user used when authentication is disabled.
-
-## Open Language Questions
-
-- **Product name**: Existing materials use both “Chores App” and “Tow”; until
-  resolved, use “Chores App” for the implemented product and UI.

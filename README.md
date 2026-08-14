@@ -1,11 +1,11 @@
-# Chores App
+# Tow
 
-A simple and efficient application to manage your daily tasks and chores.
+Tow is a household chore app for steady recurring chore management.
 
 ## Features
 
-- Add, edit, and delete tasks
-- Mark tasks as complete
+- Add, edit, and delete chores
+- Mark chores as complete
 - User authentication
 
 ## Project Structure
@@ -65,8 +65,8 @@ This will run the built production application on `http://localhost:8080`.
 
 ## Contributing
 
-We welcome contributions to the Chores App! If you'd like to contribute, please
-follow these guidelines:
+We welcome contributions to Tow. If you'd like to contribute, please follow
+these guidelines:
 
 ### Reporting Bugs
 

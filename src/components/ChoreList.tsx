@@ -26,7 +26,7 @@ export default function ChoreList(props: ChoreListProps) {
   });
 
   return (
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col min-h-[calc(100vh-113px)]">
       <div class="p-4 border-b border-gray-100 flex gap-4 items-center">
         <div class="relative flex-grow">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -37,12 +37,12 @@ export default function ChoreList(props: ChoreListProps) {
             placeholder="Search chores..."
             value={searchQuery()}
             onInput={(event) => setSearchQuery(event.currentTarget.value)}
-            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
+            class="block w-full pl-10 pr-3 py-2 border border-gray-300 leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
           />
         </div>
       </div>
 
-      <ul class="divide-y divide-gray-100 flex-grow overflow-y-auto">
+      <ul class="divide-y divide-gray-100 flex-grow">
         {filteredChores().length === 0
           ? (
             <li class="p-8 text-center text-muted-text">

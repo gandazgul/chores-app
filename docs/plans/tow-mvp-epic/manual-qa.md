@@ -54,3 +54,31 @@ tow-mvp-epic/03-make-occurrence-resolution-transactional-and-reversible
       log rows are created.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/03-make-occurrence-resolution-transactional-and-reversible" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/04-rename-the-product-to-tow" -->
+
+## Rename the Product to Tow
+
+Manual verification steps for tow-mvp-epic/04-rename-the-product-to-tow
+
+- [ ] Open home page `http://127.0.0.1:8080` with auth off. Confirm the browser
+      title, shared header, page heading, subtitle, footer text, and logo alt
+      text all use `Tow`, and the heading line is `Tow` with subtitle
+      `STEADY HOUSEHOLD MANAGEMENT`.
+- [ ] Open the home page in desktop and mobile view. Check that the Tow mark is
+      centered, not stretched or clipped, and does not create horizontal or
+      nested scroll bars.
+- [ ] Open `http://127.0.0.1:8080/login` with auth on. Confirm the screen shows
+      `Tow` title and logo text, and the existing Google sign-in control still
+      works as before.
+- [ ] Open browser developer tools and inspect `/manifest.json`. Confirm `name`
+      is `Tow`, `short_name` is `Tow`, `theme_color` is `#005f6a`, and 192x192
+      and 512x512 manifest icon entries point to valid icon files.
+- [ ] In the same browser, open each linked icon URL (favicon, touch icon,
+      manifest icons) and confirm each one loads, has the correct media type,
+      and shows the new circular Tow mark that is readable at small sizes.
+- [ ] Manually check `README.md` and `docs/domain-language.md` to ensure current
+      product naming says `Tow` and old labels like `Chores App` are removed
+      from user-facing descriptions and glossary.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/04-rename-the-product-to-tow" -->

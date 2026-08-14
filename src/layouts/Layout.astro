@@ -4,35 +4,35 @@ import 'uno.css';
 ---
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="w-full min-h-screen bg-primary-bg">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chores App</title>
+    <title>Tow</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#005f6a" />
-    <meta name="description" content="Manage household chores with constant reminders." />
+    <meta name="description" content="Steady household management for recurring chores." />
   </head>
-  <body class="bg-primary-bg text-primary-text font-sans min-h-screen">
+  <body class="bg-primary-bg text-primary-text font-sans w-full min-h-screen overflow-x-hidden">
     <header class="bg-primary text-white p-4 shadow-md">
       <div class="container mx-auto max-w-4xl flex justify-between items-center">
         <a href="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
-          <img src="/icon.png" alt="Chores App Logo" class="w-8 h-8 rounded-lg shadow-sm" />
-          <h1 class="text-2xl font-bold">Chores</h1>
+          <img src="/icon.png" alt="Tow logo" class="w-8 h-8 rounded-lg shadow-sm" />
+          <h1 class="text-2xl font-bold">Tow</h1>
         </a>
       </div>
     </header>
-    
-    <main class="container mx-auto max-w-4xl p-4 mt-4">
+
+    <main class="w-full min-h-screen">
       <slot />
     </main>
-    
-    <footer class="text-center text-muted-text mt-12 pb-8">
-      <p>&copy; {new Date().getFullYear()} Chores App Astro Editon</p>
+
+    <footer class="text-center text-muted-text pb-8">
+      <p>&copy; {new Date().getFullYear()} Tow</p>
     </footer>
   </body>
 </html>

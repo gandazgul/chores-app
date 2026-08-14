@@ -25,6 +25,7 @@ order: 11
 dependencies:
   - "10-record-the-nag-policy-adr"
   - "06-restore-csrf-protection-for-browser-mutations"
+planId: "4a8f2fec-cd40-4405-b703-e70904823fda"
 ---
 
 # Add Gotify Tokens and Notification Port

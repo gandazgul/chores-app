@@ -16,6 +16,7 @@ parentPlan: "tow-mvp-epic"
 order: 10
 dependencies:
   - "09-add-whats-next-board-and-pool-views"
+planId: "c05fe6ab-21e3-4ea4-89e2-2368a78bbac2"
 ---
 
 # Record the Nag Policy ADR

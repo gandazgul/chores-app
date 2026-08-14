@@ -1,4 +1,5 @@
 ---
+planId: "ca02a7de-3f3a-45a8-8d3f-e6777891e0fe"
 classification: "PLANNED_CHANGE"
 workKind: "FEATURE"
 complexity: "MEDIUM"
@@ -11,15 +12,42 @@ affectedPaths:
   - "deno.json"
   - "Containerfile"
   - "docs/adr/0006-forward-only-sql-migrations-applied-at-startup.md"
+objectiveCheckWaivers:
+  []
 executionAgent: "engineer"
-createdAt: "2026-08-10T16:07:51.263Z"
-updatedAt: "2026-08-10T16:07:51.263Z"
-status: "draft"
+collaborationRecommendation: "autonomous"
+createdAt: "2026-08-10T12:07:51-04:00"
+updatedAt: "2026-08-14T04:17:56.798Z"
+status: "validated_ci"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 2
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
+implementedAt: "2026-08-12T18:09:35.834Z"
+userVerifiedAt: null
+executionReport: "- Implemented static startup migrations: `src/db/migrations/index.ts` imports `0001_baseline.ts`, applies pending migrations transactionally, and enforces strict ledger version/name history.\n- Moved application-table DDL out of `src/utils/db.ts` and `scripts/setup_db.js`; `db.ts` now enables foreign keys and applies migrations before export, and setup now seeds only.\n- Added direct migration coverage for fresh, legacy, idempotent, rollback, validation failure, partial-schema, unknown-version, name-mismatch, and malformed-registry behavior.\n- Added production lifecycle coverage and `deno task test:production-lifecycle`; it builds the actual container and verifies fresh, legacy, and lock-gated readiness cases.\n- Updated ADR 0006 with the strict migration-history policy.\n- Verification passed: `deno task ci` (18 Deno tests; +9 direct migration tests, no tests removed) and `deno task test:production-lifecycle` (1 Docker/Podman lifecycle test)."
+humanReviewMode: null
+humanReviewDecision: null
+validationCheckpoint:
+  version: 1
+  attemptId: "0c5a70d7"
+  generation: "0fae6191-a9d3-4d2e-bc0f-a4f080778f42"
+  expectedStatus: "implemented"
+  nextPhase: "mechanical"
+  state: "running"
+  ownerPid: 62277
+  ownerHostname: "gandazgul-mbp"
+  updatedAt: "2026-08-14T04:17:53.638Z"
+executionMode: "worktree"
+executionBaselineTree: "ace6cbf70319ebdb42465f936769bb9b1f75c8be"
+worktreeId: "0c5a70d7"
+worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-02-add-forward-only-startup-migrati-0c5a70d7"
+worktreeBranch: "worktree/tow-mvp-epic-02-add-forward-only-startup-migrati-0c5a70d7"
+worktreeBaseBranch: "main"
+worktreeStatus: "validation_failed"
+validationCiAttempts: 0
+validationSemanticRounds: 0
 ---
 
 # Add Forward-Only Startup Migrations

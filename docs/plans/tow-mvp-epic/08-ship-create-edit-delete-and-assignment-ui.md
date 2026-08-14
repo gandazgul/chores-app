@@ -21,6 +21,7 @@ parentPlan: "tow-mvp-epic"
 order: 8
 dependencies:
   - "07-add-household-assignment-model-and-apis"
+planId: "5f73eaf7-5810-4637-8fd6-5af0c28b1d07"
 ---
 
 # Ship Create Edit Delete and Assignment UI

@@ -17,28 +17,29 @@ objectiveCheckWaivers:
 executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T12:07:51-04:00"
+updatedAt: "2026-08-14T04:35:24.452Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 2
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
 implementedAt: "2026-08-12T18:09:35.834Z"
+verifiedAt: "2026-08-14T04:35:24.452Z"
 userVerifiedAt: null
 executionReport: "- Implemented static startup migrations: `src/db/migrations/index.ts` imports `0001_baseline.ts`, applies pending migrations transactionally, and enforces strict ledger version/name history.\n- Moved application-table DDL out of `src/utils/db.ts` and `scripts/setup_db.js`; `db.ts` now enables foreign keys and applies migrations before export, and setup now seeds only.\n- Added direct migration coverage for fresh, legacy, idempotent, rollback, validation failure, partial-schema, unknown-version, name-mismatch, and malformed-registry behavior.\n- Added production lifecycle coverage and `deno task test:production-lifecycle`; it builds the actual container and verifies fresh, legacy, and lock-gated readiness cases.\n- Updated ADR 0006 with the strict migration-history policy.\n- Verification passed: `deno task ci` (18 Deno tests; +9 direct migration tests, no tests removed) and `deno task test:production-lifecycle` (1 Docker/Podman lifecycle test)."
-executionMode: "worktree"
-executionBaselineTree: "ace6cbf70319ebdb42465f936769bb9b1f75c8be"
-worktreeId: "0c5a70d7"
-worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-02-add-forward-only-startup-migrati-0c5a70d7"
-worktreeBranch: "worktree/tow-mvp-epic-02-add-forward-only-startup-migrati-0c5a70d7"
-worktreeBaseBranch: "main"
-worktreeStatus: "validation_failed"
-validationCiAttempts: 0
-validationCheckpoint: null
-validationSemanticRounds: 2
-status: "validated_reviewer"
-updatedAt: "2026-08-14T04:35:19.628Z"
 humanReviewMode: "ask"
 humanReviewDecision: "skipped"
+validationCheckpoint: null
+executionMode: "worktree"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "8f829105e408b3792d5a197c40f8bfae6f21a238"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "03e0eed7dc8ced0d9609ac1649a7602658327679"
+validationCiAttempts: 0
+validationSemanticRounds: 2
 ---
 
 # Add Forward-Only Startup Migrations

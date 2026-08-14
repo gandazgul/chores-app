@@ -8,19 +8,21 @@ affectedPaths:
   - "public/"
   - "docs/icon.png"
   - "docs/icon1.png"
+  - "docs/icon_transparent.png"
   - "src/layouts/Layout.astro"
   - "src/pages/login.astro"
   - "src/pages/index.astro"
   - "README.md"
   - "docs/domain-language.md"
-  - "uno.config.*"
+  - "tests/e2e/branding.spec.ts"
+  - "uno.config.js"
 executionAgent: "frontend-engineer"
 collaborationRecommendation: "pair"
 devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:51.536Z"
-updatedAt: "2026-08-10T16:07:51.536Z"
+updatedAt: "2026-08-14T12:07:43-04:00"
 status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
@@ -45,26 +47,57 @@ domain language. Keep theme color in sync with existing design settings.
 
 ## Approach
 
-Update copy and metadata in one focused change. Regenerate or replace public
-icon sizes from the candidate source art in `docs/icon.png` or `docs/icon1.png`.
-Close the Product name open question only when the app itself says Tow.
+Update copy and metadata in one focused change. Use the user-approved
+`docs/icon_transparent.png` as the source of truth for every public icon. Put
+the 637x648 source on a centered 648x648 transparent canvas before resizing so
+no output stretches or clips the circular mark. Use the already available pinned
+`npm:sharp@0.34.5` image pipeline with `fit: "contain"` and a fully transparent
+background, so generation and pixel-level verification are reproducible. Close
+the Product name open question only when the app itself says Tow.
+
+The visible change is:
+
+```text
+Before: Chores App / Chores / My Chores
+After:  Tow
+        STEADY HOUSEHOLD MANAGEMENT
+```
+
+Keep `#005f6a` as the primary and browser theme color. The set-aside option was
+the detailed `docs/icon.png` wordmark; it is less legible at favicon size and
+does not match the approved circular mark in `docs/system-design.md`.
 
 ## Files to Modify
 
 - `public/manifest.json` — update `name`, `short_name`, and keep `theme_color`
   aligned with design tokens.
-- `public/` icon files — regenerate or replace favicon and touch-icon assets
-  from the chosen source art.
-- `docs/icon.png` and `docs/icon1.png` — use as candidate source art; modify
-  only if the chosen source needs documentation changes.
-- `src/layouts/Layout.astro` — update document title and shared product copy.
-- `src/pages/login.astro` — update sign-in copy to Tow.
-- `src/pages/index.astro` — update header to Tow and subtitle to
-  `STEADY HOUSEHOLD MANAGEMENT`.
-- `README.md` — update product name and description.
-- `docs/domain-language.md` — close the Product name open question in the same
-  change.
-- `uno.config.*` — check theme color source of truth if needed.
+- `public/icon.png`, `public/android-chrome-192x192.png`,
+  `public/android-chrome-512x512.png`, `public/apple-touch-icon.png`,
+  `public/favicon-16x16.png`, `public/favicon-32x32.png`, and
+  `public/favicon.ico` — replace the old chore-calendar artwork with outputs
+  derived from the approved transparent Tow mark. `public/icon.png` is 648x648;
+  the other PNG dimensions stay encoded in their filenames/link declarations;
+  the ICO keeps at least its 16x16 and 32x32 entries.
+- `docs/icon_transparent.png` — retain the user-provided approved source art in
+  version control. Preserve the user's current `docs/icon.png` modification and
+  `docs/icon1.png` removal; do not overwrite or recreate either file.
+- `src/layouts/Layout.astro` — update the document title, logo alternative text,
+  shared header name, and footer product copy; keep the manifest and icon links.
+- `src/pages/login.astro` — update the logo alternative text and sign-in heading
+  to Tow.
+- `src/pages/index.astro` — replace the old page heading and task-oriented
+  subtitle with `Tow` and `STEADY HOUSEHOLD MANAGEMENT`.
+- `README.md` — use Tow in the title, introduction, and contribution copy;
+  describe household chores without renaming repository, package, or container
+  identifiers.
+- `docs/domain-language.md` — rename the glossary for Tow, define Tow as the
+  implemented product name, and remove the Product name open question in the
+  same change.
+- `tests/e2e/branding.spec.ts` — protect the document title, visible home-page
+  brand copy, manifest names/colors/icon entries, and public icon responses.
+- `uno.config.js` — remains the design-token source used to verify that manifest
+  and page metadata keep the primary `#005f6a`; change it only if consistency
+  requires it.
 
 ## Reuse Opportunities
 
@@ -73,39 +106,84 @@ Existing functions, modules, or patterns to reuse:
 - Existing layout and page structure — update copy without changing navigation
   behavior.
 - Existing UnoCSS theme values — keep manifest color aligned.
-- Existing icon candidate files in `docs/` — use them as source art.
+- `docs/icon_transparent.png` — use the approved transparent Tow mark as the
+  only generation source; do not independently crop each output.
+- `tests/e2e/core-journey.spec.ts` and `playwright.config.ts` — follow the
+  existing Playwright server and assertion patterns for the branding regression
+  test.
 
 ## Implementation Steps
 
-- [ ] Browser-visible app shell, login page, and default page use the product
-      name Tow.
-- [ ] The default page header says `Tow` and the subtitle says
-      `STEADY HOUSEHOLD MANAGEMENT`.
-- [ ] `public/manifest.json` has Tow `name` and `short_name`, and its theme
-      color matches the app theme.
-- [ ] Public favicon and touch-icon assets show the chosen Tow icon source at
-      the required sizes.
-- [ ] `README.md` describes the project as Tow.
-- [ ] `docs/domain-language.md` no longer has the Product name open question and
-      defines the implemented name Tow.
-- [ ] The rename does not change auth, chores, recurrence, or data behavior.
+- [ ] `src/layouts/Layout.astro`, `src/pages/login.astro`, and
+      `src/pages/index.astro` contain no browser-visible `Chores App`, `Chores`
+      brand label, or old logo alternative text; they render Tow instead.
+- [ ] The default page heading is `Tow` and its adjacent subtitle is exactly
+      `STEADY HOUSEHOLD MANAGEMENT`; chore-domain labels remain plain and are
+      not changed to nautical metaphors.
+- [ ] `public/manifest.json` has `name` and `short_name` equal to `Tow`, keeps
+      `theme_color` equal to the UnoCSS primary color `#005f6a`, and continues
+      to declare the 192x192 and 512x512 PNG icons.
+- [ ] Every referenced public logo, favicon, touch icon, and manifest icon is
+      derived from `docs/icon_transparent.png` through one Sharp `contain`
+      pipeline, has its declared pixel size (`public/icon.png` is 648x648),
+      preserves the mark's aspect ratio on a transparent square canvas, and is
+      recognizable in the header and at 16x16 favicon size.
+- [ ] `README.md` describes the household chore product as Tow while the
+      `chores-app` repository path, Deno package name, and container examples
+      remain compatible.
+- [ ] `docs/domain-language.md` defines **Tow** as the implemented product name,
+      uses Tow in its title and scope, removes the Product name open question,
+      and keeps **Chore**, **Done**, and other domain terms unchanged.
+- [ ] `tests/e2e/branding.spec.ts` fails against the pre-rename UI and protects
+      the Tow document title, home heading/subtitle, manifest values, and HTTP
+      availability and media types of all linked icon assets.
+- [ ] Auth, chore, recurrence, persistence, API, and navigation behavior are
+      unchanged.
+
+## Approval Confirmation
+
+No completed Work Record is materially replaced by this Plan, so `supersedes` is
+intentionally omitted.
 
 ## Verification Plan
 
 - Automated: `deno task ci`.
-- Automated: `deno task test:e2e`.
-- Manual headed browser check: run `deno task dev`, open
-  `http://127.0.0.1:8080`, and confirm the app header, subtitle, document title,
-  and login page use Tow.
-- Manual PWA check: inspect the manifest and installed-app metadata in the
-  browser and confirm the Tow name and icon are used.
-- Expected result: the glossary describes implemented behavior and does not keep
-  the old product-name uncertainty.
+- Automated: `deno task test:e2e tests/e2e/branding.spec.ts` for the focused
+  branding regression, then `deno task test:e2e` for the full browser suite.
+- Automated asset assertions in the branding test: request `/manifest.json` and
+  every linked icon, assert successful image responses and declared manifest
+  values, and read each PNG's intrinsic dimensions in the page where practical.
+- Headed home-page check: start `ENABLE_AUTH=false deno task dev`, open
+  `http://127.0.0.1:8080`, and confirm the tab title, shared header, page
+  heading/subtitle, footer, and logo alternative text use Tow. Check desktop and
+  a mobile viewport; the mark must not stretch, clip, or become illegible.
+- Headed login check: start without a session under `ENABLE_AUTH=true`, open
+  `http://127.0.0.1:8080/login`, and confirm the Tow heading and logo while the
+  existing Google sign-in control and failure behavior remain unchanged.
+- Manual Progressive Web App (PWA) check: inspect the manifest in browser
+  developer tools and, where browser support permits, install or preview the
+  app. Confirm the installed name is Tow and the 192x192/512x512 artwork is the
+  approved circular mark.
+- Expected result: product surfaces and the glossary agree that Tow is the
+  implemented name. Existing chore-management browser tests still protect the
+  behavior that must remain. No product behavior is expected to stop existing.
 
 ## Edge Cases & Considerations
 
-- Do not rename technical identifiers such as package names unless they are
-  user-facing or required by metadata.
-- Keep neutral product language. Do not add scorekeeping or verdict language.
-- Pairing is recommended because icon choice and visual polish benefit from live
-  judgment.
+- The user's current `docs/icon.png`, `docs/icon1.png`, and
+  `docs/icon_transparent.png` working-tree changes are authoritative inputs.
+  Preserve them; generation work only replaces assets under `public/`.
+- Center the non-square transparent source on a 648x648 transparent canvas
+  before resize. Do not stretch it to square or crop the tug/towed object. Use
+  `npm:sharp@0.34.5`, which is already available in this Deno dependency graph;
+  do not add a separate image library or commit a generation script for this
+  one-time asset conversion.
+- Do not rename technical identifiers such as the `chores-app` package,
+  repository directory/URL, image tag, database names, or deployment resources.
+- “Chores App” can remain in historical documents that explicitly identify the
+  former working title. It must not remain in current UI, README branding, or
+  implemented glossary language.
+- Keep neutral product language. Do not add scorekeeping, verdict language, or
+  nautical aliases for established domain terms.
+- Pairing is recommended because favicon legibility and installed-app rendering
+  need live visual judgment.

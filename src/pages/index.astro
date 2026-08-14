@@ -22,15 +22,12 @@ if (user) {
     <header
       class="bg-[#e6f3f5] border-b border-[#c7e3e8] shadow-sm p-4 flex items-center justify-between gap-4"
     >
-      <a href="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
-        <img src="/icon.png" alt="Tow logo" class="w-10 h-10 shadow-sm" />
-        <div>
-          <h1 class="text-2xl font-bold text-primary-text leading-tight">Tow</h1>
-          <p class="text-primary text-sm tracking-wide font-semibold">
-            STEADY HOUSEHOLD MANAGEMENT
-          </p>
-        </div>
-      </a>
+      <div>
+        <h1 class="text-2xl font-bold text-primary-text leading-tight">Tow</h1>
+        <p class="text-primary text-sm tracking-wide font-semibold">
+          STEADY HOUSEHOLD MANAGEMENT
+        </p>
+      </div>
       {user && <ChoreModal client:load />}
     </header>
 

@@ -29,11 +29,23 @@ test.describe("Tow branding", () => {
     await expect(page).toHaveTitle("Tow");
     await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
       .toBeVisible();
-    await expect(page.getByRole("heading", { name: "Tow" })).toHaveCount(1);
+    await expect(page.locator("main").getByRole("heading", { name: "Tow" }))
+      .toHaveCount(1);
     await expect(page.getByText("STEADY HOUSEHOLD MANAGEMENT")).toBeVisible();
     await expect(page.getByRole("button", { name: "New Chore" })).toBeVisible();
     await expect(page.getByAltText("Tow logo")).toHaveCount(1);
     await expect(page.getByText(/Chores App|My Chores/)).toHaveCount(0);
+  });
+
+  test("login page keeps the shared Tow navigation", async ({ page }) => {
+    await page.goto("/login");
+
+    await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
+      .toBeVisible();
+    await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
+      .toHaveAttribute("href", "/");
+    await expect(page.getByRole("heading", { name: "Tow" })).toHaveCount(2);
+    await expect(page.getByText(/Chores App/)).toHaveCount(0);
   });
 
   test("manifest advertises Tow with the app theme color and icons", async ({ request }) => {

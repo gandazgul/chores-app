@@ -18,6 +18,15 @@ import 'uno.css';
     <meta name="description" content="Steady household management for recurring chores." />
   </head>
   <body class="bg-primary-bg text-primary-text font-sans w-full min-h-screen overflow-x-hidden">
+    <header class="bg-primary text-white p-4 shadow-md">
+      <div class="container mx-auto max-w-4xl flex justify-between items-center">
+        <a href="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <img src="/icon.png" alt="Tow logo" class="w-8 h-8 rounded-lg shadow-sm" />
+          <h1 class="text-2xl font-bold">Tow</h1>
+        </a>
+      </div>
+    </header>
+
     <main class="w-full min-h-screen">
       <slot />
     </main>

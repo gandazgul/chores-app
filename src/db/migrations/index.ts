@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { baselineMigration } from "./0001_baseline.ts";
 import { occurrenceResolutionMigration } from "./0002_occurrence_resolution.ts";
+import { userNamesMigration } from "./0003_user_names.ts";
 
 export interface Migration {
   version: number;
@@ -17,6 +18,7 @@ interface LedgerRow {
 const migrations: Migration[] = [
   baselineMigration,
   occurrenceResolutionMigration,
+  userNamesMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

@@ -13,13 +13,13 @@ affectedPaths:
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:51.677Z"
 updatedAt: "2026-08-10T16:07:51.677Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 5
 dependencies:
   - "02-add-forward-only-startup-migrations"
 planId: "69ccb553-9641-4d35-b948-e0dedb949128"
+status: "ready_for_work"
 ---
 
 # Provision Household Users Behind an Allowlist

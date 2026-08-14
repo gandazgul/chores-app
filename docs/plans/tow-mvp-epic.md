@@ -18,6 +18,7 @@ updatedAt: "2026-08-10T16:07:53.501Z"
 status: "ready_for_work"
 origin: "internal"
 userVerifiedAt: null
+planId: "95aab844-6647-4148-981b-84c6b832368a"
 ---
 
 # Tow MVP Epic — Foundations, Household, Notifications (P0 + P1 + P3)

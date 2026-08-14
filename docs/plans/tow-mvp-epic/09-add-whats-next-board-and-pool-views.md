@@ -22,6 +22,7 @@ parentPlan: "tow-mvp-epic"
 order: 9
 dependencies:
   - "08-ship-create-edit-delete-and-assignment-ui"
+planId: "2106dd1c-e649-4dd4-8633-e6e4101226a3"
 ---
 
 # Add Whats Next Board and Pool Views

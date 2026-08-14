@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+staged_files="$(mktemp)"
+trap 'rm -f "$staged_files"' EXIT
+
+git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.(css|html|js|jsx|json|jsonc|md|markdown|ts|tsx|yaml|yml)$' \
+  > "$staged_files" || true
+
+if [ ! -s "$staged_files" ]; then
+  exit 0
+fi
+
+while IFS= read -r file; do
+  output="$(deno fmt "$file" 2>&1)" || {
+    status=$?
+    if printf '%s\n' "$output" | grep -q 'No target files found.'; then
+      continue
+    fi
+    printf '%s\n' "$output" >&2
+    exit "$status"
+  }
+  [ -z "$output" ] || printf '%s\n' "$output"
+  git add "$file"
+done < "$staged_files"

@@ -20,3 +20,15 @@ playwright-report/
 
 # Editor directories and files
 .DS_Store
+# BEGIN RunWield owned runtime state
+.wld/plan-locks
+.wld/plan-transitions
+.wld/plan-backups
+.wld/plan-staging
+.wld/worktrees
+.wld/debug
+.wld/worktrees.json
+.wld/worktrees.lock
+.wld/worktree-registry-migration-issues.json
+.wld/collaboration-secrets.json
+# END RunWield owned runtime state

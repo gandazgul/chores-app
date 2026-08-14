@@ -2,7 +2,8 @@ import db from "../src/utils/db.ts";
 
 console.log("Setting up the database...");
 
-const choreCount = db.prepare("SELECT COUNT(*) AS count FROM chores").get()?.count || 0;
+const choreCount =
+  db.prepare("SELECT COUNT(*) AS count FROM chores").get()?.count || 0;
 
 if (choreCount === 0) {
   const seedUserId = "r0wk2VvPQFhW7bpLpq3MxMhjodD2";

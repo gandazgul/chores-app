@@ -21,6 +21,7 @@ order: 7
 dependencies:
   - "05-provision-household-users-behind-an-allowlist"
   - "06-restore-csrf-protection-for-browser-mutations"
+planId: "9423fd18-e4b9-4c41-988a-b750e9a2eb02"
 ---
 
 # Add Household Assignment Model and APIs

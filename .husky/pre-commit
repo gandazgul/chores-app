@@ -12,5 +12,15 @@ if [ ! -s "$staged_files" ]; then
   exit 0
 fi
 
-xargs -I {} deno fmt "{}" < "$staged_files"
-xargs -I {} git add "{}" < "$staged_files"
+while IFS= read -r file; do
+  if ! output="$(deno fmt "$file" 2>&1)"; then
+    if printf '%s\n' "$output" | grep -q 'No target files found'; then
+      continue
+    fi
+
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+
+  git add "$file"
+done < "$staged_files"

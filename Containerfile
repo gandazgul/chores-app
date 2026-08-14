@@ -18,8 +18,10 @@ FROM denoland/deno:latest
 
 WORKDIR /app
 
-# Copy production artifacts and config from builder
+# Copy production artifacts, startup migration code, and config from builder
 COPY --from=builder --chown=deno:deno /app/dist ./dist
+COPY --from=builder --chown=deno:deno /app/src ./src
+COPY --from=builder --chown=deno:deno /app/scripts/start_production.ts ./scripts/start_production.ts
 COPY --from=builder --chown=deno:deno /app/deno.json ./deno.json
 COPY --from=builder --chown=deno:deno /app/deno.lock ./deno.lock
 
@@ -33,4 +35,4 @@ EXPOSE 8080
 ENV PORT=8080
 ENV HOST=0.0.0.0
 
-CMD ["run", "-A", "--env", "dist/server/entry.mjs"]
+CMD ["task", "start"]

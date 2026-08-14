@@ -24,14 +24,15 @@
   },
   "tasks": {
     "dev": "deno run -A --env npm:astro dev",
-    "start": "deno run -A --env dist/server/entry.mjs",
+    "start": "deno run -A --env scripts/start_production.ts",
     "build": "deno run -A --env npm:astro build",
     "preview": "deno run -A --env npm:astro preview",
     "astro": "deno run -A --env npm:astro",
     "test": "deno test -A",
     "ci": "deno lint && deno check && deno run -A --env npm:astro check && deno test -A",
     "db:setup": "deno run -A scripts/setup_db.js",
-    "test:e2e": "deno run -A npm:playwright test"
+    "test:e2e": "deno run -A npm:playwright test",
+    "test:production-lifecycle": "deno test -A tests/production_lifecycle.ts"
   },
   "fmt": {
     "exclude": [

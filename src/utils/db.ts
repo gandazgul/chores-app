@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { applyMigrations } from "../db/migrations/index.ts";
 
 let dbPath: string;
 switch (Deno.env.get("DB_ENV")) {
@@ -14,37 +15,8 @@ switch (Deno.env.get("DB_ENV")) {
     break;
 }
 
-const db = new DatabaseSync(dbPath);
+const db = new DatabaseSync(dbPath, { timeout: 10_000 });
 db.exec("PRAGMA foreign_keys = ON;");
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS chores (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    title TEXT NOT NULL,
-    description TEXT,
-    priority INTEGER,
-    done BOOLEAN DEFAULT 0,
-    due_date TIMESTAMP,
-    remind_until_done BOOLEAN DEFAULT 0,
-    notification_sent_at TIMESTAMP,
-    recurrence JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS completion_logs (
-    id TEXT PRIMARY KEY,
-    chore_id TEXT NOT NULL REFERENCES chores(id) ON DELETE CASCADE,
-    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+applyMigrations(db);
 
 export default db;

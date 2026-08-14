@@ -22,6 +22,10 @@ const MOCK_LOCALS = { user: MOCK_USER };
 const OTHER_LOCALS = { user: OTHER_USER };
 const UNAUTH_LOCALS = { user: null };
 
+interface CountRow {
+  count: number;
+}
+
 function ensureUser(user: UserPayload) {
   db.prepare("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)").run(
     user.id,
@@ -46,6 +50,24 @@ function context(fields: Partial<APIContext>): APIContext {
 
 function redirect(path: string, status = 302): Response {
   return new Response(null, { status, headers: { location: path } });
+}
+
+function jsonPut(id: string, body: unknown, user: UserPayload = MOCK_USER) {
+  return PUT(
+    context({
+      params: { id },
+      request: new Request(`http://localhost/api/chores/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      locals: { user },
+    }),
+  ) as Promise<Response>;
+}
+
+function count(sql: string, ...params: Array<string | number | null>): number {
+  return Number((db.prepare(sql).get(...params) as unknown as CountRow).count);
 }
 
 Deno.test({
@@ -82,6 +104,8 @@ Deno.test({
       assertEquals(postRes.status, 201);
       const createdChore = await postRes.json() as Chore;
       assertEquals(createdChore.title, "Test Chore");
+      assertEquals(createdChore.status, "open");
+      assertEquals(createdChore.revision, 0);
       assertEquals(
         typeof createdChore.recurrence === "object" &&
           createdChore.recurrence?.rrule,
@@ -95,23 +119,25 @@ Deno.test({
       assertEquals(choresList.length, 1);
       assertEquals(choresList[0].id, choreId);
 
-      const putReq = new Request(`http://localhost/api/chores/${choreId}`, {
-        method: "PUT",
-        body: JSON.stringify({ title: "Updated Chore", done: true }),
+      const putRes = await jsonPut(choreId, {
+        title: "Updated Chore",
+        done: true,
       });
-      const putRes = await PUT(
-        context({
-          params: { id: choreId },
-          request: putReq,
-          locals: MOCK_LOCALS,
-        }),
-      ) as Response;
       assertEquals(putRes.status, 200);
       const updatedChore = await putRes.json() as Chore;
       assertEquals(updatedChore.title, "Updated Chore");
       assertEquals(updatedChore.done, 1);
-      assertEquals(updatedChore.recurrence, null);
+      assertEquals(updatedChore.status, "completed");
+      assertEquals(updatedChore.revision, 1);
+      assertEquals(
+        typeof updatedChore.recurrence === "object" &&
+          updatedChore.recurrence?.rrule,
+        "FREQ=DAILY",
+      );
       assertEquals(updatedChore.due_date, createdChore.due_date);
+
+      const retryRes = await jsonPut(choreId, { done: true });
+      assertEquals(retryRes.status, 200);
 
       const logs = db.prepare(
         "SELECT * FROM completion_logs WHERE chore_id = ?",
@@ -119,9 +145,16 @@ Deno.test({
       assertEquals(logs.length, 1);
 
       const spawnedRows = db.prepare(
-        "SELECT * FROM chores WHERE user_id = ? AND id != ?",
+        "SELECT * FROM chores WHERE user_id = ? AND recurrence_parent_id = ?",
       ).all(MOCK_USER.id, choreId);
       assertEquals(spawnedRows.length, 1);
+
+      const openGetRes = await GET(
+        context({ locals: MOCK_LOCALS }),
+      ) as Response;
+      const openChores = await openGetRes.json() as Chore[];
+      assertEquals(openChores.length, 1);
+      assertEquals(openChores[0].status, "open");
 
       const deleteRes = await DELETE(
         context({ params: { id: choreId }, locals: MOCK_LOCALS }),
@@ -133,6 +166,66 @@ Deno.test({
       ) as Response;
       const finalChores = await finalGetRes.json() as Chore[];
       assertEquals(finalChores.length, 1);
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name: "Chores API returns conflict when a touched successor blocks reversal",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    try {
+      db.prepare(`
+        INSERT INTO chores (id, user_id, title, recurrence, due_date)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        "api-parent",
+        MOCK_USER.id,
+        "Parent",
+        JSON.stringify({ rrule: "FREQ=DAILY" }),
+        "2030-01-01T00:00:00.000Z",
+      );
+
+      assertEquals((await jsonPut("api-parent", { done: true })).status, 200);
+      const child = db.prepare(
+        "SELECT id FROM chores WHERE recurrence_parent_id = ?",
+      ).get("api-parent") as { id: string } | undefined;
+      assertExists(child);
+      assertEquals(
+        (await jsonPut(child.id, { title: "Touched Child" })).status,
+        200,
+      );
+
+      const beforeParent = db.prepare("SELECT * FROM chores WHERE id = ?").get(
+        "api-parent",
+      );
+      const beforeLogs = count(
+        "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+        "api-parent",
+      );
+
+      const conflictRes = await jsonPut("api-parent", {
+        title: "Should Not Apply",
+        done: false,
+      });
+
+      assertEquals(conflictRes.status, 409);
+      assertEquals(
+        db.prepare("SELECT * FROM chores WHERE id = ?").get("api-parent"),
+        beforeParent,
+      );
+      assertEquals(
+        count(
+          "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+          "api-parent",
+        ),
+        beforeLogs,
+      );
     } finally {
       cleanup();
     }

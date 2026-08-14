@@ -10,6 +10,7 @@ export interface Recurrence {
 }
 
 export type SQLiteBoolean = 0 | 1;
+export type ChoreStatus = "open" | "completed" | "skipped";
 
 export interface ChoreRow {
   id: string;
@@ -22,6 +23,9 @@ export interface ChoreRow {
   remind_until_done: SQLiteBoolean;
   notification_sent_at: string | null;
   recurrence: string | null;
+  status: ChoreStatus;
+  recurrence_parent_id: string | null;
+  revision: number;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +34,7 @@ export interface CompletionLogRow {
   id: string;
   chore_id: string;
   completed_at: string;
+  due_at: string | null;
 }
 
 export interface Chore extends Omit<ChoreRow, "recurrence"> {

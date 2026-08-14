@@ -56,11 +56,20 @@ function foreignKeySignature(
   };
 }
 
+function columnNames(db: DatabaseSync, table: string): string[] {
+  return (db.prepare(`PRAGMA table_info(${table})`)
+    .all() as unknown as TableInfoRow[]).map((row) => row.name);
+}
+
+function count(db: DatabaseSync, sql: string): number {
+  return Number((db.prepare(sql).get() as unknown as CountRow).count);
+}
+
 function makeLegacyBaseline(db: DatabaseSync) {
   baselineMigration.up(db);
 }
 
-Deno.test("fresh databases receive the baseline schema and one ledger row", () => {
+Deno.test("fresh databases receive occurrence-resolution schema and ledger rows", () => {
   const db = new DatabaseSync(":memory:");
   applyMigrations(db);
 
@@ -69,11 +78,14 @@ Deno.test("fresh databases receive the baseline schema and one ledger row", () =
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 1);
-  baselineMigration.validate(db);
+  assertEquals(ledgerCount(db), 2);
+  assert(columnNames(db, "chores").includes("status"));
+  assert(columnNames(db, "chores").includes("recurrence_parent_id"));
+  assert(columnNames(db, "chores").includes("revision"));
+  assert(columnNames(db, "completion_logs").includes("due_at"));
 });
 
-Deno.test("current legacy databases keep data and converge to the fresh schema", () => {
+Deno.test("baseline databases keep data, backfill status, and converge", () => {
   const fresh = new DatabaseSync(":memory:");
   applyMigrations(fresh);
 
@@ -85,32 +97,112 @@ Deno.test("current legacy databases keep data and converge to the fresh schema",
     "legacy@example.com",
   );
   legacy.prepare(
-    "INSERT INTO chores (id, user_id, title, done) VALUES (?, ?, ?, ?)",
-  ).run("legacy-chore", "legacy-user", "Legacy Chore", 0);
+    "INSERT INTO chores (id, user_id, title, done, due_date) VALUES (?, ?, ?, ?, ?)",
+  ).run(
+    "open-chore",
+    "legacy-user",
+    "Open Chore",
+    0,
+    "2030-01-01T00:00:00.000Z",
+  );
+  legacy.prepare(
+    "INSERT INTO chores (id, user_id, title, done, due_date) VALUES (?, ?, ?, ?, ?)",
+  ).run(
+    "done-chore",
+    "legacy-user",
+    "Done Chore",
+    1,
+    "2030-01-02T00:00:00.000Z",
+  );
   legacy.prepare("INSERT INTO completion_logs (id, chore_id) VALUES (?, ?)")
-    .run(
-      "legacy-log",
-      "legacy-chore",
-    );
+    .run("legacy-log", "done-chore");
 
   applyMigrations(legacy);
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 1);
+  assertEquals(ledgerCount(legacy), 2);
   assertEquals(
-    legacy.prepare("SELECT email FROM users WHERE id = ?").get("legacy-user"),
-    { email: "legacy@example.com" },
+    legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
+      "open-chore",
+    ),
+    { status: "open", revision: 0 },
   );
   assertEquals(
-    legacy.prepare("SELECT title FROM chores WHERE id = ?").get("legacy-chore"),
-    { title: "Legacy Chore" },
+    legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
+      "done-chore",
+    ),
+    { status: "completed", revision: 0 },
   );
   assertEquals(
-    legacy.prepare("SELECT chore_id FROM completion_logs WHERE id = ?").get(
+    legacy.prepare("SELECT due_at FROM completion_logs WHERE id = ?").get(
       "legacy-log",
     ),
-    { chore_id: "legacy-chore" },
+    { due_at: "2030-01-02T00:00:00.000Z" },
+  );
+});
+
+Deno.test("occurrence constraints reject invalid states and duplicate links", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON;");
+  applyMigrations(db);
+  db.prepare("INSERT INTO users (id, email) VALUES (?, ?)").run("u", "u@x");
+  db.prepare("INSERT INTO chores (id, user_id, title) VALUES (?, ?, ?)").run(
+    "parent",
+    "u",
+    "Parent",
+  );
+  db.prepare(
+    "INSERT INTO chores (id, user_id, title, recurrence_parent_id) VALUES (?, ?, ?, ?)",
+  ).run("child", "u", "Child", "parent");
+  db.prepare("INSERT INTO completion_logs (id, chore_id) VALUES (?, ?)").run(
+    "log",
+    "parent",
+  );
+
+  assertThrows(
+    () =>
+      db.prepare("UPDATE chores SET status = 'bad' WHERE id = 'parent'")
+        .run(),
+    Error,
+  );
+  assertThrows(
+    () =>
+      db.prepare("UPDATE chores SET revision = -1 WHERE id = 'parent'")
+        .run(),
+    Error,
+  );
+  assertThrows(
+    () =>
+      db.prepare(
+        "INSERT INTO chores (id, user_id, title, recurrence_parent_id) VALUES (?, ?, ?, ?)",
+      ).run("child-two", "u", "Child Two", "parent"),
+    Error,
+  );
+  assertThrows(
+    () =>
+      db.prepare("INSERT INTO completion_logs (id, chore_id) VALUES (?, ?)")
+        .run("log-two", "parent"),
+    Error,
+  );
+});
+
+Deno.test("recurrence parent foreign key is set null when a parent is deleted", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON;");
+  applyMigrations(db);
+  db.exec(`
+    INSERT INTO users (id, email) VALUES ('u', 'u@x');
+    INSERT INTO chores (id, user_id, title) VALUES ('parent', 'u', 'Parent');
+    INSERT INTO chores (id, user_id, title, recurrence_parent_id)
+      VALUES ('child', 'u', 'Child', 'parent');
+    DELETE FROM chores WHERE id = 'parent';
+  `);
+
+  assertEquals(
+    db.prepare("SELECT recurrence_parent_id FROM chores WHERE id = 'child'")
+      .get(),
+    { recurrence_parent_id: null },
   );
 });
 
@@ -121,7 +213,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 1);
+  assertEquals(ledgerCount(db), 2);
   assertEquals(tableSignature(db), firstSignature);
 });
 
@@ -169,4 +261,22 @@ Deno.test("ledger version and name mismatches stop startup", () => {
     Error,
     "Migration 1 name mismatch",
   );
+});
+
+Deno.test("duplicate legacy completion logs fail migration without deleting data", () => {
+  const db = new DatabaseSync(":memory:");
+  makeLegacyBaseline(db);
+  db.exec(`
+    INSERT INTO users (id, email) VALUES ('u', 'u@x');
+    INSERT INTO chores (id, user_id, title) VALUES ('c', 'u', 'Chore');
+    INSERT INTO completion_logs (id, chore_id) VALUES ('l1', 'c');
+    INSERT INTO completion_logs (id, chore_id) VALUES ('l2', 'c');
+  `);
+
+  assertThrows(
+    () => applyMigrations(db),
+    Error,
+    "Migration 2 (0002_occurrence_resolution) failed",
+  );
+  assertEquals(count(db, "SELECT COUNT(*) AS count FROM completion_logs"), 2);
 });

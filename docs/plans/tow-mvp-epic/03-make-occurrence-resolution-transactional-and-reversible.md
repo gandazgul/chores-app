@@ -1,4 +1,5 @@
 ---
+planId: "c3f82a42-2189-47ad-9fc7-a8d0ffe54116"
 classification: "PLANNED_CHANGE"
 workKind: "BUG_FIX"
 complexity: "MEDIUM"
@@ -10,16 +11,34 @@ affectedPaths:
   - "src/utils/db.*"
   - "tests/**"
   - "docs/adr/0005-recurring-chores-spawn-a-new-row-on-completion.md"
+objectiveCheckWaivers:
+  []
 executionAgent: "engineer"
+collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:51.400Z"
-updatedAt: "2026-08-10T16:07:51.400Z"
-status: "draft"
+updatedAt: "2026-08-14T16:07:29.594Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 3
 dependencies:
   - "02-add-forward-only-startup-migrations"
-planId: "c3f82a42-2189-47ad-9fc7-a8d0ffe54116"
+implementedAt: "2026-08-14T14:31:01.872Z"
+verifiedAt: "2026-08-14T16:07:29.594Z"
+userVerifiedAt: null
+executionReport: "- Implemented migration 0002 with `status`, `recurrence_parent_id`, `revision`, `completion_logs.due_at`, FK/check/unique constraints, validation, and production lifecycle coverage.\n- Implemented `src/domain/occurrenceResolution.ts` so complete/un-complete runs inside `BEGIN IMMEDIATE` with idempotency, rollback, linked-successor deletion, missing-successor reopen, and 409 conflict behavior.\n- Updated API/types/list behavior: `status` is authoritative, `done` stays synchronized for UI/API compatibility, `GET /api/chores` returns open rows, and PUT maps conflicts to 409 while preserving auth/owner checks.\n- Updated ADR 0005 and recurrence E2E expectations for retained recurrence snapshots and open-only list results.\n- Tests changed: CI now runs 26 Deno tests, up from 15 (+11). Added 7 new occurrence-resolution tests, added 3 migration tests, and added 1 API conflict test. No tests were deleted; existing migration/API/recurrence tests were rewritten against the new status-authoritative, retained-recurrence behavior.\n- Verification passed: `deno test -A src/domain/occurrenceResolution.test.ts`, `deno test -A src/db/migrations/index.test.ts`, `DB_ENV=test deno test -A src/pages/api/chores/chores.test.ts`, mutation check for due-at logging test failure/restoration, corrected single-quoted objective-check equivalents, `deno task ci`, and `deno task test:production-lifecycle`.\n- Note: `deno task ci` reports only existing warnings/hints: missing `.env` env-file warning, Astro adapter deprecation warning, and a `login.astro` unused handler hint; no errors."
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
+validationCheckpoint: null
+executionMode: "worktree"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "65a2a4b909a72b8d202bbdb790e52fddcf82ed23"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "fcb798451a32bf2c392110b3afe977148c64c0a1"
+validationCiAttempts: 0
+validationSemanticRounds: 0
 ---
 
 # Make Occurrence Resolution Transactional and Reversible

@@ -28,7 +28,7 @@ export function ChoreModal() {
       <button
         type="button"
         onClick={handleOpen}
-        class="bg-primary text-white px-4 py-2 rounded-md shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2"
+        class="bg-primary text-white px-4 py-2 rounded-sm shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2"
       >
         <div class="i-mdi-plus w-5 h-5"></div>
         New Chore
@@ -42,7 +42,7 @@ export function ChoreModal() {
           >
           </div>
 
-          <div class="bg-white rounded-lg shadow-xl w-full max-w-md relative z-10 overflow-hidden">
+          <div class="bg-white shadow-xl w-full max-w-md relative z-10 overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-gray-100">
               <h3 class="text-lg font-semibold text-primary-text">
                 Add New Chore
@@ -63,7 +63,7 @@ export function ChoreModal() {
               class="p-4 flex flex-col gap-4"
             >
               {error() && (
-                <div class="bg-red-50 text-red-600 p-3 rounded text-sm">
+                <div class="bg-red-50 text-red-600 p-3 text-sm">
                   {error()}
                 </div>
               )}
@@ -82,7 +82,7 @@ export function ChoreModal() {
                   value={title()}
                   onInput={(event) => setTitle(event.currentTarget.value)}
                   placeholder="e.g. Wash dishes"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   required
                 />
               </div>
@@ -100,7 +100,7 @@ export function ChoreModal() {
                   value={description()}
                   onInput={(event) => setDescription(event.currentTarget.value)}
                   rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
                 </textarea>
               </div>
@@ -117,7 +117,7 @@ export function ChoreModal() {
                   name="rrule"
                   value={rrule()}
                   onChange={(event) => setRrule(event.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                  class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white"
                 >
                   <option value="">Once (No recurrence)</option>
                   <option value="FREQ=DAILY">Daily</option>
@@ -130,13 +130,13 @@ export function ChoreModal() {
                 <button
                   type="button"
                   onClick={handleClose}
-                  class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  class="px-4 py-2 border border-gray-300 rounded-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  class="bg-primary text-white px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
+                  class="bg-primary text-white px-4 py-2 rounded-sm hover:opacity-90 transition-opacity"
                 >
                   Save Chore
                 </button>

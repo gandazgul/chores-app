@@ -1,7 +1,7 @@
 {
-  "name": "Chores App",
-  "short_name": "Chores",
-  "description": "Manage household chores with constant reminders.",
+  "name": "Tow",
+  "short_name": "Tow",
+  "description": "Steady household management for recurring chores.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

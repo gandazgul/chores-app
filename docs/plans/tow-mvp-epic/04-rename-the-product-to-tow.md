@@ -22,14 +22,15 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:51.536Z"
-updatedAt: "2026-08-14T12:07:43-04:00"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 4
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
 planId: "df8d02bc-aed3-4327-aa06-90166f7f8372"
+updatedAt: "2026-08-14T17:14:47.115Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Rename the Product to Tow

@@ -143,17 +143,38 @@ function createIncompatibleDatabase(path: string) {
   db.close();
 }
 
+function columnNames(db: DatabaseSync, table: string): string[] {
+  return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<
+    { name: string }
+  >).map((row) => row.name);
+}
+
 function assertMigrated(path: string, expectSentinel: boolean) {
   const db = new DatabaseSync(path);
   const ledger = db.prepare("SELECT version, name FROM schema_migrations")
     .all() as unknown as LedgerRow[];
-  assertEquals(ledger, [{ version: 1, name: "0001_baseline" }]);
-  baselineMigration.validate(db);
+  assertEquals(ledger, [
+    { version: 1, name: "0001_baseline" },
+    { version: 2, name: "0002_occurrence_resolution" },
+  ]);
+  assertEquals(
+    columnNames(db, "chores").filter((name) =>
+      ["status", "recurrence_parent_id", "revision"].includes(name)
+    ),
+    ["status", "recurrence_parent_id", "revision"],
+  );
+  assertEquals(columnNames(db, "completion_logs").includes("due_at"), true);
 
   if (expectSentinel) {
     assertEquals(
       db.prepare("SELECT email FROM users WHERE id = ?").get("legacy-user"),
       { email: "legacy@example.com" },
+    );
+    assertEquals(
+      db.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
+        "legacy-chore",
+      ),
+      { status: "open", revision: 0 },
     );
     assertEquals(
       db.prepare("SELECT COUNT(*) AS count FROM completion_logs WHERE id = ?")

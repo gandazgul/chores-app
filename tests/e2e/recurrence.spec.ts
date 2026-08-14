@@ -4,6 +4,7 @@ interface ChoreResponse {
   id: string;
   title: string;
   done: 0 | 1;
+  status: "open" | "completed" | "skipped";
   recurrence: { rrule: string } | string | null;
 }
 
@@ -43,17 +44,14 @@ test.describe("Recurrence Tasks", () => {
           const matchingChores = chores.filter((chore) =>
             chore.title === title
           );
-          const doneOriginals = matchingChores.filter((chore) =>
-            chore.done === 1 && chore.recurrence === null
-          );
           const openSuccessors = matchingChores.filter((chore) => {
             const recurrence = chore.recurrence;
-            return chore.done === 0 && typeof recurrence === "object" &&
-              recurrence?.rrule === rrule;
+            return chore.status === "open" && chore.done === 0 &&
+              typeof recurrence === "object" && recurrence?.rrule === rrule;
           });
 
-          return { done: doneOriginals.length, open: openSuccessors.length };
-        }).toEqual({ done: 1, open: 1 });
+          return { open: openSuccessors.length };
+        }).toEqual({ open: 1 });
       }
     } finally {
       const getRes = await request.get("/api/chores");

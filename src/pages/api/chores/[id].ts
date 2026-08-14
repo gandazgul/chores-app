@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import type { ChoreRow, Recurrence } from "../../../types.ts";
-import { parseChoreRow, parseRecurrence } from "../../../types.ts";
+import { updateOccurrence } from "../../../domain/occurrenceResolution.ts";
+import type { ChoreRow } from "../../../types.ts";
+import { parseChoreRow } from "../../../types.ts";
 import db from "../../../utils/db.ts";
-import { calculateNextOccurrence } from "../../../utils/scheduleUtils.ts";
 
 interface ChoreUpdateInput {
   title?: string;
@@ -35,13 +35,6 @@ function readUpdateInput(body: unknown): ChoreUpdateInput {
   }
 
   return input;
-}
-
-function hasRRule(
-  recurrence: Recurrence | string | null,
-): recurrence is Recurrence {
-  return typeof recurrence === "object" && recurrence !== null &&
-    typeof recurrence.rrule === "string";
 }
 
 export const PUT: APIRoute = async ({ params, request, locals }) => {
@@ -78,92 +71,23 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     }
 
     const data = readUpdateInput(await request.json());
+    const result = updateOccurrence(db, id, data);
 
-    let title = existingChore.title;
-    let description = existingChore.description;
-    let dueDateStr = existingChore.due_date;
-    let recurrenceJson = existingChore.recurrence;
-    let isDone: boolean | number = existingChore.done;
-
-    if (data.title !== undefined) title = data.title;
-    if (data.description !== undefined) description = data.description;
-
-    if (data.rrule !== undefined) {
-      recurrenceJson = data.rrule
-        ? JSON.stringify({ rrule: data.rrule })
-        : null;
-      if (data.rrule) {
-        const nextDueDate = calculateNextOccurrence(data.rrule);
-        dueDateStr = nextDueDate ? nextDueDate.toISOString() : null;
-      } else {
-        dueDateStr = null;
-      }
+    if (result.kind === "not_found") {
+      return new Response(JSON.stringify({ error: "Chore not found" }), {
+        status: 404,
+      });
+    }
+    if (result.kind === "conflict") {
+      return new Response(JSON.stringify({ error: result.reason }), {
+        status: 409,
+      });
     }
 
-    if (data.done !== undefined) {
-      isDone = data.done;
-      if (data.done) {
-        const parsedRecurrence = parseRecurrence(recurrenceJson);
-
-        if (hasRRule(parsedRecurrence)) {
-          const nextDueDate = calculateNextOccurrence(
-            parsedRecurrence.rrule,
-            new Date(),
-          );
-          if (nextDueDate) {
-            const newChoreId = crypto.randomUUID();
-            db.prepare(`
-              INSERT INTO chores (id, user_id, title, description, due_date, recurrence, done)
-              VALUES (?, ?, ?, ?, ?, ?, 0)
-            `).run(
-              newChoreId,
-              existingChore.user_id,
-              title,
-              description,
-              nextDueDate.toISOString(),
-              recurrenceJson,
-            );
-
-            recurrenceJson = null;
-            isDone = 1;
-            dueDateStr = existingChore.due_date;
-          }
-        }
-
-        const logId = crypto.randomUUID();
-        db.prepare(`INSERT INTO completion_logs (id, chore_id) VALUES (?, ?)`)
-          .run(
-            logId,
-            id,
-          );
-      }
-    }
-
-    const updateStmt = db.prepare(`
-      UPDATE chores 
-      SET title = ?, description = ?, due_date = ?, recurrence = ?, done = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-
-    updateStmt.run(
-      title,
-      description,
-      dueDateStr,
-      recurrenceJson,
-      isDone ? 1 : 0,
-      id,
-    );
-
-    const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
-    const updatedChore = getStmt.get(id) as unknown as ChoreRow | undefined;
-
-    return new Response(
-      JSON.stringify(updatedChore && parseChoreRow(updatedChore)),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify(parseChoreRow(result.chore)), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Failed to update chore:", error);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {

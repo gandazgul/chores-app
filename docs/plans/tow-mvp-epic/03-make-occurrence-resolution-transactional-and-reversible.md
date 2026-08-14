@@ -12,14 +12,16 @@ affectedPaths:
   - "docs/adr/0005-recurring-chores-spawn-a-new-row-on-completion.md"
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:51.400Z"
-updatedAt: "2026-08-10T16:07:51.400Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 3
 dependencies:
   - "02-add-forward-only-startup-migrations"
 planId: "c3f82a42-2189-47ad-9fc7-a8d0ffe54116"
+collaborationRecommendation: "autonomous"
+updatedAt: "2026-08-14T14:18:15.380Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Make Occurrence Resolution Transactional and Reversible

@@ -1,4 +1,5 @@
 ---
+planId: "69ccb553-9641-4d35-b948-e0dedb949128"
 classification: "PLANNED_CHANGE"
 workKind: "FEATURE"
 complexity: "MEDIUM"
@@ -10,16 +11,33 @@ affectedPaths:
   - "src/**/migrations/**"
   - ".env.example"
   - "tests/**"
+objectiveCheckWaivers:
+  []
 executionAgent: "engineer"
+collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:51.677Z"
-updatedAt: "2026-08-10T16:07:51.677Z"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 5
 dependencies:
   - "02-add-forward-only-startup-migrations"
-planId: "69ccb553-9641-4d35-b948-e0dedb949128"
-status: "ready_for_work"
+implementedAt: "2026-08-14T23:44:30.541Z"
+userVerifiedAt: null
+executionReport: "- Implemented migration 0003: `users.name` is nullable, statically registered, validated, and covered for fresh and version-2 database upgrades.\n- Implemented fail-closed allowlist logic: `isEmailAllowed` trims comma-separated entries, matches case-insensitively, ignores empty entries, and denies missing/empty lists.\n- Implemented login provisioning: `createAuthorizedSession` rejects non-allowlisted Users before writes, upserts allowed `users(id,email,name)`, then creates the existing 30-day Session; the route now calls it before setting the cookie.\n- Implemented active Session re-check: `getSession` returns `null` when the Session email is no longer allowlisted, and middleware deletes invalid `session` cookies while preserving the Mock User bypass.\n- Updated `.env.example` and ADR 0004 for `ALLOWED_EMAILS`, fail-closed behavior, provisioning, active Session revocation, and TypeScript paths.\n- Added tests: +9 Deno tests total (`login.test.ts` +5, `auth.test.ts` +3, `index.test.ts` +1); no tests removed or replaced.\n- Verification passed: `deno test -A src/pages/api/auth/login.test.ts`, `deno test -A src/utils/auth.test.ts`, `deno test -A src/db/migrations/index.test.ts`, targeted combined tests, mutation checks for allowlist and migration guards, and final `deno task ci` (35 tests passed).\n- Manual Google sign-in/removal flow was not run because no configured Google credentials/account were available in this execution session."
+executionMode: "worktree"
+executionBaselineTree: "7f6ec54c74f5c5959f0e7a683ba3a09bba02c066"
+worktreeId: "44189b1d"
+worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-05-provision-household-users-behind-44189b1d"
+worktreeBranch: "worktree/tow-mvp-epic-05-provision-household-users-behind-44189b1d"
+worktreeBaseBranch: "main"
+worktreeStatus: "validation_failed"
+validationCiAttempts: 0
+validationSemanticRounds: 0
+status: "validated_reviewer"
+validationCheckpoint: null
+updatedAt: "2026-08-15T14:53:57.616Z"
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
 ---
 
 # Provision Household Users Behind an Allowlist

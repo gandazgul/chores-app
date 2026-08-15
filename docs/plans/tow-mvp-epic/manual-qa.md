@@ -82,3 +82,31 @@ Manual verification steps for tow-mvp-epic/04-rename-the-product-to-tow
       from user-facing descriptions and glossary.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/04-rename-the-product-to-tow" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/05-provision-household-users-behind-an-allowlist" -->
+
+## Provision Household Users Behind an Allowlist
+
+Manual verification steps for
+tow-mvp-epic/05-provision-household-users-behind-an-allowlist
+
+- [ ] Start the app with `ALLOWED_EMAILS` set to a known allowlist. Sign in with
+      a Google account in that list. Confirm login succeeds and a `users` record
+      is created with `id`, `email`, and `name` before session use.
+- [ ] Try to sign in with a Google account that is not in `ALLOWED_EMAILS`.
+      Confirm the page returns `401`, no new `users` row is written, and no
+      session cookie is set.
+- [ ] With a previously allowed user, add that user’s email to a value with
+      mixed case and spaces (for example `ALLOW@house.com, another@x.com`), then
+      sign in using matching email in different case and spacing. Confirm
+      allowlist matching still allows login.
+- [ ] Keep a valid session, then remove that email from `ALLOWED_EMAILS` and
+      open a protected page. Confirm middleware rejects the session and clears
+      the session cookie, then sends the unauthenticated flow.
+- [ ] Set `ENABLE_AUTH=false`. Open the app and confirm mock user is available
+      with normal access without Google sign-in or `ALLOWED_EMAILS` checks.
+- [ ] In the database, check that `users.name` is present in the `users` table
+      schema and unchanged existing rows still load without errors after
+      upgrade.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/05-provision-household-users-behind-an-allowlist" -->

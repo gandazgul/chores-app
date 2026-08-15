@@ -108,7 +108,7 @@ Deno.test("user-name migration preserves version-2 users and adds nullable names
   );
 });
 
-Deno.test("household-assignment migration adds final columns without legacy chore backfill", () => {
+Deno.test("household-assignment migration backfills legacy open chores to the creator", () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     PRAGMA foreign_keys = ON;
@@ -144,6 +144,7 @@ Deno.test("household-assignment migration adds final columns without legacy chor
     );
     INSERT INTO users (id, email) VALUES ('legacy-user', 'legacy@example.com');
     INSERT INTO chores (id, user_id, title) VALUES ('legacy-chore', 'legacy-user', 'Legacy Chore');
+    INSERT INTO chores (id, user_id, title, status) VALUES ('completed-chore', 'legacy-user', 'Completed Chore', 'completed');
   `);
 
   householdAssignmentMigration.up(db);
@@ -155,6 +156,12 @@ Deno.test("household-assignment migration adds final columns without legacy chor
   assertEquals(
     db.prepare(
       "SELECT assignee_id, unassigned_since FROM chores WHERE id = 'legacy-chore'",
+    ).get(),
+    { assignee_id: "legacy-user", unassigned_since: null },
+  );
+  assertEquals(
+    db.prepare(
+      "SELECT assignee_id, unassigned_since FROM chores WHERE id = 'completed-chore'",
     ).get(),
     { assignee_id: null, unassigned_since: null },
   );
@@ -234,7 +241,12 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
     legacy.prepare(
       "SELECT status, revision, assignee_id, unassigned_since FROM chores WHERE id = ?",
     ).get("open-chore"),
-    { status: "open", revision: 0, assignee_id: null, unassigned_since: null },
+    {
+      status: "open",
+      revision: 0,
+      assignee_id: "legacy-user",
+      unassigned_since: null,
+    },
   );
   assertEquals(
     legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(

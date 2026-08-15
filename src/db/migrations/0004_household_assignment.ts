@@ -89,6 +89,11 @@ export const householdAssignmentMigration: Migration = {
 
       ALTER TABLE chores
         ADD COLUMN unassigned_since TIMESTAMP;
+
+      UPDATE chores
+      SET assignee_id = user_id,
+          unassigned_since = NULL
+      WHERE status = 'open';
     `);
   },
   validate(db: DatabaseSync) {

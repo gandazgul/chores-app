@@ -14,14 +14,15 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:51.947Z"
-updatedAt: "2026-08-10T16:07:51.947Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 8
 dependencies:
   - "07-add-household-assignment-model-and-apis"
 planId: "5f73eaf7-5810-4637-8fd6-5af0c28b1d07"
+updatedAt: "2026-08-15T21:41:20.630Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Ship Create Edit Delete and Assignment UI

@@ -360,3 +360,106 @@ Deno.test("metadata edits on open successors increment revision", () => {
   assertEquals(chore(db, child.id).revision, 1);
   assertEquals(updateOccurrence(db, id, { done: false }).kind, "conflict");
 });
+
+Deno.test("metadata due date recurrence and assignment edit atomically", () => {
+  const db = makeDb();
+  db.prepare("INSERT INTO users (id, email) VALUES (?, ?)").run("v", "v@x");
+  const id = insertChore(db, {
+    title: "Old",
+    dueDate: "2030-01-01T00:00:00.000Z",
+    assigneeId: "u",
+  });
+  const now = new Date("2030-01-02T00:00:00.000Z");
+
+  const result = updateOccurrence(db, id, {
+    title: "New",
+    description: "Details",
+    rrule: "FREQ=WEEKLY",
+    dueDate: "2030-01-03T04:05:00.000Z",
+    assigneeId: "v",
+  }, { now });
+
+  assertEquals(result.kind, "updated");
+  const row = chore(db, id);
+  assertEquals(row.title, "New");
+  assertEquals(row.description, "Details");
+  assertEquals(row.due_date, "2030-01-03T04:05:00.000Z");
+  assertEquals(row.recurrence, JSON.stringify({ rrule: "FREQ=WEEKLY" }));
+  assertEquals(row.assignee_id, "v");
+  assertEquals(row.unassigned_since, null);
+  assertEquals(row.revision, 1);
+});
+
+Deno.test("editing to Pool sets unassigned clock and increments once", () => {
+  const db = makeDb();
+  const id = insertChore(db, { assigneeId: "u", revision: 4 });
+  const now = new Date("2030-01-02T03:04:05.000Z");
+
+  const result = updateOccurrence(db, id, {
+    title: "Pool chore",
+    assigneeId: null,
+  }, { now });
+
+  assertEquals(result.kind, "updated");
+  const row = chore(db, id);
+  assertEquals(row.title, "Pool chore");
+  assertEquals(row.assignee_id, null);
+  assertEquals(row.unassigned_since, now.toISOString());
+  assertEquals(row.revision, 5);
+});
+
+Deno.test("invalid due date and missing member roll back all edited fields", () => {
+  const cases = [
+    {
+      name: "invalid date",
+      patch: { title: "Bad date", dueDate: "not-a-date" },
+      kind: "invalid",
+    },
+    {
+      name: "missing member",
+      patch: { title: "Bad member", assigneeId: "missing" },
+      kind: "member_not_found",
+    },
+  ] as const;
+
+  for (const testCase of cases) {
+    const db = makeDb();
+    const id = insertChore(db, {
+      title: `Original ${testCase.name}`,
+      dueDate: "2030-01-01T00:00:00.000Z",
+      assigneeId: "u",
+    });
+    const before = chore(db, id);
+
+    const result = updateOccurrence(db, id, testCase.patch);
+
+    assertEquals(result.kind, testCase.kind);
+    assertEquals(chore(db, id), before);
+  }
+});
+
+Deno.test("recurring completion logs edited due date and advances successor from it", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    dueDate: "2030-01-01T00:00:00.000Z",
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+    assigneeId: "u",
+  });
+
+  const result = updateOccurrence(db, id, {
+    dueDate: "2030-01-10T12:00:00.000Z",
+    assigneeId: null,
+    done: true,
+  }, { now: new Date("2030-01-02T00:00:00.000Z") });
+
+  assertEquals(result.kind, "updated");
+  assertEquals(
+    db.prepare("SELECT due_at FROM completion_logs WHERE chore_id = ?").get(id),
+    { due_at: "2030-01-10T12:00:00.000Z" },
+  );
+  const child = successor(db, id);
+  assertExists(child);
+  assertEquals(child.due_date, "2030-01-11T12:00:00.000Z");
+  assertEquals(child.assignee_id, null);
+  assertEquals(child.unassigned_since, "2030-01-02T00:00:00.000Z");
+});

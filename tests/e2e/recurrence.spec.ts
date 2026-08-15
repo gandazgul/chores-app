@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { originHeaders } from "./origin.ts";
 
 interface ChoreResponse {
   id: string;
@@ -12,7 +13,9 @@ test.describe("Recurrence Tasks", () => {
   const testId = Date.now().toString();
   const recurrences = ["FREQ=DAILY", "FREQ=WEEKLY", "FREQ=MONTHLY"];
 
-  test("can create recurring chores and completing them spawns successors", async ({ page, request }) => {
+  test("can create recurring chores and completing them spawns successors", async ({ baseURL, page, request }) => {
+    const headers = originHeaders(baseURL);
+
     for (const rrule of recurrences) {
       const title = `Recurrence Test ${rrule} ${testId}`;
       const createRes = await request.post("/api/chores", {
@@ -21,6 +24,7 @@ test.describe("Recurrence Tasks", () => {
           description: "Test description",
           rrule,
         },
+        headers,
       });
       expect(createRes.status()).toBe(201);
     }
@@ -58,7 +62,7 @@ test.describe("Recurrence Tasks", () => {
       const chores = await getRes.json() as ChoreResponse[];
       for (const chore of chores) {
         if (chore.title.includes(testId)) {
-          await request.delete(`/api/chores/${chore.id}`);
+          await request.delete(`/api/chores/${chore.id}`, { headers });
         }
       }
     }

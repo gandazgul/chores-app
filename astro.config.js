@@ -21,9 +21,6 @@ export default defineConfig({
     hostname: "0.0.0.0",
   }),
   integrations: [unocss({ injectReset: true }), solidJs()],
-  security: {
-    checkOrigin: false,
-  },
   image: {
     service: passthroughImageService(),
   },

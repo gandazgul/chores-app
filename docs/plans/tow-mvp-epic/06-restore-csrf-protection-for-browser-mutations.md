@@ -11,14 +11,16 @@ affectedPaths:
   - "tests/**"
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:51.813Z"
-updatedAt: "2026-08-10T16:07:51.813Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 6
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
 planId: "8c5679ba-f476-4241-8adc-1cfdb465c87f"
+collaborationRecommendation: "autonomous"
+updatedAt: "2026-08-15T15:03:47.357Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Restore CSRF Protection for Browser Mutations

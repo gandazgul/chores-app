@@ -146,17 +146,22 @@ through a browser form navigation rather than through `fetch`.
 
 ## Critical Implementation Paths
 
-### 1. Authentication on every request
+### 1. Request boundary and authentication
 
-1. `src/middleware.ts` intercepts the request.
-2. If `ENABLE_AUTH` is the string `false`, it sets a fixed mock user on
-   `context.locals.user` and skips verification.
-3. Otherwise it reads the `session` cookie and calls `getSession`, which
+1. Astro runs its default origin check for unsafe native-form requests.
+2. `src/middleware.ts` intercepts the request. For `POST`, `PUT`, `PATCH`, and
+   `DELETE`, it requires `Origin` to equal the request URL origin exactly. This
+   means scheme, host, and port must match. Missing or different origins return
+   HTTP 403 before session resolution or route dispatch.
+3. `GET`, `HEAD`, and `OPTIONS` skip the origin gate.
+4. If `ENABLE_AUTH` is the string `false`, the middleware sets a fixed mock user
+   on `context.locals.user` and skips session verification.
+5. Otherwise it reads the `session` cookie and calls `getSession`, which
    verifies the HS256 signature with `SESSION_SECRET`. An invalid or missing
    token gives `null`.
-4. An unauthenticated request to anything other than `/login`,
+6. An unauthenticated request to anything other than `/login`,
    `/api/auth/login`, or `/api/auth/logout` redirects to `/login`.
-5. An authenticated request to `/login` redirects to `/`.
+7. An authenticated request to `/login` redirects to `/`.
 
 ### 2. Signing in
 
@@ -191,7 +196,8 @@ through a browser form navigation rather than through `fetch`.
 5. It redirects to `/` and the reloaded page shows the chore.
 
 A JSON `POST` to the same route takes the same path but responds `201` with the
-created chore. The end-to-end tests use this form.
+created chore. Direct end-to-end API clients must include
+`Origin: http://127.0.0.1:8080` when they use this mutation path.
 
 ### 5. Marking a chore done or not done
 
@@ -224,11 +230,13 @@ this route.** Only the end-to-end tests use it, for cleanup.
 - `deno task ci` — lint, format check, Deno type check (`deno check`), Astro
   frontmatter check (`astro check`), and unit tests.
 - `deno task test:e2e` — Playwright against the running Deno server.
-  `tests/e2e/core-journey.spec.ts` covers create, list, and complete through the
-  API. `tests/e2e/recurrence.spec.ts` drives the toggle in the browser for
-  daily, weekly, and monthly rules.
-- Unit tests: `src/utils/auth.test.ts`, `src/utils/scheduleUtils.test.ts`,
-  `src/pages/api/chores/chores.test.ts`.
+  `tests/e2e/core-journey.spec.ts` covers native-form create and JSON complete
+  through the browser. `tests/e2e/recurrence.spec.ts` drives the toggle in the
+  browser for daily, weekly, and monthly rules. `tests/e2e/csrf.spec.ts` covers
+  missing, cross-origin, wrong-scheme, wrong-port, and exact-origin mutation
+  evidence.
+- Unit tests: `src/middleware.test.ts`, `src/utils/auth.test.ts`,
+  `src/utils/scheduleUtils.test.ts`, `src/pages/api/chores/chores.test.ts`.
 
 ## Not implemented yet
 

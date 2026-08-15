@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "deno task dev",
+    command: "deno task db:setup && ENABLE_AUTH=false deno task dev",
     url: "http://127.0.0.1:8080",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

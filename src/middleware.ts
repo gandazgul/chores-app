@@ -20,6 +20,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.user = sessionCookie
       ? await getSession(sessionCookie)
       : null;
+
+    if (sessionCookie && !context.locals.user) {
+      context.cookies.delete("session", {
+        path: "/",
+      });
+    }
   }
 
   const publicRoutes = ["/login", "/api/auth/login", "/api/auth/logout"];

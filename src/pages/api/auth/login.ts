@@ -1,5 +1,30 @@
 import type { APIRoute } from "astro";
-import { createSession, verifyGoogleToken } from "../../../utils/auth.ts";
+import type { UserPayload } from "../../../types.ts";
+import db from "../../../utils/db.ts";
+import {
+  createSession,
+  isEmailAllowed,
+  verifyGoogleToken,
+} from "../../../utils/auth.ts";
+
+export async function createAuthorizedSession(
+  user: UserPayload,
+): Promise<string> {
+  if (!isEmailAllowed(user.email)) {
+    throw new Error("User email is not allowed");
+  }
+
+  db.prepare(`
+    INSERT INTO users (id, email, name)
+    VALUES (?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      email = excluded.email,
+      name = excluded.name,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(user.id, user.email, user.name);
+
+  return await createSession(user);
+}
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -17,7 +42,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const userPayload = await verifyGoogleToken(credential);
-    const sessionToken = await createSession(userPayload);
+    const sessionToken = await createAuthorizedSession(userPayload);
 
     cookies.set("session", sessionToken, {
       httpOnly: true,

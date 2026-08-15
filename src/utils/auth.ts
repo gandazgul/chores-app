@@ -4,6 +4,24 @@ import type { UserPayload } from "../types.ts";
 const JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
+export function isEmailAllowed(email: string): boolean {
+  const allowedEmails = Deno.env.get("ALLOWED_EMAILS");
+  if (!allowedEmails) {
+    return false;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  return allowedEmails
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0)
+    .includes(normalizedEmail);
+}
+
 export async function verifyGoogleToken(token: string): Promise<UserPayload> {
   const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
   if (!clientId) {
@@ -61,6 +79,10 @@ export async function getSession(token: string): Promise<UserPayload | null> {
       typeof payload.id !== "string" || typeof payload.email !== "string" ||
       typeof payload.name !== "string"
     ) {
+      return null;
+    }
+
+    if (!isEmailAllowed(payload.email)) {
       return null;
     }
 

@@ -23,14 +23,19 @@ server, and then issue the application's own session token.
 1. `src/pages/login.astro` loads the Google Identity Services script and renders
    the Google button with `GOOGLE_CLIENT_ID`.
 2. The browser posts the Google credential to `POST /api/auth/login`.
-3. `verifyGoogleToken` in `src/utils/auth.js` verifies the token against
+3. `verifyGoogleToken` in `src/utils/auth.ts` verifies the token against
    Google's remote JSON Web Key Set
    (`https://www.googleapis.com/oauth2/v3/certs`), and checks the issuer and the
    audience. The key set is fetched with `createRemoteJWKSet`, which caches
    keys.
-4. `createSession` signs a new JWT with `HS256` and the `SESSION_SECRET` secret.
+4. `POST /api/auth/login` checks the verified email against `ALLOWED_EMAILS`.
+   The list is comma-separated and case-insensitive. Empty entries are ignored.
+   A missing or empty list denies all real Google accounts.
+5. An allowed Google account is upserted into `users` by Google subject before a
+   session is created. The row stores the current email and display name.
+6. `createSession` signs a new JWT with `HS256` and the `SESSION_SECRET` secret.
    It expires after 30 days.
-5. The route sets that token as a cookie named `session` with `httpOnly`,
+7. The route sets that token as a cookie named `session` with `httpOnly`,
    `sameSite=lax`, `path=/`, and a 30-day `maxAge`. `secure` is true unless
    `COOKIE_SECURE` is the string `false`.
 
@@ -38,9 +43,11 @@ server, and then issue the application's own session token.
 
 **Enforcement path**
 
-`src/middleware.js` runs on every request. It reads the `session` cookie,
-verifies it with the shared secret, and puts the result on
-`context.locals.user`, or `null`. It then applies two redirects: an
+`src/middleware.ts` runs on every request. It reads the `session` cookie,
+verifies it with the shared secret, and checks the Session email against the
+current `ALLOWED_EMAILS` value. It puts the User on `context.locals.user`, or
+`null`. If a cookie exists but no longer resolves to a User, the middleware
+removes the `session` cookie with `path=/`. It then applies two redirects: an
 unauthenticated request to a non-public route goes to `/login`, and an
 authenticated request to `/login` goes to `/`. The public routes are `/login`,
 `/api/auth/login`, and `/api/auth/logout`.
@@ -60,18 +67,18 @@ follows the same rule: only the exact string `false` turns secure cookies off.
 - One place, the middleware, decides whether a request is authenticated. Pages
   and API routes only read `locals.user`.
 - The session survives for 30 days without a call to Google on each request.
+- Removing an email from `ALLOWED_EMAILS` blocks that Session on its next
+  request after the process sees the changed environment.
 - The end-to-end tests run against a real server with a real user identity,
   without a Google account.
 
 **Bad or limiting**
 
-- The session token is self-contained and is not stored on the server. There is
-  no way to revoke one session. Logout only deletes the cookie in that browser;
-  a copied token stays valid until it expires.
-- Nothing checks that the user in the session token exists in the `users` table.
-  `POST /api/chores` writes `user_id` from the token, and `chores.user_id` has a
-  foreign key to `users(id)`, so a first-time Google user fails the insert until
-  a row exists. There is no code path that creates the user row.
+- The session token is self-contained and is not stored on the server. Logout
+  only deletes the cookie in that browser. A copied token is blocked only when
+  its email leaves `ALLOWED_EMAILS` or when it expires.
+- `ALLOWED_EMAILS` is fail-closed. If authentication is enabled and the variable
+  is missing or empty, no real Google account can sign in or keep a Session.
 - A 30-day lifetime is long for a token that cannot be revoked.
 - The insecure defaults are only one environment variable away.
   `ENABLE_AUTH=false` disables all authentication and serves the mock user's

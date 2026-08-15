@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { baselineMigration } from "./0001_baseline.ts";
+import { userNamesMigration } from "./0003_user_names.ts";
 import { applyMigrations } from "./index.ts";
 
 interface CountRow {
@@ -69,7 +70,44 @@ function makeLegacyBaseline(db: DatabaseSync) {
   baselineMigration.up(db);
 }
 
-Deno.test("fresh databases receive occurrence-resolution schema and ledger rows", () => {
+Deno.test("user-name migration preserves version-2 users and adds nullable names", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO users (id, email, created_at, updated_at)
+    VALUES ('legacy-user', 'legacy@example.com', '2026-01-01 00:00:00', '2026-01-02 00:00:00');
+  `);
+
+  userNamesMigration.up(db);
+  userNamesMigration.validate(db);
+
+  assertEquals(columnNames(db, "users"), [
+    "id",
+    "email",
+    "created_at",
+    "updated_at",
+    "name",
+  ]);
+  assertEquals(
+    db.prepare(
+      "SELECT id, email, created_at, updated_at, name FROM users WHERE id = ?",
+    ).get("legacy-user"),
+    {
+      id: "legacy-user",
+      email: "legacy@example.com",
+      created_at: "2026-01-01 00:00:00",
+      updated_at: "2026-01-02 00:00:00",
+      name: null,
+    },
+  );
+});
+
+Deno.test("fresh databases receive occurrence-resolution, user-name schema, and ledger rows", () => {
   const db = new DatabaseSync(":memory:");
   applyMigrations(db);
 
@@ -78,7 +116,8 @@ Deno.test("fresh databases receive occurrence-resolution schema and ledger rows"
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 2);
+  assertEquals(ledgerCount(db), 3);
+  assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "chores").includes("status"));
   assert(columnNames(db, "chores").includes("recurrence_parent_id"));
   assert(columnNames(db, "chores").includes("revision"));
@@ -121,7 +160,13 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 2);
+  assertEquals(ledgerCount(legacy), 3);
+  assertEquals(
+    legacy.prepare("SELECT email, name FROM users WHERE id = ?").get(
+      "legacy-user",
+    ),
+    { email: "legacy@example.com", name: null },
+  );
   assertEquals(
     legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
       "open-chore",
@@ -213,7 +258,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 2);
+  assertEquals(ledgerCount(db), 3);
   assertEquals(tableSignature(db), firstSignature);
 });
 

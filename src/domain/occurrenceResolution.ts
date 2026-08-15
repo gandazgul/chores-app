@@ -158,6 +158,8 @@ function insertSuccessor(
     INSERT INTO chores (
       id,
       user_id,
+      assignee_id,
+      unassigned_since,
       title,
       description,
       due_date,
@@ -167,10 +169,12 @@ function insertSuccessor(
       recurrence_parent_id,
       revision
     )
-    VALUES (?, ?, ?, ?, ?, ?, 0, 'open', ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'open', ?, 0)
   `).run(
     crypto.randomUUID(),
     parent.user_id,
+    parent.assignee_id,
+    parent.assignee_id === null ? now.toISOString() : null,
     fields.title,
     fields.description,
     nextDueDate.toISOString(),

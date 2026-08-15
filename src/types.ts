@@ -15,6 +15,8 @@ export type ChoreStatus = "open" | "completed" | "skipped";
 export interface ChoreRow {
   id: string;
   user_id: string;
+  assignee_id: string | null;
+  unassigned_since: string | null;
   title: string;
   description: string | null;
   priority: number | null;
@@ -28,6 +30,12 @@ export interface ChoreRow {
   revision: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Member {
+  id: string;
+  name: string | null;
+  picture: string | null;
 }
 
 export interface CompletionLogRow {

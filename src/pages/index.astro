@@ -11,9 +11,9 @@ const user = Astro.locals.user;
 let chores: Chore[] = [];
 if (user) {
   const stmt = db.prepare(
-    "SELECT * FROM chores WHERE user_id = ? ORDER BY due_date",
+    "SELECT * FROM chores WHERE status = 'open' ORDER BY due_date",
   );
-  chores = parseChoreRows(stmt.all(user.id) as unknown as ChoreRow[]);
+  chores = parseChoreRows(stmt.all() as unknown as ChoreRow[]);
 }
 ---
 

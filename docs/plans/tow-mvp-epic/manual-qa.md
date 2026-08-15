@@ -133,3 +133,29 @@ tow-mvp-epic/06-restore-csrf-protection-for-browser-mutations
       are rejected.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/06-restore-csrf-protection-for-browser-mutations" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/07-add-household-assignment-model-and-apis" -->
+
+## Add Household Assignment Model and APIs
+
+Manual verification steps for
+tow-mvp-epic/07-add-household-assignment-model-and-apis
+
+- [ ] Log in as two members of one household and open the chore list in each
+      session. Confirm both users can see the same open household chores.
+- [ ] Create a new chore without an assignee, with Pool, and with another
+      member. Check that the default assignee is the creator, the Pool choice
+      works, and a specific-member choice sets that member.
+- [ ] Open a chore in Pool and run the claim action as a signed-in member. Check
+      that the chore assignee becomes that member.
+- [ ] Run assign, reassign, and release actions on chores as a signed-in member.
+      Check assignee changes match the action and unassigned time updates when
+      released.
+- [ ] Open a chore as a non-creator and edit, delete, complete, claim, assign,
+      and release it. Confirm actions succeed without owner-only 403 blocks.
+- [ ] Call `GET /api/members` while signed in and check only `id`, `name`, and
+      `picture` are returned. Call without auth and confirm access is denied.
+      Open `docs/domain-language.md` and verify Assignee, Pool, Claim, Member,
+      and Reassign are defined.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/07-add-household-assignment-model-and-apis" -->

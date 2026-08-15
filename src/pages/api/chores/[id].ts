@@ -64,12 +64,6 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
-    if (existingChore.user_id !== user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-      });
-    }
-
     const data = readUpdateInput(await request.json());
     const result = updateOccurrence(db, id, data);
 
@@ -120,12 +114,6 @@ export const DELETE: APIRoute = ({ params, locals }) => {
     if (!existingChore) {
       return new Response(JSON.stringify({ error: "Chore not found" }), {
         status: 404,
-      });
-    }
-
-    if (existingChore.user_id !== user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
       });
     }
 

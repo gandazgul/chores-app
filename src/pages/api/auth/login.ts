@@ -15,13 +15,14 @@ export async function createAuthorizedSession(
   }
 
   db.prepare(`
-    INSERT INTO users (id, email, name)
-    VALUES (?, ?, ?)
+    INSERT INTO users (id, email, name, picture)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       email = excluded.email,
       name = excluded.name,
+      picture = excluded.picture,
       updated_at = CURRENT_TIMESTAMP
-  `).run(user.id, user.email, user.name);
+  `).run(user.id, user.email, user.name, user.picture ?? null);
 
   return await createSession(user);
 }

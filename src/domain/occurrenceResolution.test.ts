@@ -27,6 +27,8 @@ function insertChore(
     recurrence?: string | null;
     parentId?: string | null;
     revision?: number;
+    assigneeId?: string | null;
+    unassignedSince?: string | null;
   } = {},
 ): string {
   const id = fields.id ?? crypto.randomUUID();
@@ -34,6 +36,8 @@ function insertChore(
     INSERT INTO chores (
       id,
       user_id,
+      assignee_id,
+      unassigned_since,
       title,
       done,
       status,
@@ -42,9 +46,11 @@ function insertChore(
       recurrence_parent_id,
       revision
     )
-    VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
+    fields.assigneeId ?? null,
+    fields.unassignedSince ?? null,
     fields.title ?? "Chore",
     fields.done ?? 0,
     fields.status ?? "open",
@@ -195,6 +201,40 @@ Deno.test("recurring completion is idempotent and reversible", () => {
     0,
   );
   assertOneOpenPerChain(db);
+});
+
+Deno.test("recurring successor inherits assigned state", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    assigneeId: "u",
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+  });
+
+  updateOccurrence(db, id, { done: true }, {
+    now: new Date("2030-01-02T00:00:00.000Z"),
+  });
+
+  const child = successor(db, id);
+  assertExists(child);
+  assertEquals(child.assignee_id, "u");
+  assertEquals(child.unassigned_since, null);
+});
+
+Deno.test("recurring Pool successor starts a fresh Pool clock", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    assigneeId: null,
+    unassignedSince: "2029-12-31T00:00:00.000Z",
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+  });
+  const now = new Date("2030-01-02T00:00:00.000Z");
+
+  updateOccurrence(db, id, { done: true }, { now });
+
+  const child = successor(db, id);
+  assertExists(child);
+  assertEquals(child.assignee_id, null);
+  assertEquals(child.unassigned_since, now.toISOString());
 });
 
 Deno.test("completion failure leaves no partial successor log or status change", () => {

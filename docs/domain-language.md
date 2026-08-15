@@ -1,8 +1,8 @@
 # Tow Domain Language
 
 This glossary covers Tow, the implemented household chore management product:
-authenticated users manage their own chores, optionally schedule chores to
-recur, and record completions.
+authenticated household members manage shared chores, optionally schedule chores
+to recur, and record completions.
 
 ## Language
 
@@ -13,9 +13,10 @@ the product surface. It does not rename chore-management domain concepts.
 
 ### Chore Management
 
-**Chore**: A household task owned by a user. A chore has a title, may have a
-description, may have a due date, may be recurring, and can be marked done.
-_Avoid_: Task, Todo
+**Chore**: A household task in the shared household list. A chore has a Creator,
+may have an Assignee, may be in the Pool, has a title, may have a description,
+may have a due date, may be recurring, and can be marked done. _Avoid_: Task,
+Todo
 
 **Title**: The required short name of a chore.
 
@@ -28,6 +29,29 @@ date is calculated from the recurrence rule.
 off
 
 **Completion Log**: A record that a chore was marked done at a point in time.
+
+### Assignment
+
+**Creator**: The Member who created a chore. Creator is historical identity. It
+is not permission or assignment. _Avoid_: Owner
+
+**Assignee**: The Member currently on the hook for a chore. Assignment permits
+future reminder push behavior; it does not grant special edit, delete, or done
+rights. _Avoid_: Owner
+
+**Pool**: The unassigned inbox for chores that are up for grabs. A Pool chore
+has no Assignee and records when it entered the Pool. The Pool creates ambient
+in-app pressure only.
+
+**Claim**: A Member moves a Pool chore to themself.
+
+**Assign**: A Member moves a Pool chore to a selected Member.
+
+**Release**: A Member moves an assigned chore back to the Pool. Release starts a
+new Pool-entry time.
+
+**Reassign**: A Member moves an assigned chore from its current Assignee to a
+different Member.
 
 ### Recurrence
 
@@ -45,8 +69,12 @@ date.
 
 ### People and Access
 
-**User**: A person who signs in and owns chores.
+**Member**: A person who can sign in to this Tow household. In the MVP,
+permissions are flat: each Member can see and mutate all household chores.
 
-**Session**: The signed-in state that lets a user access their chores.
+**User**: The authenticated account record for a Member. Use Member in product
+language when the person belongs to the household.
 
-**Mock User**: The local development user used when authentication is disabled.
+**Session**: The signed-in state that lets a Member access household chores.
+
+**Mock User**: The local development User used when authentication is disabled.

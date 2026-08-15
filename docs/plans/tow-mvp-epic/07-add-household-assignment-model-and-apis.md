@@ -17,6 +17,8 @@ objectiveCheckWaivers:
 executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:51.880Z"
+updatedAt: "2026-08-15T17:57:32.195Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 7
@@ -24,22 +26,21 @@ dependencies:
   - "05-provision-household-users-behind-an-allowlist"
   - "06-restore-csrf-protection-for-browser-mutations"
 implementedAt: "2026-08-15T15:37:33.377Z"
+verifiedAt: "2026-08-15T17:57:32.195Z"
 userVerifiedAt: null
 executionReport: "- Implemented migration 0004 and schema/types: `users.picture`, `chores.assignee_id`, and `chores.unassigned_since`; registered migration and updated production lifecycle expectations.\n- Implemented household APIs: login now persists/clears picture, `GET /api/chores` and `src/pages/index.astro` list all open household chores, create defaults to Creator or accepts Pool/member assignment, and owner-only chore API 403 checks are removed.\n- Implemented strict assignment transitions: `transitionAssignment` and `POST /api/chores/:id/assignment` support claim, assign, release, and reassign with 400/404/409 handling and atomic revision/timestamp updates.\n- Implemented member endpoint and recurrence behavior: `GET /api/members` returns only `id`, `name`, `picture`; recurring successors inherit assignment or start a fresh Pool timestamp.\n- Updated seed data and `docs/domain-language.md` for shared Chores, Member, Creator, Assignee, Pool, Claim, Assign, Release, and Reassign; Owner is avoided.\n- Tests changed: Deno test count increased from 38 to 50 (+12); no tests were deleted. Rewritten coverage: CRUD test now protects household visibility/non-Creator completion/delete plus recurrence; form/ownership test now protects form redirects and assignment create choices because owner-only 403 behavior no longer exists; conflict test kept reversal protection under flat permissions.\n- Verification passed: targeted `deno test -A --quiet src/db/migrations/index.test.ts src/pages/api/auth/login.test.ts src/domain/occurrenceResolution.test.ts`, assignment objective `deno eval`, owner-scope grep checks, and full `deno task ci` (50 tests passed; Astro reported only the existing login-page hint)."
-executionMode: "worktree"
-executionBaselineTree: "abd820aae8798f170faab3fc21acbedf9c4b28e0"
-worktreeId: "1de7ad64"
-worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-07-add-household-assignment-model-a-1de7ad64"
-worktreeBranch: "worktree/tow-mvp-epic-07-add-household-assignment-model-a-1de7ad64"
-worktreeBaseBranch: "main"
-worktreeStatus: "completed"
-validationCiAttempts: 0
-validationSemanticRounds: 1
-status: "validated_reviewer"
-validationCheckpoint: null
-updatedAt: "2026-08-15T17:57:26.187Z"
 humanReviewMode: "ask"
 humanReviewDecision: "skipped"
+validationCheckpoint: null
+executionMode: "worktree"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "a9e073355f4349efde6145ead6729e3ec3f48ccd"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "d4e0b3b75e1a705f6cc0355fa94ae103eb6974b7"
+validationCiAttempts: 0
+validationSemanticRounds: 1
 ---
 
 # Add Household Assignment Model and APIs

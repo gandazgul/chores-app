@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { baselineMigration } from "./0001_baseline.ts";
 import { occurrenceResolutionMigration } from "./0002_occurrence_resolution.ts";
 import { userNamesMigration } from "./0003_user_names.ts";
+import { householdAssignmentMigration } from "./0004_household_assignment.ts";
 
 export interface Migration {
   version: number;
@@ -19,6 +20,7 @@ const migrations: Migration[] = [
   baselineMigration,
   occurrenceResolutionMigration,
   userNamesMigration,
+  householdAssignmentMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

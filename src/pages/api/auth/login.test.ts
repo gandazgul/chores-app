@@ -7,6 +7,7 @@ interface UserRow {
   id: string;
   email: string;
   name: string | null;
+  picture: string | null;
   updated_at: string | null;
 }
 
@@ -41,6 +42,7 @@ Deno.test("createAuthorizedSession creates an allowed User before returning a Se
     id: "login-allowed-user",
     email: "allowed@example.com",
     name: "Allowed User",
+    picture: "https://example.com/allowed.png",
   };
 
   try {
@@ -48,11 +50,12 @@ Deno.test("createAuthorizedSession creates an allowed User before returning a Se
     const token = await createAuthorizedSession(user);
 
     const row = db.prepare(
-      "SELECT id, email, name, updated_at FROM users WHERE id = ?",
+      "SELECT id, email, name, picture, updated_at FROM users WHERE id = ?",
     ).get(user.id) as UserRow | undefined;
     assertExists(row);
     assertEquals(row.email, user.email);
     assertEquals(row.name, user.name);
+    assertEquals(row.picture, user.picture);
     assertEquals((await getSession(token))?.id, user.id);
   } finally {
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
@@ -79,6 +82,7 @@ Deno.test("createAuthorizedSession updates an allowed User on repeat login", asy
     id: "login-repeat-user",
     email: "allowed@example.com",
     name: "Allowed User",
+    picture: "https://example.com/old.png",
   };
 
   try {
@@ -93,14 +97,16 @@ Deno.test("createAuthorizedSession updates an allowed User on repeat login", asy
       ...user,
       email: "changed@example.com",
       name: "Changed User",
+      picture: undefined,
     });
 
     const row = db.prepare(
-      "SELECT id, email, name, updated_at FROM users WHERE id = ?",
+      "SELECT id, email, name, picture, updated_at FROM users WHERE id = ?",
     ).get(user.id) as UserRow | undefined;
     assertExists(row);
     assertEquals(row.email, "changed@example.com");
     assertEquals(row.name, "Changed User");
+    assertEquals(row.picture, null);
     assertEquals(row.updated_at !== "2000-01-01 00:00:00", true);
   } finally {
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);

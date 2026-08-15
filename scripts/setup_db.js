@@ -7,18 +7,32 @@ const choreCount =
 
 if (choreCount === 0) {
   const seedUserId = "r0wk2VvPQFhW7bpLpq3MxMhjodD2";
-  db.prepare("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)").run(
+  db.prepare(
+    "INSERT OR IGNORE INTO users (id, email, name, picture) VALUES (?, ?, ?, ?)",
+  ).run(
     seedUserId,
     "demo@example.com",
+    "Demo Member",
+    null,
   );
 
   const insertChore = db.prepare(`
-    INSERT INTO chores (id, user_id, title, description, priority, done)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO chores (
+      id,
+      user_id,
+      assignee_id,
+      unassigned_since,
+      title,
+      description,
+      priority,
+      done
+    )
+    VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
   `);
 
   insertChore.run(
     crypto.randomUUID(),
+    seedUserId,
     seedUserId,
     "Wash the dishes",
     "Wash all the dishes in the sink.",
@@ -28,6 +42,7 @@ if (choreCount === 0) {
   insertChore.run(
     crypto.randomUUID(),
     seedUserId,
+    seedUserId,
     "Take out the trash",
     "Take out the trash and recycling.",
     2,
@@ -35,6 +50,7 @@ if (choreCount === 0) {
   );
   insertChore.run(
     crypto.randomUUID(),
+    seedUserId,
     seedUserId,
     "Clean the bathroom",
     "Clean the toilet, sink, and shower.",

@@ -156,13 +156,29 @@ function assertMigrated(path: string, expectSentinel: boolean) {
   assertEquals(ledger, [
     { version: 1, name: "0001_baseline" },
     { version: 2, name: "0002_occurrence_resolution" },
+    { version: 3, name: "0003_user_names" },
+    { version: 4, name: "0004_household_assignment" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
-      ["status", "recurrence_parent_id", "revision"].includes(name)
+      [
+        "status",
+        "recurrence_parent_id",
+        "revision",
+        "assignee_id",
+        "unassigned_since",
+      ].includes(name)
     ),
-    ["status", "recurrence_parent_id", "revision"],
+    [
+      "status",
+      "recurrence_parent_id",
+      "revision",
+      "assignee_id",
+      "unassigned_since",
+    ],
   );
+  assertEquals(columnNames(db, "users").includes("name"), true);
+  assertEquals(columnNames(db, "users").includes("picture"), true);
   assertEquals(columnNames(db, "completion_logs").includes("due_at"), true);
 
   if (expectSentinel) {

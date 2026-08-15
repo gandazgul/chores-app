@@ -8,6 +8,7 @@ interface ChoreCreateInput {
   title?: string;
   description?: string;
   rrule?: string;
+  assigneeId?: string | null;
 }
 
 function readStringField(
@@ -16,6 +17,25 @@ function readStringField(
 ): string | undefined {
   const value = input[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function readJsonAssigneeId(
+  record: Record<string, unknown>,
+): string | null | undefined {
+  if (!("assigneeId" in record)) {
+    return undefined;
+  }
+  return typeof record.assigneeId === "string" ? record.assigneeId : null;
+}
+
+function readFormAssigneeId(
+  entries: Record<string, FormDataEntryValue>,
+): string | null | undefined {
+  if (!("assigneeId" in entries)) {
+    return undefined;
+  }
+  const value = entries.assigneeId;
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 async function readCreateInput(
@@ -34,6 +54,7 @@ async function readCreateInput(
         title: readStringField(entries, "title"),
         description: readStringField(entries, "description"),
         rrule: readStringField(entries, "rrule"),
+        assigneeId: readFormAssigneeId(entries),
       },
       isForm: true,
     };
@@ -48,9 +69,14 @@ async function readCreateInput(
       title: readStringField(record, "title"),
       description: readStringField(record, "description"),
       rrule: readStringField(record, "rrule"),
+      assigneeId: readJsonAssigneeId(record),
     },
     isForm: false,
   };
+}
+
+function memberExists(memberId: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM users WHERE id = ?").get(memberId));
 }
 
 export const GET: APIRoute = ({ locals }) => {
@@ -63,9 +89,9 @@ export const GET: APIRoute = ({ locals }) => {
 
   try {
     const stmt = db.prepare(
-      `SELECT * FROM chores WHERE user_id = ? AND status = 'open' ORDER BY due_date`,
+      `SELECT * FROM chores WHERE status = 'open' ORDER BY due_date`,
     );
-    const chores = stmt.all(user.id) as unknown as ChoreRow[];
+    const chores = stmt.all() as unknown as ChoreRow[];
 
     return new Response(JSON.stringify(parseChoreRows(chores)), {
       status: 200,
@@ -111,17 +137,42 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       }
     }
 
+    const assigneeId = data.assigneeId === undefined
+      ? user.id
+      : data.assigneeId;
+    if (assigneeId !== null && !memberExists(assigneeId)) {
+      if (isForm) return redirect("/?error=Member+not+found", 302);
+      return new Response(JSON.stringify({ error: "Member not found" }), {
+        status: 404,
+      });
+    }
+
     const recurrenceJson = rrule ? JSON.stringify({ rrule }) : null;
     const dueDateStr = nextDueDate ? nextDueDate.toISOString() : null;
+    const unassignedSince = assigneeId === null
+      ? new Date().toISOString()
+      : null;
 
     const stmt = db.prepare(`
-      INSERT INTO chores (id, user_id, title, description, due_date, recurrence, done)
-      VALUES (?, ?, ?, ?, ?, ?, 0)
+      INSERT INTO chores (
+        id,
+        user_id,
+        assignee_id,
+        unassigned_since,
+        title,
+        description,
+        due_date,
+        recurrence,
+        done
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
     `);
 
     stmt.run(
       id,
       user.id,
+      assigneeId,
+      unassignedSince,
       title,
       description || null,
       dueDateStr,

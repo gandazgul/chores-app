@@ -13,8 +13,6 @@ affectedPaths:
   - "docs/domain-language.md"
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:51.880Z"
-updatedAt: "2026-08-10T16:07:51.880Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 7
@@ -22,6 +20,10 @@ dependencies:
   - "05-provision-household-users-behind-an-allowlist"
   - "06-restore-csrf-protection-for-browser-mutations"
 planId: "9423fd18-e4b9-4c41-988a-b750e9a2eb02"
+collaborationRecommendation: "autonomous"
+updatedAt: "2026-08-15T15:27:54.130Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Add Household Assignment Model and APIs

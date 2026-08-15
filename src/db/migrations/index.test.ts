@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { baselineMigration } from "./0001_baseline.ts";
 import { userNamesMigration } from "./0003_user_names.ts";
+import { householdAssignmentMigration } from "./0004_household_assignment.ts";
 import { applyMigrations } from "./index.ts";
 
 interface CountRow {
@@ -107,7 +108,66 @@ Deno.test("user-name migration preserves version-2 users and adds nullable names
   );
 });
 
-Deno.test("fresh databases receive occurrence-resolution, user-name schema, and ledger rows", () => {
+Deno.test("household-assignment migration adds final columns without legacy chore backfill", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      name TEXT
+    );
+    CREATE TABLE chores (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      title TEXT NOT NULL,
+      description TEXT,
+      priority INTEGER,
+      done BOOLEAN DEFAULT 0,
+      due_date TIMESTAMP,
+      remind_until_done BOOLEAN DEFAULT 0,
+      notification_sent_at TIMESTAMP,
+      recurrence JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      status TEXT NOT NULL DEFAULT 'open',
+      recurrence_parent_id TEXT REFERENCES chores(id) ON DELETE SET NULL,
+      revision INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE completion_logs (
+      id TEXT PRIMARY KEY,
+      chore_id TEXT NOT NULL REFERENCES chores(id) ON DELETE CASCADE,
+      completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      due_at TIMESTAMP
+    );
+    INSERT INTO users (id, email) VALUES ('legacy-user', 'legacy@example.com');
+    INSERT INTO chores (id, user_id, title) VALUES ('legacy-chore', 'legacy-user', 'Legacy Chore');
+  `);
+
+  householdAssignmentMigration.up(db);
+  householdAssignmentMigration.validate(db);
+
+  assert(columnNames(db, "users").includes("picture"));
+  assert(columnNames(db, "chores").includes("assignee_id"));
+  assert(columnNames(db, "chores").includes("unassigned_since"));
+  assertEquals(
+    db.prepare(
+      "SELECT assignee_id, unassigned_since FROM chores WHERE id = 'legacy-chore'",
+    ).get(),
+    { assignee_id: null, unassigned_since: null },
+  );
+  assertThrows(
+    () =>
+      db.prepare(
+        "INSERT INTO chores (id, user_id, title, assignee_id) VALUES ('bad', 'legacy-user', 'Bad', 'missing')",
+      ).run(),
+    Error,
+  );
+});
+
+Deno.test("fresh databases receive occurrence-resolution, user-name, assignment schema, and ledger rows", () => {
   const db = new DatabaseSync(":memory:");
   applyMigrations(db);
 
@@ -116,11 +176,14 @@ Deno.test("fresh databases receive occurrence-resolution, user-name schema, and 
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 3);
+  assertEquals(ledgerCount(db), 4);
   assert(columnNames(db, "users").includes("name"));
+  assert(columnNames(db, "users").includes("picture"));
   assert(columnNames(db, "chores").includes("status"));
   assert(columnNames(db, "chores").includes("recurrence_parent_id"));
   assert(columnNames(db, "chores").includes("revision"));
+  assert(columnNames(db, "chores").includes("assignee_id"));
+  assert(columnNames(db, "chores").includes("unassigned_since"));
   assert(columnNames(db, "completion_logs").includes("due_at"));
 });
 
@@ -160,18 +223,18 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 3);
+  assertEquals(ledgerCount(legacy), 4);
   assertEquals(
-    legacy.prepare("SELECT email, name FROM users WHERE id = ?").get(
+    legacy.prepare("SELECT email, name, picture FROM users WHERE id = ?").get(
       "legacy-user",
     ),
-    { email: "legacy@example.com", name: null },
+    { email: "legacy@example.com", name: null, picture: null },
   );
   assertEquals(
-    legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
-      "open-chore",
-    ),
-    { status: "open", revision: 0 },
+    legacy.prepare(
+      "SELECT status, revision, assignee_id, unassigned_since FROM chores WHERE id = ?",
+    ).get("open-chore"),
+    { status: "open", revision: 0, assignee_id: null, unassigned_since: null },
   );
   assertEquals(
     legacy.prepare("SELECT status, revision FROM chores WHERE id = ?").get(
@@ -258,7 +321,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 3);
+  assertEquals(ledgerCount(db), 4);
   assertEquals(tableSignature(db), firstSignature);
 });
 

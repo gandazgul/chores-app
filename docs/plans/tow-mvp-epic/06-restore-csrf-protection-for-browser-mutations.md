@@ -1,4 +1,5 @@
 ---
+planId: "8c5679ba-f476-4241-8adc-1cfdb465c87f"
 classification: "PLANNED_CHANGE"
 workKind: "MAINTENANCE"
 complexity: "MEDIUM"
@@ -9,16 +10,34 @@ affectedPaths:
   - "src/components/**"
   - "src/layouts/**"
   - "tests/**"
+objectiveCheckWaivers:
+  []
 executionAgent: "engineer"
+collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:51.813Z"
-updatedAt: "2026-08-10T16:07:51.813Z"
-status: "draft"
+updatedAt: "2026-08-15T15:15:20.651Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 6
 dependencies:
   - "01-convert-source-and-tests-to-typescript"
-planId: "8c5679ba-f476-4241-8adc-1cfdb465c87f"
+implementedAt: "2026-08-15T15:11:34.842Z"
+verifiedAt: "2026-08-15T15:15:20.651Z"
+userVerifiedAt: null
+executionReport: "- Implemented strict same-origin mutation boundary: removed `security.checkOrigin: false`, added middleware that rejects `POST`/`PUT`/`PATCH`/`DELETE` unless `Origin` exactly matches scheme, host, and port before auth or mock-user setup.\n- Added/updated tests: +3 Deno middleware tests and +5 Playwright CSRF tests; no tests removed. Core journey test was rewritten to keep the same create/complete coverage through the browser native form and JSON toggle. Recurrence tests kept their behavior and now send same-origin evidence. Branding test kept its asset-size behavior and now waits for page load.\n- Updated docs in ADR 0001, `docs/system-patterns.md`, and `docs/tech-context.md` to describe the layered Astro + Tow origin boundary, test-client Origin requirement, and reverse-proxy origin constraint.\n- Verification passed: `deno task ci` (38 Deno tests passed; Astro check reported the existing login-page hint only), `deno task test:e2e --grep \"CSRF boundary\"` (5 passed), `deno task test:e2e` (11 passed), and the objective curl probe passed.\n- Manual production reverse-proxy smoke check was not run because no deployed production URL/proxy access was available in this session; local real-server checks covered the same origin fail-closed behavior."
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
+validationCheckpoint: null
+executionMode: "worktree"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "6771a0f2425f3369261b3b8b7c71c87d0c1b5666"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "df8f05cae15210296f218724976f2a2d796dc74d"
+validationCiAttempts: 0
+validationSemanticRounds: 0
 ---
 
 # Restore CSRF Protection for Browser Mutations

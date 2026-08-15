@@ -82,6 +82,7 @@ test.describe("Tow branding", () => {
     expect(faviconResponse.headers()["content-type"]).toContain("image/x-icon");
 
     await page.goto("/");
+    await page.waitForLoadState("load");
     const dimensions = await page.evaluate(async (icons) => {
       return await Promise.all(
         icons.map((icon) =>

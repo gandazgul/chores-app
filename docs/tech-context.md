@@ -62,10 +62,9 @@ integration runs it — see [Continuous integration](#continuous-integration).
 - Server output on port 8080, host `0.0.0.0`, through `@deno/astro-adapter`. The
   port is set twice, once for the development server and once for the adapter.
 - UnoCSS is registered as an Astro integration with `injectReset: true`.
-- `security.checkOrigin: false`. This turns off Astro's cross-site request
-  forgery origin check. `ChoreModal` posts a real HTML form to `/api/chores`, so
-  the check would otherwise need a token. Treat this as a known exposure, not a
-  setting to copy.
+- Astro's default `security.checkOrigin` setting is used. Unsafe native-form
+  requests get Astro's origin check, and `src/middleware.ts` adds an exact
+  same-origin check for all unsafe methods and all content types.
 - `node:sqlite` is marked external for both the Rollup build and server-side
   rendering, so the bundler leaves the built-in module alone.
 - A `globalThis.module` / `globalThis.exports` polyfill sits at the top of the
@@ -168,7 +167,13 @@ and no code reads or writes them.
   issues its own HS256 session JWT and sets it as an `httpOnly`, `sameSite=lax`
   cookie for 30 days. Astro middleware resolves it on every request.
 - **Development bypass:** `ENABLE_AUTH=false` injects a fixed mock user into
-  `Astro.locals` and skips all verification.
+  `Astro.locals` and skips all session verification. It does not skip the
+  same-origin boundary for `POST`, `PUT`, `PATCH`, or `DELETE`.
+- **Mutation boundary:** browser mutations are same-origin only. The server
+  requires `Origin` to equal the request URL origin exactly, including scheme,
+  host, and port. `GET`, `HEAD`, and `OPTIONS` do not need this header. Direct
+  API test clients must send the Playwright `baseURL` origin on valid mutation
+  requests.
 - **Known gap:** no code path inserts a row into `users`. Because
   `chores.user_id` has a foreign key to `users(id)` and foreign keys are on, a
   real Google account that is not the seeded mock user cannot create a chore.
@@ -199,6 +204,10 @@ and no code reads or writes them.
 - **Persistence caveat:** the SQLite file is written to the working directory
   inside the container. It needs a mounted volume to survive a restart, and it
   confines the application to a single writer.
+- **Origin caveat:** a reverse proxy must preserve the public scheme, host, and
+  port when it builds the request URL for Astro. If the browser sends
+  `Origin: https://...` but Astro sees `http://...`, unsafe requests fail with
+  HTTP 403.
 
 ## Continuous integration
 

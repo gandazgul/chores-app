@@ -62,6 +62,8 @@ bundle, because it is a Deno built-in and must not be bundled.
   (`globalThis.exports`, `globalThis.module`) to start under Deno. This is a
   workaround for a runtime mismatch and can break on an Astro or adapter
   upgrade.
-- `security.checkOrigin` is set to `false`. Astro's origin check for form
-  submissions is off, so cross-site request forgery protection must come from
-  the `SameSite=Lax` session cookie alone.
+- Astro's default origin check is on for unsafe form submissions. The app also
+  checks every `POST`, `PUT`, `PATCH`, and `DELETE` in `src/middleware.ts` and
+  requires the `Origin` header to match the request URL origin exactly. This
+  covers JSON mutations that Astro's form check does not inspect. Direct test
+  clients must send the same origin explicitly.

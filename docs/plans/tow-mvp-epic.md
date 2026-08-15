@@ -25,6 +25,10 @@ planId: "95aab844-6647-4148-981b-84c6b832368a"
 
 ## Context
 
+THIS IS GREENFIELD WORK theres no existing users or dabase to care about this
+app is not in production at all has never been released, treat everything in
+this epic as greenfield work.
+
 The product brief defines the minimum viable product (MVP) as roadmap milestones
 P0 + P1 + P3: "the app is not the product until the first nag fires." This Epic
 covers exactly that scope. P4 (fuzzy due windows, quota-based recurrence),
@@ -227,14 +231,14 @@ member as a direct assignee. The state machine:
 
 ```mermaid
 stateDiagram-v2
-  direction LR
-  [*] --> Pool: created unassigned
-  [*] --> Assigned: created with assignee
-  Pool --> Assigned: claim (self) or assign (any member)
-  Assigned --> Pool: release
-  Assigned --> Assigned: reassign
-  Assigned --> Resolved: done or skip
-  Pool --> Resolved: done or skip
+    direction LR
+    [*] --> Pool: created unassigned
+    [*] --> Assigned: created with assignee
+    Pool --> Assigned: claim (self) or assign (any member)
+    Assigned --> Pool: release
+    Assigned --> Assigned: reassign
+    Assigned --> Resolved: done or skip
+    Pool --> Resolved: done or skip
 ```
 
 `Resolved` is written here as done or skipped; skip itself arrives in P3, and
@@ -285,18 +289,18 @@ starts (per the roadmap), and that round records its decisions in an ADR.
 
 ```mermaid
 graph TD
-  subgraph Server process
-    SCH[Scheduler loop] --> Q[Query: nag candidates]
-    Q --> NP[Notification port]
-    SET[Settings UI] --> UAPI[Users API]
-    UAPI --> DB[(SQLite)]
-    SCH --> DB
-    NP --> DB
-  end
-  NP -->|GOTIFY_URL + per-user token| GOT[Gotify server]
-  GOT --> PH1[Member A phone]
-  GOT --> PH2[Member B phone]
-  NP -->|dev/test: no-op or log sender| LOG[Log only]
+    subgraph Server process
+        SCH[Scheduler loop] --> Q[Query: nag candidates]
+        Q --> NP[Notification port]
+        SET[Settings UI] --> UAPI[Users API]
+        UAPI --> DB[(SQLite)]
+        SCH --> DB
+        NP --> DB
+    end
+    NP -->|GOTIFY_URL + per - user token| GOT[Gotify server]
+    GOT --> PH1[Member A phone]
+    GOT --> PH2[Member B phone]
+    NP -->|dev/test: no - op or log sender| LOG[Log only]
 ```
 
 **Notification port.** One application-owned module owns "send a message to a

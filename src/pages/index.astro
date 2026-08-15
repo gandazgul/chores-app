@@ -18,20 +18,23 @@ if (user) {
 ---
 
 <Layout>
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <header
       class="bg-[#e6f3f5] border-b border-[#c7e3e8] shadow-sm p-4 flex items-center justify-between gap-4"
     >
-      <div>
-        <h1 class="text-2xl font-bold text-primary-text leading-tight">Tow</h1>
-        <p class="text-primary text-sm tracking-wide font-semibold">
-          STEADY HOUSEHOLD MANAGEMENT
-        </p>
+      <div class="flex items-center gap-3">
+        <img src="/icon.png" alt="Tow logo" class="w-8 h-8 rounded-lg shadow-sm" />
+        <div>
+          <h1 class="text-2xl font-bold text-primary-text leading-tight">Tow</h1>
+          <p class="text-primary text-sm tracking-wide font-semibold">
+            STEADY HOUSEHOLD MANAGEMENT
+          </p>
+        </div>
       </div>
       {user && <ChoreModal client:load />}
     </header>
 
-    <main class="bg-white border-b border-gray-200 w-full">
+    <div class="bg-white border-b border-gray-200 w-full flex-1 flex flex-col">
       {!user ? (
         <div class="p-8 text-center text-muted-text">
           <p>Please log in to view your chores.</p>
@@ -39,6 +42,6 @@ if (user) {
       ) : (
         <ChoreList client:load initialChores={chores} />
       )}
-    </main>
+    </div>
   </div>
 </Layout>

@@ -26,7 +26,7 @@ export default function ChoreList(props: ChoreListProps) {
   });
 
   return (
-    <div class="flex flex-col min-h-[calc(100vh-113px)]">
+    <div class="flex flex-col flex-1">
       <div class="p-4 border-b border-gray-100 flex gap-4 items-center">
         <div class="relative flex-grow">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

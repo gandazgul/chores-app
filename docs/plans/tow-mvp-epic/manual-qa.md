@@ -110,3 +110,26 @@ tow-mvp-epic/05-provision-household-users-behind-an-allowlist
       upgrade.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/05-provision-household-users-behind-an-allowlist" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/06-restore-csrf-protection-for-browser-mutations" -->
+
+## Restore CSRF Protection for Browser Mutations
+
+Manual verification steps for
+tow-mvp-epic/06-restore-csrf-protection-for-browser-mutations
+
+- [ ] Start the app and open it in a browser. Run one normal create, update, and
+      delete flow and confirm each action still succeeds.
+- [ ] Open browser dev tools and send a mutation request (POST/PUT/PATCH/DELETE)
+      with no `Origin` header. Confirm the request is rejected.
+- [ ] Send the same request with an incorrect `Origin` host. Confirm the request
+      is rejected.
+- [ ] Send the same request with the exact same-site `Origin` value. Confirm the
+      request is accepted and the record changes.
+- [ ] Run a browser mutation in `ENABLE_AUTH=false` mode using the mock-user
+      path. Confirm login and mutation still work without Google signin.
+- [ ] If a reverse proxy is in place, test the same mutation flows through the
+      proxy URL and confirm only the proxy origin is accepted and other origins
+      are rejected.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/06-restore-csrf-protection-for-browser-mutations" -->

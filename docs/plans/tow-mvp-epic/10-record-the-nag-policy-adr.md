@@ -1,4 +1,5 @@
 ---
+planId: "c05fe6ab-21e3-4ea4-89e2-2368a78bbac2"
 classification: "PLANNED_CHANGE"
 workKind: "DOCUMENTATION"
 complexity: "MEDIUM"
@@ -7,18 +8,35 @@ affectedPaths:
   - "docs/adr/**"
   - "docs/product-brief.md"
   - "docs/roadmap.md"
+objectiveCheckWaivers:
+  []
 executionAgent: "engineer"
+collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:52.157Z"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 10
 dependencies:
   - "09-add-whats-next-board-and-pool-views"
-planId: "c05fe6ab-21e3-4ea4-89e2-2368a78bbac2"
-collaborationRecommendation: "autonomous"
-updatedAt: "2026-08-16T14:30:48.728Z"
-status: "ready_for_work"
+implementedAt: "2026-08-16T14:34:10.904Z"
 userVerifiedAt: null
+executionReport: "- Created `docs/adr/0007-nag-cadence-escalation-and-quiet-hours.md` as Accepted ADR 0007 with the two-anchor model, assigned-nag ladder, quiet-hours deferral/coalescing, outbox slot identity, no-backfill, Pool blast, at-least-once, and tick policy.\n- Updated `docs/roadmap.md` and `docs/product-brief.md` to point to ADR 0007 as the nag and Pool blast policy source; did not change `docs/domain-language.md`.\n- Scope held to docs: changed/untracked files are under `docs/`; no `src/`, `tests/`, `scripts/`, or `.env.example` files were changed, and no tests were added, edited, or removed.\n- Manual verification completed against child plans 12 and 14: eligibility, uniqueness, token/undeliverable, retry/at-least-once, toggle/no-backfill, and Pool blast rules have ADR coverage; worked cases produce 10:00/11:00/14:00/18:00, one 09:00 message for 22:00 due, and one 18:00 message for three-days-overdue assignment at 14:00.\n- Verification passed: `deno fmt --check docs/`, `deno task ci`, objective checks OC1-OC7, and docs-only changed/untracked file check."
+executionMode: "worktree"
+executionBaselineTree: "1daeee8b21093d65ffeb78683edc84cf02803f5d"
+worktreeId: "c6944685"
+worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-10-record-the-nag-policy-adr-c6944685"
+worktreeBranch: "worktree/tow-mvp-epic-10-record-the-nag-policy-adr-c6944685"
+worktreeBaseBranch: "main"
+worktreeStatus: "completed"
+validationCiAttempts: 0
+validationObjectiveCheckAttempts: 0
+validationSemanticRounds: 1
+status: "validated_reviewer"
+validationCheckpoint: null
+updatedAt: "2026-08-16T22:37:47.416Z"
+humanReviewMode: "ask"
+humanReviewDecision: "approved"
+humanReviewedAt: "2026-08-16T22:37:47.386Z"
 ---
 
 # Record the Nag Policy ADR

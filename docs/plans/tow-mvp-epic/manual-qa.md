@@ -203,3 +203,24 @@ tow-mvp-epic/09-add-whats-next-board-and-pool-views
       assigned chore views.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/09-add-whats-next-board-and-pool-views" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/10-record-the-nag-policy-adr" -->
+
+## Record the Nag Policy ADR
+
+Manual verification steps for tow-mvp-epic/10-record-the-nag-policy-adr
+
+- [ ] Open the nag policy ADR and confirm it states the MVP cadence, escalation
+      slots, and quiet-hours behavior.
+- [ ] Confirm the ADR gives enough slot rules for an Engineer to write scheduler
+      eligibility tests without new policy choices.
+- [ ] Confirm the ADR states how `remind_until_done` stops future nags and how
+      nags resume when it is turned on again.
+- [ ] Confirm the ADR states at-least-once delivery and does not claim
+      exactly-once delivery.
+- [ ] Confirm the product brief and roadmap point to the ADR as the nag policy
+      source where applicable.
+- [ ] Confirm the documentation does not add roles, scorekeeping, per-person
+      comparison, or extra Pool push behavior.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/10-record-the-nag-policy-adr" -->

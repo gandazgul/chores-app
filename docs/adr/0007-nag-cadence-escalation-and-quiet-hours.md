@@ -89,8 +89,9 @@ reads them:
 - `QUIET_HOURS_END`, default `08:00`.
 
 Both values are household-local `HH:MM` values in `HOUSEHOLD_TZ`. If either
-variable is unset, quiet hours are disabled. Per-Member timezones and per-Member
-quiet hours are out of scope for the MVP.
+variable is unset, the scheduler uses the default for that variable. Quiet hours
+exist in the MVP by default. Per-Member timezones and per-Member quiet hours are
+out of scope for the MVP.
 
 A slot whose ladder instant falls inside the quiet-hours window is deferred, not
 dropped. Its delivery time becomes the next quiet-hours end. For example, with

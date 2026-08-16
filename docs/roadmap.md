@@ -159,20 +159,21 @@ The app currently cannot support a second person at all.
 
 ### P3 — Notifications
 
-The differentiator. Design work still open; the pieces below are what must be
-resolved when this milestone starts.
+The differentiator. The nag cadence, escalation ladder, quiet-hours behavior,
+slot identity, and one Pool blast are the policy source in
+[ADR 0007](adr/0007-nag-cadence-escalation-and-quiet-hours.md).
 
 - Per-user Gotify tokens. Gotify is multi-user — one server, one account per
   household member — so each member stores their own application token. This is
   a configuration detail, not a feasibility risk.
 - The nag engine for assigned chores: persistent reminders until the chore is
-  resolved. The reserved `remind_until_done` and `notification_sent_at` columns
-  become live here.
+  resolved, using the ADR 0007 ladder. The reserved `remind_until_done` and
+  `notification_sent_at` columns become live here.
 - **Skip**, folded in here rather than treated as a list feature. Skip is nag
   dismissal semantics — a reminder you can only silence by falsely claiming
   "done" is a broken reminder.
-- **The pool nudge.** Ambient in-app pressure plus at most one due-date blast,
-  configurable at the server level.
+- **The pool nudge.** Ambient in-app pressure plus the one due-date blast
+  defined by ADR 0007.
   - Design constraint worth banking now: an inbox's health signal is **age, not
     due date**. The items the pool is meant to hold — fuzzy, undefined,
     collaborative — are precisely the ones least likely to carry a due date, so

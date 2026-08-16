@@ -110,13 +110,15 @@ the first nag fires. Milestones are rungs on a ladder, not shippable releases.
 
 Assigned chores get persistent push notifications until resolved — done or
 skipped. **Skip must exist**, because a reminder you can only silence by falsely
-claiming "done" is a broken reminder.
+claiming "done" is a broken reminder. The cadence, escalation ladder, quiet
+hours, and delivery-slot policy are recorded in
+[ADR 0007](adr/0007-nag-cadence-escalation-and-quiet-hours.md).
 
 Unassigned chores get no push. The pool gets ambient in-app pressure when you
 open the app, plus at most one server-configurable blast as a due date nears.
-The pool's health signal is **age, not due date** — the fuzzy and collaborative
-items it is meant to hold are precisely the ones least likely to carry a due
-date.
+The Pool blast policy is recorded in ADR 0007. The pool's health signal is
+**age, not due date** — the fuzzy and collaborative items it is meant to hold
+are precisely the ones least likely to carry a due date.
 
 Notification delivery is via Gotify: one server, one account per household
 member, each member holding their own application token.

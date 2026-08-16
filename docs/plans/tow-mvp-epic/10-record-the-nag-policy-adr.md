@@ -9,14 +9,16 @@ affectedPaths:
   - "docs/roadmap.md"
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:52.157Z"
-updatedAt: "2026-08-10T16:07:52.157Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 10
 dependencies:
   - "09-add-whats-next-board-and-pool-views"
 planId: "c05fe6ab-21e3-4ea4-89e2-2368a78bbac2"
+collaborationRecommendation: "autonomous"
+updatedAt: "2026-08-16T14:30:48.728Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Record the Nag Policy ADR

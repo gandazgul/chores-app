@@ -67,7 +67,7 @@ Deno.test("due date display uses the explicit household timezone", () => {
   assertEquals(newYorkLabel?.includes("Mar 3"), true);
 });
 
-Deno.test("What's Next selects the oldest overdue bucket before today", () => {
+Deno.test("What's Next selects today before overdue buckets", () => {
   const selection = selectWhatsNextChores(
     [
       chore("today", { due_date: "2030-05-10T12:00:00.000Z" }),
@@ -79,8 +79,8 @@ Deno.test("What's Next selects the oldest overdue bucket before today", () => {
     "UTC",
   );
 
-  assertEquals(selection.dateKey, "2030-05-01");
-  assertEquals(selection.chores.map((item) => item.id), ["oldest-overdue"]);
+  assertEquals(selection.dateKey, "2030-05-10");
+  assertEquals(selection.chores.map((item) => item.id), ["today"]);
 });
 
 Deno.test("What's Next selects today before the nearest future bucket", () => {
@@ -98,9 +98,10 @@ Deno.test("What's Next selects today before the nearest future bucket", () => {
   assertEquals(selection.chores.map((item) => item.id), ["today"]);
 });
 
-Deno.test("What's Next selects the nearest future bucket when there is no overdue or today work", () => {
+Deno.test("What's Next selects the nearest future bucket when there is no today work", () => {
   const selection = selectWhatsNextChores(
     [
+      chore("overdue", { due_date: "2030-05-01T12:00:00.000Z" }),
       chore("later", { due_date: "2030-05-15T12:00:00.000Z" }),
       chore("nearest", { due_date: "2030-05-12T12:00:00.000Z" }),
     ],

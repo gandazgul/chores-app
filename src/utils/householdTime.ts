@@ -93,11 +93,9 @@ export function selectWhatsNextChores<T extends WhatsNextCandidate>(
   }
 
   const keys = [...buckets.keys()].sort();
-  const overdueKey = keys.find((key) => key < todayKey);
-  const selectedKey = overdueKey ??
-    (buckets.has(todayKey)
-      ? todayKey
-      : keys.find((key) => key > todayKey) ?? null);
+  const selectedKey = buckets.has(todayKey)
+    ? todayKey
+    : keys.find((key) => key > todayKey) ?? null;
   if (!selectedKey) return { dateKey: null, chores: [] };
   return {
     dateKey: selectedKey,

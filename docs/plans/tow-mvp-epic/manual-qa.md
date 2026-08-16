@@ -183,3 +183,23 @@ tow-mvp-epic/08-ship-create-edit-delete-and-assignment-ui
       confirmation or safe delete step.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/08-ship-create-edit-delete-and-assignment-ui" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/09-add-whats-next-board-and-pool-views" -->
+
+## Add Whats Next Board and Pool Views
+
+Manual verification steps for
+tow-mvp-epic/09-add-whats-next-board-and-pool-views
+
+- [ ] Open the app and confirm that the default view is What's Next.
+- [ ] Confirm that What's Next shows assigned open chores for the signed-in
+      member, grouped by the correct household due-date bucket.
+- [ ] Switch to Board and confirm that the searchable full household chore list
+      is visible.
+- [ ] Use Board search and confirm that matching active and completed chores
+      appear.
+- [ ] Switch to Pool and confirm that only unassigned open chores appear.
+- [ ] Claim a Pool chore and confirm that it leaves Pool and appears in the
+      assigned chore views.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/09-add-whats-next-board-and-pool-views" -->

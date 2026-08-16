@@ -46,16 +46,8 @@ function ensureUser(user: UserPayload) {
 }
 
 function cleanup() {
-  db.prepare("DELETE FROM chores WHERE user_id IN (?, ?, ?)").run(
-    MOCK_USER.id,
-    OTHER_USER.id,
-    THIRD_USER.id,
-  );
-  db.prepare("DELETE FROM users WHERE id IN (?, ?, ?)").run(
-    MOCK_USER.id,
-    OTHER_USER.id,
-    THIRD_USER.id,
-  );
+  db.prepare("DELETE FROM chores").run();
+  db.prepare("DELETE FROM users").run();
 }
 
 function context(fields: Partial<APIContext>): APIContext {
@@ -64,6 +56,19 @@ function context(fields: Partial<APIContext>): APIContext {
 
 function redirect(path: string, status = 302): Response {
   return new Response(null, { status, headers: { location: path } });
+}
+
+function jsonPost(body: unknown, user: UserPayload = MOCK_USER) {
+  return POST(
+    context({
+      request: new Request("http://localhost/api/chores", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      locals: { user },
+    }),
+  ) as Promise<Response>;
 }
 
 function jsonPut(id: string, body: unknown, user: UserPayload = MOCK_USER) {
@@ -382,6 +387,102 @@ Deno.test({
         context({ params: { id: crypto.randomUUID() }, locals: MOCK_LOCALS }),
       ) as Response;
       assertEquals(missingRes.status, 404);
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name: "Chores API creates and edits due date and assignment atomically",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    ensureUser(OTHER_USER);
+    try {
+      const jsonCreateRes = await jsonPost({
+        title: "Due JSON",
+        description: "Has a due date",
+        dueDate: "2030-01-05T06:07:00.000Z",
+        assigneeId: OTHER_USER.id,
+      });
+      assertEquals(jsonCreateRes.status, 201);
+      const created = await jsonCreateRes.json() as Chore;
+      assertEquals(created.title, "Due JSON");
+      assertEquals(created.due_date, "2030-01-05T06:07:00.000Z");
+      assertEquals(created.assignee_id, OTHER_USER.id);
+      assertEquals(created.unassigned_since, null);
+
+      const editRes = await jsonPut(created.id, {
+        title: "Edited JSON",
+        description: "Edited details",
+        rrule: "FREQ=DAILY",
+        dueDate: "2030-01-10T12:00:00.000Z",
+        assigneeId: null,
+      });
+      assertEquals(editRes.status, 200);
+      const edited = await editRes.json() as Chore;
+      assertEquals(edited.title, "Edited JSON");
+      assertEquals(edited.description, "Edited details");
+      assertEquals(edited.due_date, "2030-01-10T12:00:00.000Z");
+      assertEquals(
+        typeof edited.recurrence === "object" && edited.recurrence?.rrule,
+        "FREQ=DAILY",
+      );
+      assertEquals(edited.assignee_id, null);
+      assert(typeof edited.unassigned_since === "string");
+      assertEquals(edited.revision, 1);
+
+      const beforeInvalidDateCount = count(
+        "SELECT COUNT(*) AS count FROM chores WHERE user_id = ?",
+        MOCK_USER.id,
+      );
+      const invalidCreateRes = await jsonPost({
+        title: "Invalid Date",
+        dueDate: "not-a-date",
+      });
+      assertEquals(invalidCreateRes.status, 400);
+      assertEquals(
+        count(
+          "SELECT COUNT(*) AS count FROM chores WHERE user_id = ?",
+          MOCK_USER.id,
+        ),
+        beforeInvalidDateCount,
+      );
+
+      const beforeBadEdit = chore(created.id);
+      const badMemberEditRes = await jsonPut(created.id, {
+        title: "Should Roll Back",
+        dueDate: "2030-02-01T00:00:00.000Z",
+        assigneeId: "missing",
+      });
+      assertEquals(badMemberEditRes.status, 404);
+      assertEquals(chore(created.id), beforeBadEdit);
+
+      const formDueRes = await POST(
+        context({
+          request: new Request("http://localhost/api/chores", {
+            method: "POST",
+            body: new URLSearchParams({
+              title: "Form Due",
+              dueDate: "2030-03-04T05:06:00.000Z",
+              assigneeId: OTHER_USER.id,
+            }),
+          }),
+          locals: MOCK_LOCALS,
+          redirect,
+        }),
+      ) as Response;
+      assertEquals(formDueRes.status, 302);
+      assertEquals(formDueRes.headers.get("location"), "/");
+      const formDue = db.prepare(
+        "SELECT * FROM chores WHERE user_id = ? AND title = ?",
+      ).get(MOCK_USER.id, "Form Due") as ChoreRow | undefined;
+      assertExists(formDue);
+      assertEquals(formDue.due_date, "2030-03-04T05:06:00.000Z");
+      assertEquals(formDue.assignee_id, OTHER_USER.id);
     } finally {
       cleanup();
     }

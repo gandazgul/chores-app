@@ -7,6 +7,8 @@ export interface OccurrencePatch {
   title?: string;
   description?: string | null;
   rrule?: string | null;
+  dueDate?: string | null;
+  assigneeId?: string | null;
   done?: boolean;
 }
 
@@ -17,6 +19,8 @@ export interface UpdateOccurrenceOptions {
 export type UpdateOccurrenceResult =
   | { kind: "updated"; chore: ChoreRow }
   | { kind: "not_found" }
+  | { kind: "member_not_found" }
+  | { kind: "invalid"; reason: string }
   | { kind: "conflict"; reason: string };
 
 interface CountRow {
@@ -31,6 +35,10 @@ function readChore(db: DatabaseSync, id: string): ChoreRow | undefined {
   return db.prepare("SELECT * FROM chores WHERE id = ?").get(id) as unknown as
     | ChoreRow
     | undefined;
+}
+
+function memberExists(db: DatabaseSync, memberId: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM users WHERE id = ?").get(memberId));
 }
 
 function hasChild(db: DatabaseSync, id: string): boolean {
@@ -58,32 +66,73 @@ function nextDueDateIso(rrule: string, now: Date): string | null {
   return nextDueDate ? nextDueDate.toISOString() : null;
 }
 
+function dueDateIsValid(value: string | null): boolean {
+  return value === null || !Number.isNaN(new Date(value).getTime());
+}
+
 function buildFinalFields(
+  db: DatabaseSync,
   row: ChoreRow,
   patch: OccurrencePatch,
   now: Date,
-) {
+):
+  | {
+    kind: "fields";
+    title: string;
+    description: string | null;
+    dueDate: string | null;
+    recurrence: string | null;
+    assigneeId: string | null;
+    unassignedSince: string | null;
+    changed: boolean;
+  }
+  | { kind: "member_not_found" }
+  | { kind: "invalid"; reason: string } {
   let title = row.title;
   let description = row.description;
   let dueDate = row.due_date;
   let recurrence = row.recurrence;
+  let assigneeId = row.assignee_id;
+  let unassignedSince = row.unassigned_since;
 
-  if (patch.title !== undefined) {
-    title = patch.title;
-  }
-  if (patch.description !== undefined) {
-    description = patch.description;
-  }
+  if (patch.title !== undefined) title = patch.title;
+  if (patch.description !== undefined) description = patch.description;
   if (patch.rrule !== undefined) {
     recurrence = recurrenceJson(patch.rrule);
-    dueDate = patch.rrule ? nextDueDateIso(patch.rrule, now) : null;
+    if (patch.dueDate === undefined) {
+      dueDate = patch.rrule ? nextDueDateIso(patch.rrule, now) : null;
+    }
+  }
+  if (patch.dueDate !== undefined) {
+    if (!dueDateIsValid(patch.dueDate)) {
+      return { kind: "invalid", reason: "Invalid dueDate" };
+    }
+    dueDate = patch.dueDate;
+  }
+  if (patch.assigneeId !== undefined) {
+    if (patch.assigneeId !== null && !memberExists(db, patch.assigneeId)) {
+      return { kind: "member_not_found" };
+    }
+    if (patch.assigneeId !== row.assignee_id) {
+      assigneeId = patch.assigneeId;
+      unassignedSince = assigneeId === null ? now.toISOString() : null;
+    }
   }
 
-  const metadataChanged = title !== row.title ||
-    description !== row.description || dueDate !== row.due_date ||
-    recurrence !== row.recurrence;
+  const changed = title !== row.title || description !== row.description ||
+    dueDate !== row.due_date || recurrence !== row.recurrence ||
+    assigneeId !== row.assignee_id || unassignedSince !== row.unassigned_since;
 
-  return { title, description, dueDate, recurrence, metadataChanged };
+  return {
+    kind: "fields",
+    title,
+    description,
+    dueDate,
+    recurrence,
+    assigneeId,
+    unassignedSince,
+    changed,
+  };
 }
 
 function updateChore(
@@ -94,6 +143,8 @@ function updateChore(
     description: string | null;
     dueDate: string | null;
     recurrence: string | null;
+    assigneeId: string | null;
+    unassignedSince: string | null;
     status: ChoreStatus;
     incrementRevision: boolean;
   },
@@ -104,6 +155,8 @@ function updateChore(
         description = ?,
         due_date = ?,
         recurrence = ?,
+        assignee_id = ?,
+        unassigned_since = ?,
         status = ?,
         done = ?,
         revision = revision + ?,
@@ -114,6 +167,8 @@ function updateChore(
     fields.description,
     fields.dueDate,
     fields.recurrence,
+    fields.assigneeId,
+    fields.unassignedSince,
     fields.status,
     syncDone(fields.status),
     fields.incrementRevision ? 1 : 0,
@@ -137,7 +192,9 @@ function insertSuccessor(
   fields: {
     title: string;
     description: string | null;
+    dueDate: string | null;
     recurrence: string | null;
+    assigneeId: string | null;
   },
   now: Date,
 ) {
@@ -149,7 +206,10 @@ function insertSuccessor(
     return;
   }
 
-  const nextDueDate = calculateNextOccurrence(parsedRecurrence.rrule, now);
+  const nextDueDate = calculateNextOccurrence(
+    parsedRecurrence.rrule,
+    fields.dueDate ?? now,
+  );
   if (!nextDueDate) {
     return;
   }
@@ -173,8 +233,8 @@ function insertSuccessor(
   `).run(
     crypto.randomUUID(),
     parent.user_id,
-    parent.assignee_id,
-    parent.assignee_id === null ? now.toISOString() : null,
+    fields.assigneeId,
+    fields.assigneeId === null ? now.toISOString() : null,
     fields.title,
     fields.description,
     nextDueDate.toISOString(),
@@ -186,7 +246,7 @@ function insertSuccessor(
 function completeOpenOccurrence(
   db: DatabaseSync,
   row: ChoreRow,
-  fields: ReturnType<typeof buildFinalFields>,
+  fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
   now: Date,
 ) {
   updateChore(db, row.id, {
@@ -201,7 +261,7 @@ function completeOpenOccurrence(
 function reopenCompletedOccurrence(
   db: DatabaseSync,
   row: ChoreRow,
-  fields: ReturnType<typeof buildFinalFields>,
+  fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
 ): UpdateOccurrenceResult | null {
   const successor = directSuccessor(db, row.id);
   if (successor) {
@@ -248,7 +308,18 @@ export function updateOccurrence(
       return { kind: "not_found" };
     }
 
-    const fields = buildFinalFields(row, patch, now);
+    const fields = buildFinalFields(db, row, patch, now);
+    if (fields.kind === "member_not_found") {
+      db.exec("ROLLBACK;");
+      inTransaction = false;
+      return { kind: "member_not_found" };
+    }
+    if (fields.kind === "invalid") {
+      db.exec("ROLLBACK;");
+      inTransaction = false;
+      return fields;
+    }
+
     const status = row.status;
     const hasStatePatch = patch.done !== undefined;
     const stateChangesToCompleted = hasStatePatch && patch.done === true &&
@@ -265,11 +336,11 @@ export function updateOccurrence(
       }
     } else if (stateChangesToCompleted) {
       completeOpenOccurrence(db, row, fields, now);
-    } else if (fields.metadataChanged || row.done !== syncDone(status)) {
+    } else if (fields.changed || row.done !== syncDone(status)) {
       updateChore(db, row.id, {
         ...fields,
         status,
-        incrementRevision: fields.metadataChanged,
+        incrementRevision: fields.changed,
       });
     }
 
@@ -277,9 +348,7 @@ export function updateOccurrence(
     db.exec("COMMIT;");
     inTransaction = false;
 
-    if (!updated) {
-      return { kind: "not_found" };
-    }
+    if (!updated) return { kind: "not_found" };
     return { kind: "updated", chore: updated };
   } catch (error) {
     if (inTransaction) {

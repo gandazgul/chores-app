@@ -8,6 +8,7 @@ interface ChoreCreateInput {
   title?: string;
   description?: string;
   rrule?: string;
+  dueDate?: string | null;
   assigneeId?: string | null;
 }
 
@@ -19,22 +20,21 @@ function readStringField(
   return typeof value === "string" ? value : undefined;
 }
 
-function readJsonAssigneeId(
+function readJsonNullableString(
   record: Record<string, unknown>,
+  key: string,
 ): string | null | undefined {
-  if (!("assigneeId" in record)) {
-    return undefined;
-  }
-  return typeof record.assigneeId === "string" ? record.assigneeId : null;
+  if (!(key in record)) return undefined;
+  const value = record[key];
+  return typeof value === "string" ? value : null;
 }
 
-function readFormAssigneeId(
+function readFormNullableString(
   entries: Record<string, FormDataEntryValue>,
+  key: string,
 ): string | null | undefined {
-  if (!("assigneeId" in entries)) {
-    return undefined;
-  }
-  const value = entries.assigneeId;
+  if (!(key in entries)) return undefined;
+  const value = entries[key];
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
@@ -54,7 +54,8 @@ async function readCreateInput(
         title: readStringField(entries, "title"),
         description: readStringField(entries, "description"),
         rrule: readStringField(entries, "rrule"),
-        assigneeId: readFormAssigneeId(entries),
+        dueDate: readFormNullableString(entries, "dueDate"),
+        assigneeId: readFormNullableString(entries, "assigneeId"),
       },
       isForm: true,
     };
@@ -69,7 +70,8 @@ async function readCreateInput(
       title: readStringField(record, "title"),
       description: readStringField(record, "description"),
       rrule: readStringField(record, "rrule"),
-      assigneeId: readJsonAssigneeId(record),
+      dueDate: readJsonNullableString(record, "dueDate"),
+      assigneeId: readJsonNullableString(record, "assigneeId"),
     },
     isForm: false,
   };
@@ -77,6 +79,20 @@ async function readCreateInput(
 
 function memberExists(memberId: string): boolean {
   return Boolean(db.prepare("SELECT 1 FROM users WHERE id = ?").get(memberId));
+}
+
+function validIsoDate(value: string | null): boolean {
+  return value === null || !Number.isNaN(new Date(value).getTime());
+}
+
+function errorResponse(isForm: boolean, error: string, status: number) {
+  if (isForm) {
+    return new Response(null, {
+      status: 302,
+      headers: { location: `/?error=${encodeURIComponent(error)}` },
+    });
+  }
+  return new Response(JSON.stringify({ error }), { status });
 }
 
 export const GET: APIRoute = ({ locals }) => {
@@ -117,17 +133,21 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     const { data, isForm } = await readCreateInput(request);
     const { title, description, rrule } = data;
 
-    if (!title) {
+    if (!title || !title.trim()) {
       if (isForm) return redirect("/?error=Title+is+required", 302);
       return new Response(JSON.stringify({ error: "Title is required" }), {
         status: 400,
       });
     }
 
+    if (data.dueDate !== undefined && !validIsoDate(data.dueDate)) {
+      return errorResponse(isForm, "Invalid dueDate", 400);
+    }
+
     const id = crypto.randomUUID();
     let nextDueDate: Date | null = null;
 
-    if (rrule) {
+    if (rrule && data.dueDate === undefined) {
       nextDueDate = calculateNextOccurrence(rrule);
       if (!nextDueDate) {
         if (isForm) return redirect("/?error=Invalid+RRULE", 302);
@@ -148,7 +168,11 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     }
 
     const recurrenceJson = rrule ? JSON.stringify({ rrule }) : null;
-    const dueDateStr = nextDueDate ? nextDueDate.toISOString() : null;
+    const dueDateStr = data.dueDate !== undefined
+      ? data.dueDate
+      : nextDueDate
+      ? nextDueDate.toISOString()
+      : null;
     const unassignedSince = assigneeId === null
       ? new Date().toISOString()
       : null;
@@ -173,15 +197,13 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       user.id,
       assigneeId,
       unassignedSince,
-      title,
+      title.trim(),
       description || null,
       dueDateStr,
       recurrenceJson,
     );
 
-    if (isForm) {
-      return redirect("/", 302);
-    }
+    if (isForm) return redirect("/", 302);
 
     const getStmt = db.prepare(`SELECT * FROM chores WHERE id = ?`);
     const newChore = getStmt.get(id) as unknown as ChoreRow | undefined;

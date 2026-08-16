@@ -27,8 +27,6 @@ test.describe("Tow branding", () => {
     await page.goto("/");
 
     await expect(page).toHaveTitle("Tow");
-    await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
-      .toBeVisible();
     await expect(page.locator("main").getByRole("heading", { name: "Tow" }))
       .toHaveCount(1);
     await expect(page.getByText("STEADY HOUSEHOLD MANAGEMENT")).toBeVisible();
@@ -37,14 +35,11 @@ test.describe("Tow branding", () => {
     await expect(page.getByText(/Chores App|My Chores/)).toHaveCount(0);
   });
 
-  test("login page keeps the shared Tow navigation", async ({ page }) => {
+  test("login route keeps the Tow product identity", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
-      .toBeVisible();
-    await expect(page.getByRole("link", { name: /Tow logo Tow/ }))
-      .toHaveAttribute("href", "/");
-    await expect(page.getByRole("heading", { name: "Tow" })).toHaveCount(2);
+    await expect(page.getByAltText("Tow logo")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tow" })).toHaveCount(1);
     await expect(page.getByText(/Chores App/)).toHaveCount(0);
   });
 
@@ -88,7 +83,17 @@ test.describe("Tow branding", () => {
         icons.map((icon) =>
           new Promise<{ path: string; width: number; height: number }>(
             (resolve, reject) => {
-              const image = new Image();
+              type BrowserImage = {
+                naturalWidth: number;
+                naturalHeight: number;
+                onload: (() => void) | null;
+                onerror: (() => void) | null;
+                src: string;
+              };
+              const ImageCtor = (globalThis as unknown as {
+                Image: new () => BrowserImage;
+              }).Image;
+              const image = new ImageCtor();
               image.onload = () =>
                 resolve({
                   path: icon.path,

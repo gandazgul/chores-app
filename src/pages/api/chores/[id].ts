@@ -8,7 +8,18 @@ interface ChoreUpdateInput {
   title?: string;
   description?: string | null;
   rrule?: string | null;
+  dueDate?: string | null;
+  assigneeId?: string | null;
   done?: boolean;
+}
+
+function readNullableString(
+  record: Record<string, unknown>,
+  key: string,
+): string | null | undefined {
+  if (!(key in record)) return undefined;
+  const value = record[key];
+  return typeof value === "string" ? value : null;
 }
 
 function readUpdateInput(body: unknown): ChoreUpdateInput {
@@ -27,9 +38,9 @@ function readUpdateInput(body: unknown): ChoreUpdateInput {
       ? record.description
       : null;
   }
-  if ("rrule" in record) {
-    input.rrule = typeof record.rrule === "string" ? record.rrule : null;
-  }
+  input.rrule = readNullableString(record, "rrule");
+  input.dueDate = readNullableString(record, "dueDate");
+  input.assigneeId = readNullableString(record, "assigneeId");
   if ("done" in record && typeof record.done === "boolean") {
     input.done = record.done;
   }
@@ -70,6 +81,16 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     if (result.kind === "not_found") {
       return new Response(JSON.stringify({ error: "Chore not found" }), {
         status: 404,
+      });
+    }
+    if (result.kind === "member_not_found") {
+      return new Response(JSON.stringify({ error: "Member not found" }), {
+        status: 404,
+      });
+    }
+    if (result.kind === "invalid") {
+      return new Response(JSON.stringify({ error: result.reason }), {
+        status: 400,
       });
     }
     if (result.kind === "conflict") {

@@ -1,4 +1,5 @@
 ---
+planId: "5f73eaf7-5810-4637-8fd6-5af0c28b1d07"
 classification: "PLANNED_CHANGE"
 workKind: "FEATURE"
 complexity: "MEDIUM"
@@ -8,20 +9,38 @@ affectedPaths:
   - "src/pages/index.astro"
   - "src/pages/api/chores/**"
   - "tests/e2e/**"
+objectiveCheckWaivers:
+  []
 executionAgent: "frontend-engineer"
 collaborationRecommendation: "pair"
 devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:51.947Z"
-updatedAt: "2026-08-10T16:07:51.947Z"
-status: "draft"
+updatedAt: "2026-08-16T02:00:54.129Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 8
 dependencies:
   - "07-add-household-assignment-model-and-apis"
-planId: "5f73eaf7-5810-4637-8fd6-5af0c28b1d07"
+implementedAt: "2026-08-15T22:31:52.875Z"
+verifiedAt: "2026-08-16T02:00:54.129Z"
+userVerifiedAt: null
+executionReport: "- Pair execution update: layout issue was resolved and user confirmed it looks good.\n- Implemented modal responsiveness: full-screen on small widths; centered, `90%` width with `32rem` max and minimum height on larger widths.\n- Implemented domain/API test increment: recurring successors advance from edited due dates; added atomic edit, due date, assignment, Pool, invalid rollback, and member rollback coverage.\n- Verification passed: `deno test -A src/domain/occurrenceResolution.test.ts`; `DB_ENV=test timeout 20 deno test -A src/pages/api/chores/chores.test.ts`; `deno check src/pages/api/chores/chores.test.ts`.\n- Headed browser used at `http://127.0.0.1:8082/`; layout verified by user in real browser; modal verified at 390×844, 800×700, and 1400×900."
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
+validationCheckpoint: null
+executionMode: "worktree"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "b7a9eca57b5eb0efc025bf73ff043276fd8166ce"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "daef339e11db01da8bd16c71a266e5661018ba93"
+validationCiAttempts: 0
+validationObjectiveCheckAttempts: 0
+validationSemanticRounds: 0
 ---
 
 # Ship Create Edit Delete and Assignment UI

@@ -15,8 +15,8 @@ test.describe("Core Journey", () => {
     await page.goto("/");
     await expect(page).toHaveURL("/");
     await page.locator(
-      'astro-island[component-url*="ChoreModal"][client-render-time]',
-    ).waitFor();
+      'astro-island[component-url*="ChoreManager"][client-render-time]',
+    ).waitFor({ state: "attached" });
 
     const newChoreTitle = `Test Chore E2E ${testId}`;
 

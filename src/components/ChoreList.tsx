@@ -1,4 +1,3 @@
-// deno-lint-ignore-file jsx-key -- Solid renders local arrays with `.map()` to preserve the existing list pattern.
 import type { Chore, Member } from "../types.ts";
 import ChoreItem from "./ChoreItem.tsx";
 

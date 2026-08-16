@@ -46,16 +46,8 @@ function ensureUser(user: UserPayload) {
 }
 
 function cleanup() {
-  db.prepare("DELETE FROM chores WHERE user_id IN (?, ?, ?)").run(
-    MOCK_USER.id,
-    OTHER_USER.id,
-    THIRD_USER.id,
-  );
-  db.prepare("DELETE FROM users WHERE id IN (?, ?, ?)").run(
-    MOCK_USER.id,
-    OTHER_USER.id,
-    THIRD_USER.id,
-  );
+  db.prepare("DELETE FROM chores").run();
+  db.prepare("DELETE FROM users").run();
 }
 
 function context(fields: Partial<APIContext>): APIContext {

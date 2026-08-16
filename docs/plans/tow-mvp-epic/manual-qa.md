@@ -159,3 +159,27 @@ tow-mvp-epic/07-add-household-assignment-model-and-apis
       and Reassign are defined.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/07-add-household-assignment-model-and-apis" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/08-ship-create-edit-delete-and-assignment-ui" -->
+
+## Ship Create Edit Delete and Assignment UI
+
+Manual verification steps for
+tow-mvp-epic/08-ship-create-edit-delete-and-assignment-ui
+
+- [ ] Open the chore page in a browser at `http://127.0.0.1:8080` and check that
+      the modal can open in both create and edit modes.
+- [ ] Create a new one-off chore with a direct due date and time set for one
+      hour from now; check the chore appears with the correct due time shown in
+      the list.
+- [ ] Edit the chore in the browser and change at least one field (for example
+      title or due time); check the updated values show on the page after save.
+- [ ] Use assignment actions: set the chore to Pool, claim it, release it back
+      to Pool, and assign it to another member; check the assignee state updates
+      correctly after each action.
+- [ ] Toggle done for the chore and verify the state change is still visible and
+      correct.
+- [ ] Delete the chore and confirm it is removed from the list after the
+      confirmation or safe delete step.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/08-ship-create-edit-delete-and-assignment-ui" -->

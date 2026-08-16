@@ -22,7 +22,8 @@ function context(fields: Partial<APIContext>): APIContext {
 }
 
 function cleanup() {
-  db.prepare("DELETE FROM users WHERE id IN (?, ?)").run(USER.id, OTHER.id);
+  db.prepare("DELETE FROM chores").run();
+  db.prepare("DELETE FROM users").run();
 }
 
 Deno.test({

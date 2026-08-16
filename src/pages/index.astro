@@ -4,14 +4,16 @@ import Layout from "../layouts/Layout.astro";
 import type { Chore, ChoreRow, Member } from "../types.ts";
 import { parseChoreRows } from "../types.ts";
 import db from "../utils/db.ts";
+import { resolveHouseholdTimeZone } from "../utils/householdTime.ts";
 
 const user = Astro.locals.user;
+const householdTimeZone = resolveHouseholdTimeZone(Deno.env.get("HOUSEHOLD_TZ"));
 
 let chores: Chore[] = [];
 let members: Member[] = [];
 if (user) {
   const choreStmt = db.prepare(
-    "SELECT * FROM chores WHERE status = 'open' ORDER BY due_date",
+    "SELECT * FROM chores WHERE status IN ('open', 'completed') ORDER BY due_date",
   );
   chores = parseChoreRows(choreStmt.all() as unknown as ChoreRow[]);
 
@@ -49,6 +51,7 @@ if (user) {
         initialChores={chores}
         members={members}
         currentMemberId={user.id}
+        householdTimeZone={householdTimeZone}
       />
     )
   }

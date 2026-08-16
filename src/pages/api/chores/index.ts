@@ -117,7 +117,7 @@ export const GET: APIRoute = ({ locals }) => {
 
   try {
     const stmt = db.prepare(
-      `SELECT * FROM chores WHERE status = 'open' ORDER BY due_date`,
+      `SELECT * FROM chores WHERE status IN ('open', 'completed') ORDER BY due_date`,
     );
     const chores = stmt.all() as unknown as ChoreRow[];
 

@@ -14,15 +14,16 @@ collaborationRecommendation: "pair"
 devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
-createdAt: "2026-08-10T16:07:52.088Z"
-updatedAt: "2026-08-10T16:07:52.088Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 9
 dependencies:
   - "08-ship-create-edit-delete-and-assignment-ui"
 planId: "2106dd1c-e649-4dd4-8633-e6e4101226a3"
+createdAt: "2026-08-10T12:07:52-04:00"
+updatedAt: "2026-08-16T02:23:28.586Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Add Whats Next Board and Pool Views

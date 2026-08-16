@@ -1,18 +1,55 @@
 import { createMemo, createSignal } from "solid-js";
 import Fuse from "fuse.js";
 import type { Chore, Member } from "../types.ts";
-import ChoreList from "./ChoreList.tsx";
+import { selectWhatsNextChores } from "../utils/householdTime.ts";
+import BoardView from "./BoardView.tsx";
 import { ChoreModal, type ChoreModalMode } from "./ChoreModal.tsx";
+import PoolView from "./PoolView.tsx";
+import ViewTabs, { type ChoreView } from "./ViewTabs.tsx";
+import WhatsNextView from "./WhatsNextView.tsx";
 
 interface ChoreManagerProps {
   initialChores: Chore[];
   members: Member[];
   currentMemberId: string;
+  householdTimeZone: string;
+}
+
+function isOpen(chore: Chore): boolean {
+  return chore.status === "open";
+}
+
+function isCompleted(chore: Chore): boolean {
+  return chore.status === "completed";
+}
+
+function sortByDueDate(chores: Chore[]): Chore[] {
+  return [...chores].sort((left, right) => {
+    const leftTime = left.due_date
+      ? new Date(left.due_date).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    const rightTime = right.due_date
+      ? new Date(right.due_date).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    return leftTime - rightTime || left.title.localeCompare(right.title);
+  });
+}
+
+function dateKeyLabel(dateKey: string | null): string | null {
+  if (!dateKey) return null;
+  return new Intl.DateTimeFormat([], { dateStyle: "medium", timeZone: "UTC" })
+    .format(
+      new Date(`${dateKey}T12:00:00.000Z`),
+    );
 }
 
 export default function ChoreManager(props: ChoreManagerProps) {
   const [chores, setChores] = createSignal<Chore[]>(props.initialChores);
+  const [activeView, setActiveView] = createSignal<ChoreView>("whats-next");
   const [searchQuery, setSearchQuery] = createSignal("");
+  const [localCompletedIds, setLocalCompletedIds] = createSignal<Set<string>>(
+    new Set(),
+  );
   const [modalMode, setModalMode] = createSignal<ChoreModalMode | null>(null);
   const [selectedChore, setSelectedChore] = createSignal<Chore | null>(null);
   const [returnFocusTo, setReturnFocusTo] = createSignal<HTMLElement | null>(
@@ -26,11 +63,57 @@ export default function ChoreManager(props: ChoreManagerProps) {
     })
   );
 
-  const filteredChores = createMemo(() => {
+  const boardMatches = createMemo(() => {
     const query = searchQuery().trim();
     if (!query) return chores();
     return fuse().search(query).map((result) => result.item);
   });
+
+  const retainedIds = () => localCompletedIds();
+  const isRetained = (chore: Chore) => retainedIds().has(chore.id);
+  const isActiveRow = (chore: Chore) => isOpen(chore) || isRetained(chore);
+  const isDoneRow = (chore: Chore) => isCompleted(chore) && !isRetained(chore);
+
+  const whatsNextSelection = createMemo(() => {
+    const candidates = chores().map((chore) =>
+      isRetained(chore) ? { ...chore, status: "open" as const } : chore
+    );
+    return selectWhatsNextChores(
+      candidates,
+      props.currentMemberId,
+      new Date(),
+      props.householdTimeZone,
+    );
+  });
+
+  const whatsNextActive = createMemo(() => whatsNextSelection().chores);
+  const whatsNextDone = createMemo(() =>
+    sortByDueDate(
+      chores().filter((chore) =>
+        isDoneRow(chore) && chore.assignee_id === props.currentMemberId
+      ),
+    )
+  );
+  const boardActive = createMemo(() =>
+    sortByDueDate(boardMatches().filter(isActiveRow))
+  );
+  const boardDone = createMemo(() =>
+    sortByDueDate(boardMatches().filter(isDoneRow))
+  );
+  const poolActive = createMemo(() =>
+    sortByDueDate(
+      chores().filter((chore) =>
+        isActiveRow(chore) && chore.assignee_id === null
+      ),
+    )
+  );
+  const poolDone = createMemo(() =>
+    sortByDueDate(
+      chores().filter((chore) =>
+        isDoneRow(chore) && chore.assignee_id === null
+      ),
+    )
+  );
 
   const openCreate = (event: MouseEvent) => {
     setReturnFocusTo(event.currentTarget as HTMLElement);
@@ -61,6 +144,11 @@ export default function ChoreManager(props: ChoreManagerProps) {
   };
 
   const removeChore = (id: string) => {
+    setLocalCompletedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
     setChores((current) => current.filter((item) => item.id !== id));
   };
 
@@ -68,6 +156,29 @@ export default function ChoreManager(props: ChoreManagerProps) {
     const response = await fetch("/api/chores");
     if (!response.ok) return;
     setChores(await response.json() as Chore[]);
+  };
+
+  const recordToggleSuccess = (previous: Chore, updated: Chore) => {
+    setLocalCompletedIds((current) => {
+      const next = new Set(current);
+      if (previous.status === "open" && updated.status === "completed") {
+        next.add(updated.id);
+      }
+      if (previous.status === "completed" && updated.status === "open") {
+        next.delete(updated.id);
+      }
+      return next;
+    });
+  };
+
+  const sharedViewProps = {
+    members: props.members,
+    currentMemberId: props.currentMemberId,
+    householdTimeZone: props.householdTimeZone,
+    onUpdate: upsertChore,
+    onEdit: openEdit,
+    onReconcile: reconcileChores,
+    onToggleSuccess: recordToggleSuccess,
   };
 
   return (
@@ -99,16 +210,31 @@ export default function ChoreManager(props: ChoreManagerProps) {
       </header>
 
       <div class="w-full max-w-none flex-1 min-h-0 flex flex-col bg-white border-b border-gray-200">
-        <ChoreList
-          chores={filteredChores()}
-          searchQuery={searchQuery()}
-          onSearch={setSearchQuery}
-          members={props.members}
-          currentMemberId={props.currentMemberId}
-          onUpdate={upsertChore}
-          onEdit={openEdit}
-          onReconcile={reconcileChores}
-        />
+        <ViewTabs activeView={activeView()} onSelect={setActiveView} />
+        {activeView() === "whats-next" && (
+          <WhatsNextView
+            activeChores={whatsNextActive()}
+            doneChores={whatsNextDone()}
+            dateLabel={dateKeyLabel(whatsNextSelection().dateKey)}
+            {...sharedViewProps}
+          />
+        )}
+        {activeView() === "board" && (
+          <BoardView
+            activeChores={boardActive()}
+            doneChores={boardDone()}
+            searchQuery={searchQuery()}
+            onSearch={setSearchQuery}
+            {...sharedViewProps}
+          />
+        )}
+        {activeView() === "pool" && (
+          <PoolView
+            activeChores={poolActive()}
+            doneChores={poolDone()}
+            {...sharedViewProps}
+          />
+        )}
       </div>
 
       <ChoreModal

@@ -222,12 +222,29 @@ Deno.test({
       assertEquals(spawnedRows.length, 1);
       assertEquals(spawnedRows[0].assignee_id, MOCK_USER.id);
 
-      const openGetRes = await GET(
+      const householdGetRes = await GET(
         context({ locals: OTHER_LOCALS }),
       ) as Response;
-      const openChores = await openGetRes.json() as Chore[];
-      assertEquals(openChores.length, 1);
-      assertEquals(openChores[0].status, "open");
+      const householdChores = await householdGetRes.json() as Chore[];
+      assertEquals(householdChores.length, 2);
+      assertEquals(
+        householdChores.map((item) => item.status).sort(),
+        ["completed", "open"],
+      );
+
+      const reopenRes = await jsonPut(choreId, { done: false }, OTHER_USER);
+      assertEquals(reopenRes.status, 200);
+      const reopenedChore = await reopenRes.json() as Chore;
+      assertEquals(reopenedChore.status, "open");
+      assertEquals(reopenedChore.done, 0);
+
+      const afterReopenGetRes = await GET(
+        context({ locals: OTHER_LOCALS }),
+      ) as Response;
+      const afterReopenChores = await afterReopenGetRes.json() as Chore[];
+      assertEquals(afterReopenChores.length, 1);
+      assertEquals(afterReopenChores[0].id, choreId);
+      assertEquals(afterReopenChores[0].status, "open");
 
       const deleteRes = await DELETE(
         context({ params: { id: choreId }, locals: OTHER_LOCALS }),
@@ -238,7 +255,7 @@ Deno.test({
         context({ locals: MOCK_LOCALS }),
       ) as Response;
       const finalChores = await finalGetRes.json() as Chore[];
-      assertEquals(finalChores.length, 1);
+      assertEquals(finalChores.length, 0);
     } finally {
       cleanup();
     }

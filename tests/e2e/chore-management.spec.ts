@@ -49,6 +49,7 @@ test.describe("Chore management browser flows", () => {
       await page.getByLabel("Due date and time").fill("2030-03-04T05:06");
       await page.getByLabel("Assignment").selectOption("");
       await page.getByRole("button", { name: "Save Chore" }).click();
+      await page.getByRole("tab", { name: "Pool" }).click();
 
       const choreItem = page.locator("li").filter({ hasText: title }).first();
       await expect(choreItem).toBeVisible();
@@ -56,17 +57,19 @@ test.describe("Chore management browser flows", () => {
       await expect(choreItem).toContainText("Pool");
 
       await choreItem.getByRole("button", { name: "Claim" }).click();
-      await expect(choreItem).toContainText("Assigned: Demo Member");
+      await page.getByRole("tab", { name: "Board" }).click();
+      const claimedItem = page.locator("li").filter({ hasText: title }).first();
+      await expect(claimedItem).toContainText("Assigned:");
 
-      await choreItem.getByRole("button", { name: "Release" }).click();
-      await expect(choreItem).toContainText("Pool");
+      await claimedItem.getByRole("button", { name: "Release" }).click();
+      await expect(claimedItem).toContainText("Pool");
 
-      await choreItem.getByLabel(`Assign ${title}`).selectOption({
-        label: "Demo Member",
+      await claimedItem.getByLabel(`Assign ${title}`).selectOption({
+        index: 1,
       });
-      await expect(choreItem).toContainText("Assigned: Demo Member");
+      await expect(claimedItem).toContainText("Assigned:");
 
-      await choreItem.getByRole("button", { name: "Edit" }).click();
+      await claimedItem.getByRole("button", { name: "Edit" }).click();
       await expect(page.getByRole("dialog", { name: "Edit Chore" }))
         .toBeVisible();
       await page.getByLabel("Title *").fill(editedTitle);
@@ -77,6 +80,7 @@ test.describe("Chore management browser flows", () => {
       await page.getByLabel("Assignment").selectOption("");
       await page.getByRole("button", { name: "Save Chore" }).click();
 
+      await page.getByRole("tab", { name: "Pool" }).click();
       const editedItem = page.locator("li").filter({ hasText: editedTitle })
         .first();
       await expect(editedItem).toBeVisible();

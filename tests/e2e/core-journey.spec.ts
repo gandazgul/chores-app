@@ -23,9 +23,12 @@ test.describe("Core Journey", () => {
     await page.getByRole("button", { name: "New Chore" }).click();
     await page.getByLabel("Title *").fill(newChoreTitle);
     await page.getByLabel("Description (optional)").fill("E2E description");
-    await page.getByLabel("Recurrence").selectOption("FREQ=DAILY");
+    await page.getByLabel("Recurrence", { exact: true }).selectOption(
+      "FREQ=DAILY",
+    );
     await page.getByRole("button", { name: "Save Chore" }).click();
     await page.waitForURL("/");
+    await page.getByRole("tab", { name: "Board" }).click();
     await expect(page.locator("li").filter({ hasText: newChoreTitle }))
       .toBeVisible();
 

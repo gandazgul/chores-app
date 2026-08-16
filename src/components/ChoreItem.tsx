@@ -1,13 +1,16 @@
 import { createEffect, createSignal } from "solid-js";
 import type { Chore, Member } from "../types.ts";
+import { formatHouseholdDueDate } from "../utils/householdTime.ts";
 
 interface ChoreItemProps {
   chore: Chore;
   members: Member[];
   currentMemberId: string;
+  householdTimeZone: string;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
+  onToggleSuccess: (previous: Chore, updated: Chore) => void;
 }
 
 function getRRuleFrequency(rrule: string) {
@@ -18,16 +21,6 @@ function getRRuleFrequency(rrule: string) {
 
 function recurrence(chore: Chore) {
   return typeof chore.recurrence === "object" ? chore.recurrence : null;
-}
-
-function dueDateLabel(value: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 export default function ChoreItem(props: ChoreItemProps) {
@@ -69,6 +62,8 @@ export default function ChoreItem(props: ChoreItemProps) {
 
       const updatedChore = await response.json() as Chore;
       props.onUpdate(updatedChore);
+      props.onToggleSuccess(props.chore, updatedChore);
+      if (newState) await props.onReconcile();
     } catch (err) {
       setIsDone(previousState);
       setError(err instanceof Error ? err.message : "Failed to update");
@@ -134,7 +129,8 @@ export default function ChoreItem(props: ChoreItemProps) {
     }
   };
 
-  const due = () => dueDateLabel(props.chore.due_date);
+  const due = () =>
+    formatHouseholdDueDate(props.chore.due_date, props.householdTimeZone);
   const currentRecurrence = () => recurrence(props.chore);
 
   return (

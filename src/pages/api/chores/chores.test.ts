@@ -116,6 +116,26 @@ function chore(id: string): ChoreRow {
 }
 
 Deno.test({
+  name: "Chores API can create a Pool chore for a new authenticated user",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    try {
+      const res = await jsonPost({ title: "Pool Repro", assigneeId: null });
+      assertEquals(res.status, 201);
+
+      const created = await res.json() as Chore;
+      assertEquals(created.title, "Pool Repro");
+      assertEquals(created.user_id, MOCK_USER.id);
+      assertEquals(created.assignee_id, null);
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
   name:
     "Chores API returns household chores and lets a non-Creator complete and delete",
   sanitizeResources: false,

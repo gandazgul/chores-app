@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import type { ChoreRow } from "../../../types.ts";
+import type { ChoreRow, UserPayload } from "../../../types.ts";
 import { parseChoreRow, parseChoreRows } from "../../../types.ts";
 import db from "../../../utils/db.ts";
 import { calculateNextOccurrence } from "../../../utils/scheduleUtils.ts";
@@ -75,6 +75,18 @@ async function readCreateInput(
     },
     isForm: false,
   };
+}
+
+function ensureUser(user: UserPayload) {
+  db.prepare(`
+    INSERT INTO users (id, email, name, picture)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      email = excluded.email,
+      name = excluded.name,
+      picture = excluded.picture,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(user.id, user.email, user.name, user.picture ?? null);
 }
 
 function memberExists(memberId: string): boolean {
@@ -156,6 +168,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         });
       }
     }
+
+    ensureUser(user);
 
     const assigneeId = data.assigneeId === undefined
       ? user.id

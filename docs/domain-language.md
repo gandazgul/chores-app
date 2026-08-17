@@ -78,3 +78,14 @@ language when the person belongs to the household.
 **Session**: The signed-in state that lets a Member access household chores.
 
 **Mock User**: The local development User used when authentication is disabled.
+
+### Notifications
+
+**Push Notification**: A server-sent message to a Member outside the browser UI.
+The server owns delivery details and does not expose transport tokens to chore
+or browser data channels.
+
+**Gotify Application Token**: The secret bearer token that lets Tow send Push
+Notifications to one Member's Gotify application. Null means Not configured.
+Member reads, settings reads, API responses, HTML, and logs must not disclose a
+stored or submitted Gotify Application Token.

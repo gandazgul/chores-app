@@ -45,6 +45,27 @@ export interface CompletionLogRow {
   due_at: string | null;
 }
 
+export type NotificationSendResult =
+  | { status: "sent" }
+  | { status: "disabled" }
+  | {
+    status: "undeliverable";
+    reason: "missing_token" | "auth_rejected" | "gotify_rejected";
+  }
+  | {
+    status: "retryable_failure";
+    reason: "network_error" | "gotify_unavailable";
+  };
+
+export interface NotificationSendInput {
+  recipientId: string;
+  title: string;
+}
+
+export interface NotificationPort {
+  send(input: NotificationSendInput): Promise<NotificationSendResult>;
+}
+
 export interface Chore extends Omit<ChoreRow, "recurrence"> {
   recurrence: Recurrence | string | null;
 }

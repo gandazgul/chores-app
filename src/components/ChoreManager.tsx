@@ -199,14 +199,24 @@ export default function ChoreManager(props: ChoreManagerProps) {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          class="bg-primary text-white px-4 py-2 rounded-sm shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-base flex-1 basis-[8.75rem] max-w-[13.75rem]"
-        >
-          <div class="i-mdi-plus w-5 h-5"></div>
-          New Chore
-        </button>
+        <div class="flex items-center justify-end gap-2 flex-1 basis-[13.75rem] flex-wrap">
+          <a
+            href="/settings"
+            aria-label="Notification settings"
+            class="border border-gray-300 bg-white text-primary-text px-3 py-2 rounded-sm shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-base"
+          >
+            <div class="i-mdi-bell-cog w-5 h-5" aria-hidden="true"></div>
+            <span class="sm:not-sr-only sr-only">Notification settings</span>
+          </a>
+          <button
+            type="button"
+            onClick={openCreate}
+            class="bg-primary text-white px-4 py-2 rounded-sm shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-base flex-1 basis-[8.75rem] max-w-[13.75rem]"
+          >
+            <div class="i-mdi-plus w-5 h-5"></div>
+            New Chore
+          </button>
+        </div>
       </header>
 
       <div class="w-full max-w-none flex-1 min-h-0 flex flex-col bg-white border-b border-gray-200">

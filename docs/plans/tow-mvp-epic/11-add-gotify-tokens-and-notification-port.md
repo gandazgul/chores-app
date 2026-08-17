@@ -17,8 +17,6 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:52.359Z"
-updatedAt: "2026-08-10T16:07:52.359Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 11
@@ -26,6 +24,9 @@ dependencies:
   - "10-record-the-nag-policy-adr"
   - "06-restore-csrf-protection-for-browser-mutations"
 planId: "4a8f2fec-cd40-4405-b703-e70904823fda"
+updatedAt: "2026-08-17T18:11:35.985Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Add Gotify Tokens and Notification Port

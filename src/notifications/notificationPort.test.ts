@@ -1,35 +1,42 @@
-import { DatabaseSync } from "node:sqlite";
 import { assert, assertEquals, assertRejects } from "@std/assert";
+import db from "../utils/db.ts";
 import {
   createNotificationPort,
-  type NotificationPortDependencies,
+  type GotifyNotificationPortOptions,
   resolveGotifyConfig,
 } from "./notificationPort.ts";
 
-function makeDb(token: string | null): DatabaseSync {
-  const db = new DatabaseSync(":memory:");
-  db.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      gotify_token TEXT
-    );
-  `);
-  db.prepare("INSERT INTO users (id, gotify_token) VALUES (?, ?)")
-    .run("recipient", token);
-  return db;
+const RECIPIENT_ID = "notification-port-recipient";
+
+function cleanup() {
+  db.prepare("DELETE FROM chores").run();
+  db.prepare("DELETE FROM users").run();
+}
+
+function seedRecipient(token: string | null) {
+  cleanup();
+  db.prepare(`
+    INSERT INTO users (id, email, name, gotify_token)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    RECIPIENT_ID,
+    "notification-port@example.com",
+    "Notification Port Recipient",
+    token,
+  );
 }
 
 function makePort(options: {
   token?: string | null;
   env?: Record<string, string | undefined>;
-  fetchImpl?: NotificationPortDependencies["fetchImpl"];
+  fetchImpl?: GotifyNotificationPortOptions["fetchImpl"];
   logs?: Record<string, unknown>[];
 }) {
+  seedRecipient(options.token === undefined ? "secret-token" : options.token);
   const logs = options.logs ?? [];
   const fetches: Array<{ input: string | URL | Request; init?: RequestInit }> =
     [];
   const port = createNotificationPort({
-    db: makeDb(options.token === undefined ? "secret-token" : options.token),
     getEnv: (name) => options.env?.[name],
     fetchImpl: options.fetchImpl ?? ((input, init) => {
       fetches.push({ input, init });
@@ -44,121 +51,146 @@ function makePort(options: {
   return { port, fetches, logs };
 }
 
-Deno.test("notification port sends Gotify messages without returning the token", async () => {
-  const { port, fetches } = makePort({
-    env: { GOTIFY_URL: "https://gotify.example.com/base/" },
-  });
+Deno.test({
+  name: "notification port sends Gotify messages without returning the token",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    const { port, fetches } = makePort({
+      env: { GOTIFY_URL: "https://gotify.example.com/base/" },
+    });
 
-  const result = await port.send({
-    recipientId: "recipient",
-    title: "Do dishes",
-  });
+    const result = await port.send({
+      recipientId: RECIPIENT_ID,
+      title: "Do dishes",
+    });
 
-  assertEquals(result, { status: "sent" });
-  assertEquals(fetches.length, 1);
-  assertEquals(
-    String(fetches[0].input),
-    "https://gotify.example.com/base/message",
-  );
-  assertEquals(fetches[0].init?.method, "POST");
-  assertEquals(
-    (fetches[0].init?.headers as Record<string, string>)["X-Gotify-Key"],
-    "secret-token",
-  );
-  assertEquals(
-    fetches[0].init?.body,
-    JSON.stringify({ message: "TOW: Do dishes" }),
-  );
-  assert(!JSON.stringify(result).includes("secret-token"));
+    assertEquals(result, { status: "sent" });
+    assertEquals(fetches.length, 1);
+    assertEquals(
+      String(fetches[0].input),
+      "https://gotify.example.com/base/message",
+    );
+    assertEquals(fetches[0].init?.method, "POST");
+    assertEquals(
+      (fetches[0].init?.headers as Record<string, string>)["X-Gotify-Key"],
+      "secret-token",
+    );
+    assertEquals(
+      fetches[0].init?.body,
+      JSON.stringify({ message: "TOW: Do dishes" }),
+    );
+    assert(!JSON.stringify(result).includes("secret-token"));
+  },
 });
 
-Deno.test("notification port reads the token at send time", async () => {
-  const db = makeDb(null);
-  const fetches: Array<{ init?: RequestInit }> = [];
-  const port = createNotificationPort({
-    db,
-    getEnv: () => "https://gotify.example.com",
-    fetchImpl: (_input, init) => {
-      fetches.push({ init });
-      return Promise.resolve(new Response(null, { status: 200 }));
-    },
-    logger: console,
-  });
+Deno.test({
+  name: "notification port reads the token at send time",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    seedRecipient(null);
+    const fetches: Array<{ init?: RequestInit }> = [];
+    const port = createNotificationPort({
+      getEnv: () => "https://gotify.example.com",
+      fetchImpl: (_input, init) => {
+        fetches.push({ init });
+        return Promise.resolve(new Response(null, { status: 200 }));
+      },
+      logger: console,
+    });
 
-  assertEquals(
-    await port.send({ recipientId: "recipient", title: "Before" }),
-    { status: "undeliverable", reason: "missing_token" },
-  );
-  db.prepare("UPDATE users SET gotify_token = ? WHERE id = ?")
-    .run("late-token", "recipient");
-  assertEquals(await port.send({ recipientId: "recipient", title: "After" }), {
-    status: "sent",
-  });
-  assertEquals(
-    (fetches[0].init?.headers as Record<string, string>)["X-Gotify-Key"],
-    "late-token",
-  );
+    assertEquals(
+      await port.send({ recipientId: RECIPIENT_ID, title: "Before" }),
+      { status: "undeliverable", reason: "missing_token" },
+    );
+    db.prepare("UPDATE users SET gotify_token = ? WHERE id = ?")
+      .run("late-token", RECIPIENT_ID);
+    assertEquals(
+      await port.send({ recipientId: RECIPIENT_ID, title: "After" }),
+      {
+        status: "sent",
+      },
+    );
+    assertEquals(
+      (fetches[0].init?.headers as Record<string, string>)["X-Gotify-Key"],
+      "late-token",
+    );
+  },
 });
 
-Deno.test("notification port makes no fetch when token or URL is missing", async () => {
-  const withoutToken = makePort({
-    token: null,
-    env: { GOTIFY_URL: "https://gotify.example.com" },
-  });
-  assertEquals(
-    await withoutToken.port.send({
-      recipientId: "recipient",
-      title: "No token",
-    }),
-    { status: "undeliverable", reason: "missing_token" },
-  );
-  assertEquals(withoutToken.fetches.length, 0);
-
-  const withoutUrl = makePort({ env: {} });
-  assertEquals(
-    await withoutUrl.port.send({ recipientId: "recipient", title: "No URL" }),
-    { status: "disabled" },
-  );
-  assertEquals(withoutUrl.fetches.length, 0);
-  assertEquals(withoutUrl.logs, [{
-    event: "push_notification_disabled",
-    recipientId: "recipient",
-    result: "disabled",
-  }]);
-});
-
-Deno.test("notification port classifies Gotify responses", async () => {
-  const cases: Array<[number, unknown]> = [
-    [204, { status: "sent" }],
-    [401, { status: "undeliverable", reason: "auth_rejected" }],
-    [403, { status: "undeliverable", reason: "auth_rejected" }],
-    [404, { status: "undeliverable", reason: "gotify_rejected" }],
-    [429, { status: "retryable_failure", reason: "gotify_unavailable" }],
-    [500, { status: "retryable_failure", reason: "gotify_unavailable" }],
-  ];
-
-  for (const [status, expected] of cases) {
-    const { port } = makePort({
+Deno.test({
+  name: "notification port makes no fetch when token or URL is missing",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    const withoutToken = makePort({
+      token: null,
       env: { GOTIFY_URL: "https://gotify.example.com" },
-      fetchImpl: () =>
-        Promise.resolve(
-          new Response(status === 204 ? null : "secret body", { status }),
-        ),
     });
     assertEquals(
-      await port.send({ recipientId: "recipient", title: String(status) }),
-      expected,
+      await withoutToken.port.send({
+        recipientId: RECIPIENT_ID,
+        title: "No token",
+      }),
+      { status: "undeliverable", reason: "missing_token" },
     );
-  }
+    assertEquals(withoutToken.fetches.length, 0);
 
-  const network = makePort({
-    env: { GOTIFY_URL: "https://gotify.example.com" },
-    fetchImpl: () => Promise.reject(new Error("secret-token raw failure")),
-  });
-  assertEquals(
-    await network.port.send({ recipientId: "recipient", title: "Network" }),
-    { status: "retryable_failure", reason: "network_error" },
-  );
+    const withoutUrl = makePort({ env: {} });
+    assertEquals(
+      await withoutUrl.port.send({
+        recipientId: RECIPIENT_ID,
+        title: "No URL",
+      }),
+      { status: "disabled" },
+    );
+    assertEquals(withoutUrl.fetches.length, 0);
+    assertEquals(withoutUrl.logs, [{
+      event: "push_notification_disabled",
+      recipientId: RECIPIENT_ID,
+      result: "disabled",
+    }]);
+  },
+});
+
+Deno.test({
+  name: "notification port classifies Gotify responses",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    const cases: Array<[number, unknown]> = [
+      [204, { status: "sent" }],
+      [401, { status: "undeliverable", reason: "auth_rejected" }],
+      [403, { status: "undeliverable", reason: "auth_rejected" }],
+      [404, { status: "undeliverable", reason: "gotify_rejected" }],
+      [429, { status: "retryable_failure", reason: "gotify_unavailable" }],
+      [500, { status: "retryable_failure", reason: "gotify_unavailable" }],
+    ];
+
+    for (const [status, expected] of cases) {
+      const { port } = makePort({
+        env: { GOTIFY_URL: "https://gotify.example.com" },
+        fetchImpl: () =>
+          Promise.resolve(
+            new Response(status === 204 ? null : "secret body", { status }),
+          ),
+      });
+      assertEquals(
+        await port.send({ recipientId: RECIPIENT_ID, title: String(status) }),
+        expected,
+      );
+    }
+
+    const network = makePort({
+      env: { GOTIFY_URL: "https://gotify.example.com" },
+      fetchImpl: () => Promise.reject(new Error("secret-token raw failure")),
+    });
+    assertEquals(
+      await network.port.send({ recipientId: RECIPIENT_ID, title: "Network" }),
+      { status: "retryable_failure", reason: "network_error" },
+    );
+  },
 });
 
 Deno.test("Gotify configuration enforces URL policy", () => {
@@ -226,30 +258,35 @@ Deno.test("Gotify configuration rejects unsafe URLs", async () => {
   }
 });
 
-Deno.test("notification logs and results omit tokens and response bodies", async () => {
-  const logs: Record<string, unknown>[] = [];
-  const { port } = makePort({
-    env: { GOTIFY_URL: "https://gotify.example.com" },
-    fetchImpl: () =>
-      Promise.resolve(
-        new Response("distinctive-response-body", { status: 500 }),
-      ),
-    logs,
-  });
+Deno.test({
+  name: "notification logs and results omit tokens and response bodies",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    const logs: Record<string, unknown>[] = [];
+    const { port } = makePort({
+      env: { GOTIFY_URL: "https://gotify.example.com" },
+      fetchImpl: () =>
+        Promise.resolve(
+          new Response("distinctive-response-body", { status: 500 }),
+        ),
+      logs,
+    });
 
-  const result = await port.send({
-    recipientId: "recipient",
-    title: "Failure",
-  });
-  const serialized = JSON.stringify({ result, logs });
+    const result = await port.send({
+      recipientId: RECIPIENT_ID,
+      title: "Failure",
+    });
+    const serialized = JSON.stringify({ result, logs });
 
-  assert(!serialized.includes("secret-token"));
-  assert(!serialized.includes("distinctive-response-body"));
-  assertEquals(logs, [{
-    event: "push_notification_gotify_failure",
-    recipientId: "recipient",
-    origin: "https://gotify.example.com",
-    httpStatus: 500,
-    result: "retryable_failure",
-  }]);
+    assert(!serialized.includes("secret-token"));
+    assert(!serialized.includes("distinctive-response-body"));
+    assertEquals(logs, [{
+      event: "push_notification_gotify_failure",
+      recipientId: RECIPIENT_ID,
+      origin: "https://gotify.example.com",
+      httpStatus: 500,
+      result: "retryable_failure",
+    }]);
+  },
 });

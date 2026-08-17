@@ -224,3 +224,26 @@ Manual verification steps for tow-mvp-epic/10-record-the-nag-policy-adr
       comparison, or extra Pool push behavior.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/10-record-the-nag-policy-adr" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/11-add-gotify-tokens-and-notification-port" -->
+
+## Add Gotify Tokens and Notification Port
+
+Manual verification steps for
+tow-mvp-epic/11-add-gotify-tokens-and-notification-port
+
+- [ ] Start the app, sign in as a member, and open the Settings page.
+- [ ] Enter a Gotify token and save it. Confirm the page stays usable and does
+      not show the saved token value.
+- [ ] Replace the token with a new value. Confirm the field clears after save
+      and the old token never appears on screen.
+- [ ] Clear the token. Confirm the status returns to not configured and no token
+      is shown.
+- [ ] Open browser DevTools, check the `POST /api/users/me/gotify-token`
+      response and member/settings read responses, and verify they do not return
+      a `gotify_token` value.
+- [ ] Run with `GOTIFY_URL` not set, trigger any notification action, and
+      confirm the request is handled safely (no hard failure, no visible secret
+      leak).
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/11-add-gotify-tokens-and-notification-port" -->

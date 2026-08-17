@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import db from "../utils/db.ts";
 import type {
   NotificationPort,
@@ -17,8 +16,7 @@ interface NotificationLogger {
   log?(event: Record<string, unknown>): void;
 }
 
-export interface NotificationPortDependencies {
-  db: DatabaseSync;
+export interface GotifyNotificationPortOptions {
   getEnv(name: string): string | undefined;
   fetchImpl(
     input: string | URL | Request,
@@ -87,8 +85,8 @@ export function resolveGotifyConfig(
   return { messageUrl: url.toString(), origin: url.origin };
 }
 
-function tokenFor(database: DatabaseSync, recipientId: string): string | null {
-  const row = database.prepare("SELECT gotify_token FROM users WHERE id = ?")
+function tokenFor(recipientId: string): string | null {
+  const row = db.prepare("SELECT gotify_token FROM users WHERE id = ?")
     .get(recipientId) as unknown as GotifyTokenRow | undefined;
   return row?.gotify_token ?? null;
 }
@@ -105,19 +103,19 @@ function classifyStatus(status: number): NotificationSendResult {
 }
 
 export function createNotificationPort(
-  dependencies: NotificationPortDependencies,
+  options: GotifyNotificationPortOptions,
 ): NotificationPort {
   return {
     async send(input: NotificationSendInput): Promise<NotificationSendResult> {
-      const token = tokenFor(dependencies.db, input.recipientId);
+      const token = tokenFor(input.recipientId);
       if (!token) {
         return { status: "undeliverable", reason: "missing_token" };
       }
 
-      const config = resolveGotifyConfig(dependencies.getEnv);
+      const config = resolveGotifyConfig(options.getEnv);
       if (!config) {
         const result: NotificationSendResult = { status: "disabled" };
-        loggerInfo(dependencies.logger, {
+        loggerInfo(options.logger, {
           event: "push_notification_disabled",
           recipientId: input.recipientId,
           result: result.status,
@@ -126,7 +124,7 @@ export function createNotificationPort(
       }
 
       try {
-        const response = await dependencies.fetchImpl(config.messageUrl, {
+        const response = await options.fetchImpl(config.messageUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -136,7 +134,7 @@ export function createNotificationPort(
         });
         const result = classifyStatus(response.status);
         if (result.status !== "sent") {
-          loggerWarn(dependencies.logger, {
+          loggerWarn(options.logger, {
             event: "push_notification_gotify_failure",
             recipientId: input.recipientId,
             origin: config.origin,
@@ -150,7 +148,7 @@ export function createNotificationPort(
           status: "retryable_failure",
           reason: "network_error",
         };
-        loggerWarn(dependencies.logger, {
+        loggerWarn(options.logger, {
           event: "push_notification_gotify_failure",
           recipientId: input.recipientId,
           origin: config.origin,
@@ -163,7 +161,6 @@ export function createNotificationPort(
 }
 
 export const notificationPort = createNotificationPort({
-  db,
   getEnv: (name) => Deno.env.get(name),
   fetchImpl: fetch,
   logger: console,

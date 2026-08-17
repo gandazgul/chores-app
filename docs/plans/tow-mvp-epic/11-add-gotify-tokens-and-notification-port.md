@@ -1,4 +1,5 @@
 ---
+planId: "4a8f2fec-cd40-4405-b703-e70904823fda"
 classification: "PLANNED_CHANGE"
 workKind: "FEATURE"
 complexity: "MEDIUM"
@@ -11,6 +12,8 @@ affectedPaths:
   - "src/notifications/**"
   - ".env.example"
   - "tests/**"
+objectiveCheckWaivers:
+  []
 executionAgent: "frontend-engineer"
 collaborationRecommendation: "pair"
 devServerCommand: "deno task dev"
@@ -23,10 +26,24 @@ order: 11
 dependencies:
   - "10-record-the-nag-policy-adr"
   - "06-restore-csrf-protection-for-browser-mutations"
-planId: "4a8f2fec-cd40-4405-b703-e70904823fda"
-updatedAt: "2026-08-17T18:11:35.985Z"
-status: "ready_for_work"
+implementedAt: "2026-08-17T20:17:51.175Z"
 userVerifiedAt: null
+executionReport: "- Implemented migration 0005, self-scoped Gotify token API, `/settings` Notification Settings UI, header/back navigation, token-safe notification port, production Gotify URL validation, env/docs updates, and E2E coverage.\n- Secret handling: token saves/replaces/clears return only `{ gotifyConfigured }`; member reads and settings props do not include `gotify_token`; headed DOM checks for distinctive tokens returned `false`.\n- Automated verification passed: `deno test -A src/db/migrations/index.test.ts src/pages/api/users/me/gotify-token.test.ts src/notifications/notificationPort.test.ts`; `E2E_PORT=8091 deno task test:e2e --grep \"Gotify notification settings\"`; `deno task ci`.\n- Build/production verification: `deno task build` passed; HTTPS, loopback HTTP, and remote HTTP with `ALLOW_INSECURE_GOTIFY=true` reached server import, then stopped with `AddrInUse` because local port 8080 was already occupied; remote HTTP without override and malformed URL exited non-zero before server import with token-free Gotify configuration errors.\n- Headed browser: dev server requested `http://127.0.0.1:8080`, but 8080 was occupied, so this worktree ran on `http://127.0.0.1:8081`; desktop set/replace/clear kept focus on the password input, cleared the input, and returned to the unchanged What's Next view.\n- Responsive/browser evidence: desktop screenshot `artifacts/gotify-settings-desktop-final.png`; mobile screenshots `artifacts/gotify-home-mobile-final.png` and `artifacts/gotify-settings-mobile-final.png`; 320 px viewport had `scrollWidth: 320`, no horizontal clipping, no token in DOM, no final browser errors, and no failed final-session fetches.\n- Notes: the plan file was already modified before implementation; no unresolved blockers remain."
+executionMode: "worktree"
+executionBaselineTree: "85b17820a285038f9facfce90e175a756d152418"
+worktreeId: "38aabf05"
+worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-11-add-gotify-tokens-and-notificati-38aabf05"
+worktreeBranch: "worktree/tow-mvp-epic-11-add-gotify-tokens-and-notificati-38aabf05"
+worktreeBaseBranch: "main"
+worktreeStatus: "completed"
+validationCiAttempts: 0
+validationObjectiveCheckAttempts: 0
+validationSemanticRounds: 1
+status: "validated_reviewer"
+validationCheckpoint: null
+updatedAt: "2026-08-17T22:55:44.793Z"
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
 ---
 
 # Add Gotify Tokens and Notification Port

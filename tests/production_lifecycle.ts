@@ -158,6 +158,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 2, name: "0002_occurrence_resolution" },
     { version: 3, name: "0003_user_names" },
     { version: 4, name: "0004_household_assignment" },
+    { version: 5, name: "0005_gotify_token" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
@@ -179,6 +180,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
   );
   assertEquals(columnNames(db, "users").includes("name"), true);
   assertEquals(columnNames(db, "users").includes("picture"), true);
+  assertEquals(columnNames(db, "users").includes("gotify_token"), true);
   assertEquals(columnNames(db, "completion_logs").includes("due_at"), true);
 
   if (expectSentinel) {

@@ -1,8 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { baselineMigration } from "./0001_baseline.ts";
+import { occurrenceResolutionMigration } from "./0002_occurrence_resolution.ts";
 import { userNamesMigration } from "./0003_user_names.ts";
 import { householdAssignmentMigration } from "./0004_household_assignment.ts";
+import { gotifyTokenMigration } from "./0005_gotify_token.ts";
 import { applyMigrations } from "./index.ts";
 
 interface CountRow {
@@ -69,6 +71,30 @@ function count(db: DatabaseSync, sql: string): number {
 
 function makeLegacyBaseline(db: DatabaseSync) {
   baselineMigration.up(db);
+}
+
+function makeVersion4(db: DatabaseSync) {
+  db.exec("PRAGMA foreign_keys = ON;");
+  db.exec(`
+    CREATE TABLE schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  for (
+    const migration of [
+      baselineMigration,
+      occurrenceResolutionMigration,
+      userNamesMigration,
+      householdAssignmentMigration,
+    ]
+  ) {
+    migration.up(db);
+    migration.validate(db);
+    db.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)")
+      .run(migration.version, migration.name);
+  }
 }
 
 Deno.test("user-name migration preserves version-2 users and adds nullable names", () => {
@@ -174,7 +200,42 @@ Deno.test("household-assignment migration backfills legacy open chores to the cr
   );
 });
 
-Deno.test("fresh databases receive occurrence-resolution, user-name, assignment schema, and ledger rows", () => {
+Deno.test("gotify-token migration preserves existing users and adds a nullable token", () => {
+  const db = new DatabaseSync(":memory:");
+  makeVersion4(db);
+  db.prepare(`
+    INSERT INTO users (id, email, name, picture, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    "legacy-user",
+    "legacy@example.com",
+    "Legacy Member",
+    "https://example.com/member.png",
+    "2026-01-01 00:00:00",
+    "2026-01-02 00:00:00",
+  );
+
+  gotifyTokenMigration.up(db);
+  gotifyTokenMigration.validate(db);
+
+  assert(columnNames(db, "users").includes("gotify_token"));
+  assertEquals(
+    db.prepare(
+      "SELECT id, email, name, picture, created_at, updated_at, gotify_token FROM users WHERE id = ?",
+    ).get("legacy-user"),
+    {
+      id: "legacy-user",
+      email: "legacy@example.com",
+      name: "Legacy Member",
+      picture: "https://example.com/member.png",
+      created_at: "2026-01-01 00:00:00",
+      updated_at: "2026-01-02 00:00:00",
+      gotify_token: null,
+    },
+  );
+});
+
+Deno.test("fresh databases receive occurrence-resolution, user-name, assignment, gotify schema, and ledger rows", () => {
   const db = new DatabaseSync(":memory:");
   applyMigrations(db);
 
@@ -183,9 +244,10 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment 
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 4);
+  assertEquals(ledgerCount(db), 5);
   assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "users").includes("picture"));
+  assert(columnNames(db, "users").includes("gotify_token"));
   assert(columnNames(db, "chores").includes("status"));
   assert(columnNames(db, "chores").includes("recurrence_parent_id"));
   assert(columnNames(db, "chores").includes("revision"));
@@ -230,12 +292,19 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 4);
+  assertEquals(ledgerCount(legacy), 5);
   assertEquals(
-    legacy.prepare("SELECT email, name, picture FROM users WHERE id = ?").get(
+    legacy.prepare(
+      "SELECT email, name, picture, gotify_token FROM users WHERE id = ?",
+    ).get(
       "legacy-user",
     ),
-    { email: "legacy@example.com", name: null, picture: null },
+    {
+      email: "legacy@example.com",
+      name: null,
+      picture: null,
+      gotify_token: null,
+    },
   );
   assertEquals(
     legacy.prepare(
@@ -259,6 +328,43 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
       "legacy-log",
     ),
     { due_at: "2030-01-02T00:00:00.000Z" },
+  );
+});
+
+Deno.test("version-4 databases keep user data and converge with fresh databases", () => {
+  const fresh = new DatabaseSync(":memory:");
+  applyMigrations(fresh);
+
+  const upgraded = new DatabaseSync(":memory:");
+  makeVersion4(upgraded);
+  upgraded.prepare(`
+    INSERT INTO users (id, email, name, picture, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    "version-four-user",
+    "v4@example.com",
+    "Version Four",
+    null,
+    "2026-03-01 00:00:00",
+    "2026-03-02 00:00:00",
+  );
+
+  applyMigrations(upgraded);
+
+  assertEquals(tableSignature(upgraded), tableSignature(fresh));
+  assertEquals(ledgerCount(upgraded), 5);
+  assertEquals(
+    upgraded.prepare(
+      "SELECT email, name, picture, created_at, updated_at, gotify_token FROM users WHERE id = ?",
+    ).get("version-four-user"),
+    {
+      email: "v4@example.com",
+      name: "Version Four",
+      picture: null,
+      created_at: "2026-03-01 00:00:00",
+      updated_at: "2026-03-02 00:00:00",
+      gotify_token: null,
+    },
   );
 });
 
@@ -333,7 +439,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 4);
+  assertEquals(ledgerCount(db), 5);
   assertEquals(tableSignature(db), firstSignature);
 });
 

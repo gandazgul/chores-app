@@ -3,6 +3,7 @@ import { baselineMigration } from "./0001_baseline.ts";
 import { occurrenceResolutionMigration } from "./0002_occurrence_resolution.ts";
 import { userNamesMigration } from "./0003_user_names.ts";
 import { householdAssignmentMigration } from "./0004_household_assignment.ts";
+import { gotifyTokenMigration } from "./0005_gotify_token.ts";
 
 export interface Migration {
   version: number;
@@ -21,6 +22,7 @@ const migrations: Migration[] = [
   occurrenceResolutionMigration,
   userNamesMigration,
   householdAssignmentMigration,
+  gotifyTokenMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

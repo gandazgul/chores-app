@@ -1,0 +1,45 @@
+---
+import NotificationSettings from "../components/NotificationSettings.tsx";
+import Layout from "../layouts/Layout.astro";
+import db from "../utils/db.ts";
+
+interface TokenStateRow {
+  gotifyConfigured: 0 | 1;
+}
+
+const user = Astro.locals.user;
+let gotifyConfigured = false;
+if (user) {
+  const row = db.prepare(
+    "SELECT gotify_token IS NOT NULL AS gotifyConfigured FROM users WHERE id = ?",
+  ).get(user.id) as unknown as TokenStateRow | undefined;
+  gotifyConfigured = Boolean(row?.gotifyConfigured);
+}
+---
+
+<Layout>
+  <div class="w-full flex-1 flex flex-col bg-white">
+    <header class="bg-[#e6f3f5] border-b border-[#c7e3e8] shadow-sm p-4 flex items-center justify-between gap-3 flex-wrap">
+      <div class="flex items-center gap-3 min-w-0 flex-1 basis-[13.75rem]">
+        <img src="/icon.png" alt="Tow logo" class="w-8 h-8 rounded-lg shadow-sm flex-shrink-0" />
+        <div class="min-w-0">
+          <h1 class="text-2xl font-bold text-primary-text leading-tight">Tow</h1>
+          <p class="text-primary text-sm tracking-wide font-semibold leading-tight">
+            STEADY HOUSEHOLD MANAGEMENT
+          </p>
+        </div>
+      </div>
+      <a
+        href="/"
+        class="border border-gray-300 bg-white text-primary-text px-4 py-2 rounded-sm shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-base"
+      >
+        <span class="i-mdi-arrow-left w-5 h-5" aria-hidden="true"></span>
+        Back to chores
+      </a>
+    </header>
+
+    <main class="w-full max-w-2xl mx-auto p-4 sm:p-6 flex flex-col gap-4">
+      <NotificationSettings client:load initialGotifyConfigured={gotifyConfigured} />
+    </main>
+  </div>
+</Layout>

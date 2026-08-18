@@ -10,6 +10,7 @@ interface ChoreCreateInput {
   rrule?: string;
   dueDate?: string | null;
   assigneeId?: string | null;
+  remindUntilDone?: boolean | null;
 }
 
 function readStringField(
@@ -38,6 +39,22 @@ function readFormNullableString(
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function readJsonBoolean(
+  record: Record<string, unknown>,
+  key: string,
+): boolean | null | undefined {
+  if (!(key in record)) return undefined;
+  return typeof record[key] === "boolean" ? record[key] : null;
+}
+
+function readFormBoolean(
+  entries: Record<string, FormDataEntryValue>,
+  key: string,
+): boolean | undefined {
+  if (!(key in entries)) return undefined;
+  return entries[key] === "on" || entries[key] === "true";
+}
+
 async function readCreateInput(
   request: Request,
 ): Promise<{ data: ChoreCreateInput; isForm: boolean }> {
@@ -56,6 +73,7 @@ async function readCreateInput(
         rrule: readStringField(entries, "rrule"),
         dueDate: readFormNullableString(entries, "dueDate"),
         assigneeId: readFormNullableString(entries, "assigneeId"),
+        remindUntilDone: readFormBoolean(entries, "remindUntilDone"),
       },
       isForm: true,
     };
@@ -72,6 +90,7 @@ async function readCreateInput(
       rrule: readStringField(record, "rrule"),
       dueDate: readJsonNullableString(record, "dueDate"),
       assigneeId: readJsonNullableString(record, "assigneeId"),
+      remindUntilDone: readJsonBoolean(record, "remindUntilDone"),
     },
     isForm: false,
   };
@@ -155,6 +174,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (data.dueDate !== undefined && !validIsoDate(data.dueDate)) {
       return errorResponse(isForm, "Invalid dueDate", 400);
     }
+    if (data.remindUntilDone === null) {
+      return errorResponse(isForm, "remindUntilDone must be boolean", 400);
+    }
 
     const id = crypto.randomUUID();
     let nextDueDate: Date | null = null;
@@ -187,8 +209,16 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       : nextDueDate
       ? nextDueDate.toISOString()
       : null;
-    const unassignedSince = assigneeId === null
-      ? new Date().toISOString()
+    const now = new Date();
+    const remindUntilDone = data.remindUntilDone === undefined
+      ? 1
+      : data.remindUntilDone
+      ? 1
+      : 0;
+    const unassignedSince = assigneeId === null ? now.toISOString() : null;
+    const nagEligibleSince = assigneeId !== null && dueDateStr !== null &&
+        remindUntilDone === 1
+      ? now.toISOString()
       : null;
 
     const stmt = db.prepare(`
@@ -201,9 +231,11 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         description,
         due_date,
         recurrence,
+        remind_until_done,
+        nag_eligible_since,
         done
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `);
 
     stmt.run(
@@ -215,6 +247,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       description || null,
       dueDateStr,
       recurrenceJson,
+      remindUntilDone,
+      nagEligibleSince,
     );
 
     if (isForm) return redirect("/", 302);

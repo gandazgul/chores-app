@@ -17,14 +17,16 @@ affectedPaths:
   - "docs/**"
 executionAgent: "engineer"
 createdAt: "2026-08-10T16:07:52.492Z"
-updatedAt: "2026-08-10T16:07:52.492Z"
-status: "draft"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 12
 dependencies:
   - "11-add-gotify-tokens-and-notification-port"
 planId: "1afd330a-ee5c-4074-9ab3-6776ae4a9f0f"
+collaborationRecommendation: "autonomous"
+updatedAt: "2026-08-18T00:38:25.357Z"
+status: "ready_for_work"
+userVerifiedAt: null
 ---
 
 # Send Assigned Nag Deliveries from the Scheduler

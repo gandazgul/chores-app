@@ -29,6 +29,8 @@ function insertChore(
     revision?: number;
     assigneeId?: string | null;
     unassignedSince?: string | null;
+    remindUntilDone?: 0 | 1;
+    nagEligibleSince?: string | null;
   } = {},
 ): string {
   const id = fields.id ?? crypto.randomUUID();
@@ -44,9 +46,11 @@ function insertChore(
       due_date,
       recurrence,
       recurrence_parent_id,
+      remind_until_done,
+      nag_eligible_since,
       revision
     )
-    VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     fields.assigneeId ?? null,
@@ -57,6 +61,8 @@ function insertChore(
     fields.dueDate ?? "2030-01-01T00:00:00.000Z",
     fields.recurrence ?? null,
     fields.parentId ?? null,
+    fields.remindUntilDone ?? 1,
+    fields.nagEligibleSince ?? null,
     fields.revision ?? 0,
   );
   return id;
@@ -462,4 +468,62 @@ Deno.test("recurring completion logs edited due date and advances successor from
   assertEquals(child.due_date, "2030-01-11T12:00:00.000Z");
   assertEquals(child.assignee_id, null);
   assertEquals(child.unassigned_since, "2030-01-02T00:00:00.000Z");
+});
+
+Deno.test("schedule and reminder edits maintain Nag anchors and supersede pending slots", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    assigneeId: "u",
+    dueDate: "2030-01-01T10:00:00.000Z",
+    nagEligibleSince: "2030-01-01T09:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('delivery', ?, 'u', 'assigned_nag', '2030-01-01T10:00:00.000Z', '2030-01-01T10:00:00.000Z')
+  `).run(id);
+
+  updateOccurrence(db, id, { title: "Text only" }, {
+    now: new Date("2030-01-01T11:00:00.000Z"),
+  });
+  assertEquals(chore(db, id).nag_eligible_since, "2030-01-01T09:00:00.000Z");
+  assertEquals(
+    db.prepare(
+      "SELECT status FROM notification_deliveries WHERE id = 'delivery'",
+    ).get(),
+    { status: "pending" },
+  );
+
+  const now = new Date("2030-01-02T03:04:05.000Z");
+  updateOccurrence(db, id, { dueDate: "2030-01-03T10:00:00.000Z" }, { now });
+  assertEquals(chore(db, id).nag_eligible_since, now.toISOString());
+  assertEquals(
+    db.prepare(
+      "SELECT status FROM notification_deliveries WHERE id = 'delivery'",
+    ).get(),
+    { status: "superseded" },
+  );
+
+  updateOccurrence(db, id, { remindUntilDone: false }, {
+    now: new Date("2030-01-02T04:00:00.000Z"),
+  });
+  assertEquals(chore(db, id).nag_eligible_since, null);
+});
+
+Deno.test("recurring successor and reopened occurrence receive fresh Nag anchors", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    assigneeId: "u",
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+    nagEligibleSince: "2030-01-01T09:00:00.000Z",
+  });
+  const now = new Date("2030-01-02T00:00:00.000Z");
+
+  updateOccurrence(db, id, { done: true }, { now });
+  const child = successor(db, id);
+  assertExists(child);
+  assertEquals(child.nag_eligible_since, now.toISOString());
+  assertEquals(chore(db, id).nag_eligible_since, null);
+
+  updateOccurrence(db, id, { done: false }, { now });
+  assertEquals(chore(db, id).nag_eligible_since, now.toISOString());
 });

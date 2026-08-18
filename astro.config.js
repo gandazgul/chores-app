@@ -8,6 +8,7 @@ import deno from "@deno/astro-adapter";
 import unocss from "unocss/astro";
 
 import solidJs from "@astrojs/solid-js";
+import { assignedNagSchedulerIntegration } from "./src/scheduler/astroIntegration.ts";
 
 // https://astro.build/config
 export default defineConfig({
@@ -20,7 +21,11 @@ export default defineConfig({
     port: 8080,
     hostname: "0.0.0.0",
   }),
-  integrations: [unocss({ injectReset: true }), solidJs()],
+  integrations: [
+    unocss({ injectReset: true }),
+    solidJs(),
+    assignedNagSchedulerIntegration(),
+  ],
   image: {
     service: passthroughImageService(),
   },

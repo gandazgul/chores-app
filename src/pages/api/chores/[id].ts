@@ -11,6 +11,7 @@ interface ChoreUpdateInput {
   dueDate?: string | null;
   assigneeId?: string | null;
   done?: boolean;
+  remindUntilDone?: boolean;
 }
 
 function readNullableString(
@@ -22,7 +23,9 @@ function readNullableString(
   return typeof value === "string" ? value : null;
 }
 
-function readUpdateInput(body: unknown): ChoreUpdateInput {
+function readUpdateInput(
+  body: unknown,
+): ChoreUpdateInput | { invalid: string } {
   if (typeof body !== "object" || body === null) {
     return {};
   }
@@ -43,6 +46,12 @@ function readUpdateInput(body: unknown): ChoreUpdateInput {
   input.assigneeId = readNullableString(record, "assigneeId");
   if ("done" in record && typeof record.done === "boolean") {
     input.done = record.done;
+  }
+  if ("remindUntilDone" in record) {
+    if (typeof record.remindUntilDone !== "boolean") {
+      return { invalid: "remindUntilDone must be boolean" };
+    }
+    input.remindUntilDone = record.remindUntilDone;
   }
 
   return input;
@@ -76,6 +85,11 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     }
 
     const data = readUpdateInput(await request.json());
+    if ("invalid" in data) {
+      return new Response(JSON.stringify({ error: data.invalid }), {
+        status: 400,
+      });
+    }
     const result = updateOccurrence(db, id, data);
 
     if (result.kind === "not_found") {

@@ -623,3 +623,57 @@ Deno.test({
     }
   },
 });
+
+Deno.test({
+  name:
+    "Chores API defaults notification toggle on and persists explicit changes",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    ensureUser(OTHER_USER);
+    try {
+      const defaultRes = await jsonPost({
+        title: "Default Reminders",
+        dueDate: "2030-01-01T10:00:00.000Z",
+        assigneeId: OTHER_USER.id,
+      });
+      assertEquals(defaultRes.status, 201);
+      const created = await defaultRes.json() as Chore;
+      assertEquals(created.remind_until_done, 1);
+      assert(typeof chore(created.id).nag_eligible_since === "string");
+
+      const poolRes = await jsonPost({
+        title: "Pool Reminders",
+        dueDate: "2030-01-01T10:00:00.000Z",
+        assigneeId: null,
+        remindUntilDone: false,
+      });
+      assertEquals(poolRes.status, 201);
+      const pool = await poolRes.json() as Chore;
+      assertEquals(pool.remind_until_done, 0);
+      assertEquals(chore(pool.id).nag_eligible_since, null);
+
+      const invalidRes = await jsonPost({
+        title: "Bad Reminders",
+        remindUntilDone: "yes",
+      });
+      assertEquals(invalidRes.status, 400);
+
+      const offRes = await jsonPut(created.id, { remindUntilDone: false });
+      assertEquals(offRes.status, 200);
+      const off = await offRes.json() as Chore;
+      assertEquals(off.remind_until_done, 0);
+      assertEquals(chore(created.id).nag_eligible_since, null);
+
+      const onRes = await jsonPut(created.id, { remindUntilDone: true });
+      assertEquals(onRes.status, 200);
+      const on = await onRes.json() as Chore;
+      assertEquals(on.remind_until_done, 1);
+      assert(typeof chore(created.id).nag_eligible_since === "string");
+    } finally {
+      cleanup();
+    }
+  },
+});

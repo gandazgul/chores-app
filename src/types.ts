@@ -23,7 +23,7 @@ export interface ChoreRow {
   done: SQLiteBoolean;
   due_date: string | null;
   remind_until_done: SQLiteBoolean;
-  notification_sent_at: string | null;
+  nag_eligible_since: string | null;
   recurrence: string | null;
   status: ChoreStatus;
   recurrence_parent_id: string | null;
@@ -64,6 +64,29 @@ export interface NotificationSendInput {
 
 export interface NotificationPort {
   send(input: NotificationSendInput): Promise<NotificationSendResult>;
+}
+
+export type NotificationDeliveryKind = "assigned_nag" | "pool_blast";
+export type NotificationDeliveryStatus =
+  | "pending"
+  | "sent"
+  | "superseded"
+  | "undeliverable";
+
+export interface NotificationDeliveryRow {
+  id: string;
+  chore_id: string;
+  recipient_id: string;
+  kind: NotificationDeliveryKind;
+  slot_key: string;
+  deliver_after: string;
+  status: NotificationDeliveryStatus;
+  attempt_count: number;
+  last_attempt_at: string | null;
+  last_error_code: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Chore extends Omit<ChoreRow, "recurrence"> {

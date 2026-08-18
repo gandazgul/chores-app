@@ -44,6 +44,7 @@ export function ChoreModal(props: ChoreModalProps) {
   const [assigneeId, setAssigneeId] = createSignal<string | null>(
     props.currentMemberId,
   );
+  const [remindUntilDone, setRemindUntilDone] = createSignal(true);
   const [error, setError] = createSignal("");
   const [isSaving, setIsSaving] = createSignal(false);
   const [isDeleting, setIsDeleting] = createSignal(false);
@@ -57,6 +58,7 @@ export function ChoreModal(props: ChoreModalProps) {
       setRrule("");
       setDueDate("");
       setAssigneeId(props.currentMemberId);
+      setRemindUntilDone(true);
       setError("");
       setConfirmDelete(false);
       queueMicrotask(() => titleInput?.focus());
@@ -66,6 +68,7 @@ export function ChoreModal(props: ChoreModalProps) {
       setRrule(rruleValue(props.chore));
       setDueDate(toLocalDateTimeValue(props.chore.due_date));
       setAssigneeId(props.chore.assignee_id);
+      setRemindUntilDone(props.chore.remind_until_done === 1);
       setError("");
       setConfirmDelete(false);
       queueMicrotask(() => titleInput?.focus());
@@ -105,6 +108,7 @@ export function ChoreModal(props: ChoreModalProps) {
       rrule: rrule() || null,
       dueDate: parsedDueDate,
       assigneeId: assigneeId(),
+      remindUntilDone: remindUntilDone(),
     };
 
     try {
@@ -299,6 +303,26 @@ export function ChoreModal(props: ChoreModalProps) {
                 ))}
               </select>
             </div>
+
+            <label class="flex items-start gap-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="remindUntilDone"
+                checked={remindUntilDone()}
+                onChange={(event) =>
+                  setRemindUntilDone(event.currentTarget.checked)}
+                class="mt-1"
+              />
+              <span>
+                <span class="font-medium text-primary-text">
+                  Allow push notifications for this chore
+                </span>
+                <span class="block text-gray-500">
+                  Turn this off to stop future Push Notifications for this
+                  Chore.
+                </span>
+              </span>
+            </label>
 
             <div class="flex flex-col sm:flex-row sm:justify-between gap-3 mt-4">
               <Show when={props.mode === "edit"}>

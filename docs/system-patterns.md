@@ -225,6 +225,20 @@ renders the array it was given at render time.
 row. `completion_logs` rows cascade with the chore. **No user interface calls
 this route.** Only the end-to-end tests use it, for cleanup.
 
+## Notifications
+
+The assigned-Nag scheduler is an in-process loop. It starts after migrations in
+production and through Astro server lifecycle hooks in development. It inserts
+Delivery Slots before it sends through the notification port. A Delivery Slot is
+unique for one Chore, recipient, kind, and policy slot. This makes restarts
+safe, but external Gotify delivery is at least once. A crash after Gotify
+accepts a message and before SQLite records success can duplicate the external
+message.
+
+Set `ENABLE_NOTIFICATIONS=false` to start no scheduler, create no Delivery
+Slots, and send nothing. The deployment must run one replica with one persistent
+SQLite volume.
+
 ## Verification
 
 - `deno task ci` — lint, format check, Deno type check (`deno check`), Astro
@@ -243,13 +257,10 @@ this route.** Only the end-to-end tests use it, for cleanup.
 These appear in the product documents but no code implements them. Do not treat
 them as patterns.
 
-- **Push notifications (Gotify).** No client, no scheduler, no sender. The
-  `remind_until_done` and `notification_sent_at` columns exist and are never
-  written.
+- **Pool blast notifications.** The delivery table reserves the `pool_blast`
+  kind, but this scheduler creates and sends assigned Nags only.
+- **Skip resolution.** The schema has `status = 'skipped'`, but no UI creates
+  Skip records yet.
 - **Offline support.** `public/manifest.json` and the manifest link make the app
   installable, but there is no service worker, so the app does not work offline.
-- **Editing a chore.** `ChoreModal` creates only. The `PUT` route accepts
-  `title`, `description`, and `rrule`, but no screen sends them.
 - **Priority.** The `priority` column exists; nothing reads or writes it.
-- **Chore assignment between people.** Every chore belongs to the user who
-  created it.

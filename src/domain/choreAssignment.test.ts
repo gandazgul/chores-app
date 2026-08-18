@@ -24,6 +24,9 @@ function insertChore(
     unassignedSince?: string | null;
     status?: string;
     revision?: number;
+    dueDate?: string | null;
+    remindUntilDone?: 0 | 1;
+    nagEligibleSince?: string | null;
   } = {},
 ): string {
   const id = fields.id ?? crypto.randomUUID();
@@ -34,14 +37,20 @@ function insertChore(
       assignee_id,
       unassigned_since,
       title,
+      due_date,
+      remind_until_done,
+      nag_eligible_since,
       status,
       revision
     )
-    VALUES (?, 'creator', ?, ?, 'Chore', ?, ?)
+    VALUES (?, 'creator', ?, ?, 'Chore', ?, ?, ?, ?, ?)
   `).run(
     id,
     fields.assigneeId ?? null,
     fields.unassignedSince ?? null,
+    fields.dueDate ?? null,
+    fields.remindUntilDone ?? 1,
+    fields.nagEligibleSince ?? null,
     fields.status ?? "open",
     fields.revision ?? 0,
   );
@@ -193,5 +202,32 @@ Deno.test("missing chore returns not found without checking assignment state", (
   assertEquals(
     transitionAssignment(db, "missing", "other", { action: "release" }).kind,
     "chore_not_found",
+  );
+});
+
+Deno.test("assignment transitions reset Nag anchor and supersede pending slots", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    assigneeId: "creator",
+    dueDate: "2030-01-01T10:00:00.000Z",
+    nagEligibleSince: "2030-01-01T09:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('delivery', ?, 'creator', 'assigned_nag', '2030-01-01T10:00:00.000Z', '2030-01-01T10:00:00.000Z')
+  `).run(id);
+  const now = new Date("2030-01-02T03:04:05.000Z");
+
+  transitionAssignment(db, id, "creator", {
+    action: "reassign",
+    assigneeId: "other",
+  }, { now });
+
+  assertEquals(chore(db, id).nag_eligible_since, now.toISOString());
+  assertEquals(
+    db.prepare(
+      "SELECT status FROM notification_deliveries WHERE id = 'delivery'",
+    ).get(),
+    { status: "superseded" },
   );
 });

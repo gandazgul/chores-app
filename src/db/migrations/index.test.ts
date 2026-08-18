@@ -5,6 +5,7 @@ import { occurrenceResolutionMigration } from "./0002_occurrence_resolution.ts";
 import { userNamesMigration } from "./0003_user_names.ts";
 import { householdAssignmentMigration } from "./0004_household_assignment.ts";
 import { gotifyTokenMigration } from "./0005_gotify_token.ts";
+import { notificationDeliveriesMigration } from "./0006_notification_deliveries.ts";
 import { applyMigrations } from "./index.ts";
 
 interface CountRow {
@@ -42,7 +43,14 @@ function hasTable(db: DatabaseSync, name: string): boolean {
 
 function tableSignature(db: DatabaseSync): Record<string, TableInfoRow[]> {
   const signature: Record<string, TableInfoRow[]> = {};
-  for (const table of ["users", "chores", "completion_logs"]) {
+  for (
+    const table of [
+      "users",
+      "chores",
+      "completion_logs",
+      "notification_deliveries",
+    ]
+  ) {
     signature[table] = db.prepare(`PRAGMA table_info(${table})`)
       .all() as unknown as TableInfoRow[];
   }
@@ -57,6 +65,9 @@ function foreignKeySignature(
       .all() as unknown as ForeignKeyRow[],
     completion_logs: db.prepare("PRAGMA foreign_key_list(completion_logs)")
       .all() as unknown as ForeignKeyRow[],
+    notification_deliveries: db.prepare(
+      "PRAGMA foreign_key_list(notification_deliveries)",
+    ).all() as unknown as ForeignKeyRow[],
   };
 }
 
@@ -240,11 +251,17 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment,
   applyMigrations(db);
 
   for (
-    const table of ["users", "chores", "completion_logs", "schema_migrations"]
+    const table of [
+      "users",
+      "chores",
+      "completion_logs",
+      "notification_deliveries",
+      "schema_migrations",
+    ]
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 5);
+  assertEquals(ledgerCount(db), 6);
   assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "users").includes("picture"));
   assert(columnNames(db, "users").includes("gotify_token"));
@@ -253,7 +270,10 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment,
   assert(columnNames(db, "chores").includes("revision"));
   assert(columnNames(db, "chores").includes("assignee_id"));
   assert(columnNames(db, "chores").includes("unassigned_since"));
+  assert(columnNames(db, "chores").includes("nag_eligible_since"));
+  assert(!columnNames(db, "chores").includes("notification_sent_at"));
   assert(columnNames(db, "completion_logs").includes("due_at"));
+  assert(columnNames(db, "notification_deliveries").includes("deliver_after"));
 });
 
 Deno.test("baseline databases keep data, backfill status, and converge", () => {
@@ -292,7 +312,7 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 5);
+  assertEquals(ledgerCount(legacy), 6);
   assertEquals(
     legacy.prepare(
       "SELECT email, name, picture, gotify_token FROM users WHERE id = ?",
@@ -352,7 +372,7 @@ Deno.test("version-4 databases keep user data and converge with fresh databases"
   applyMigrations(upgraded);
 
   assertEquals(tableSignature(upgraded), tableSignature(fresh));
-  assertEquals(ledgerCount(upgraded), 5);
+  assertEquals(ledgerCount(upgraded), 6);
   assertEquals(
     upgraded.prepare(
       "SELECT email, name, picture, created_at, updated_at, gotify_token FROM users WHERE id = ?",
@@ -439,7 +459,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 5);
+  assertEquals(ledgerCount(db), 6);
   assertEquals(tableSignature(db), firstSignature);
 });
 
@@ -505,4 +525,49 @@ Deno.test("duplicate legacy completion logs fail migration without deleting data
     "Migration 2 (0002_occurrence_resolution) failed",
   );
   assertEquals(count(db, "SELECT COUNT(*) AS count FROM completion_logs"), 2);
+});
+
+Deno.test("notification delivery migration backfills reminders and durable outbox schema", () => {
+  const db = new DatabaseSync(":memory:");
+  makeVersion4(db);
+  gotifyTokenMigration.up(db);
+  gotifyTokenMigration.validate(db);
+  db.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)")
+    .run(gotifyTokenMigration.version, gotifyTokenMigration.name);
+  db.exec(`
+    INSERT INTO users (id, email) VALUES ('u', 'u@x');
+    INSERT INTO chores (id, user_id, assignee_id, title, due_date, remind_until_done, status)
+      VALUES ('open-assigned', 'u', 'u', 'Open Assigned', '2030-01-01T10:00:00.000Z', 0, 'open');
+    INSERT INTO chores (id, user_id, assignee_id, title, due_date, remind_until_done, status)
+      VALUES ('pool', 'u', NULL, 'Pool', '2030-01-01T10:00:00.000Z', 0, 'open');
+    INSERT INTO chores (id, user_id, assignee_id, title, due_date, remind_until_done, status)
+      VALUES ('completed', 'u', 'u', 'Done', '2030-01-01T10:00:00.000Z', 0, 'completed');
+  `);
+
+  notificationDeliveriesMigration.up(db);
+  notificationDeliveriesMigration.validate(db);
+
+  assert(!columnNames(db, "chores").includes("notification_sent_at"));
+  assert(columnNames(db, "chores").includes("nag_eligible_since"));
+  assert(hasTable(db, "notification_deliveries"));
+  assertEquals(
+    db.prepare(
+      "SELECT remind_until_done, nag_eligible_since IS NOT NULL AS anchored FROM chores WHERE id = 'open-assigned'",
+    ).get(),
+    { remind_until_done: 1, anchored: 1 },
+  );
+  assertEquals(
+    db.prepare(
+      "SELECT remind_until_done, nag_eligible_since FROM chores WHERE id = 'pool'",
+    ).get(),
+    { remind_until_done: 1, nag_eligible_since: null },
+  );
+  assertThrows(
+    () =>
+      db.prepare(`
+      INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+      VALUES ('bad', 'open-assigned', 'u', 'bad', '2030-01-01T10:00:00.000Z', '2030-01-01T10:00:00.000Z')
+    `).run(),
+    Error,
+  );
 });

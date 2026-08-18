@@ -159,6 +159,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 3, name: "0003_user_names" },
     { version: 4, name: "0004_household_assignment" },
     { version: 5, name: "0005_gotify_token" },
+    { version: 6, name: "0006_notification_deliveries" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
@@ -168,6 +169,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
         "revision",
         "assignee_id",
         "unassigned_since",
+        "nag_eligible_since",
       ].includes(name)
     ),
     [
@@ -176,7 +178,16 @@ function assertMigrated(path: string, expectSentinel: boolean) {
       "revision",
       "assignee_id",
       "unassigned_since",
+      "nag_eligible_since",
     ],
+  );
+  assertEquals(
+    columnNames(db, "chores").includes("notification_sent_at"),
+    false,
+  );
+  assertEquals(
+    columnNames(db, "notification_deliveries").includes("deliver_after"),
+    true,
   );
   assertEquals(columnNames(db, "users").includes("name"), true);
   assertEquals(columnNames(db, "users").includes("picture"), true);
@@ -209,16 +220,19 @@ async function startContainer(
   name: string,
   databasePath: string,
   port: number,
+  extraEnv: Record<string, string> = {},
 ) {
+  const envArgs = Object.entries({
+    DB_ENV: "production",
+    ENABLE_AUTH: "false",
+    ...extraEnv,
+  }).flatMap(([key, value]) => ["--env", `${key}=${value}`]);
   await runCommand(docker, [
     "run",
     "--detach",
     "--name",
     name,
-    "--env",
-    "DB_ENV=production",
-    "--env",
-    "ENABLE_AUTH=false",
+    ...envArgs,
     "--publish",
     `${port}:8080`,
     "--volume",
@@ -236,8 +250,32 @@ async function readContainerLogs(docker: string, name: string) {
   return `${result.stdout}${result.stderr}`;
 }
 
+async function waitForDeliveryStatus(
+  databasePath: string,
+  deliveryId: string,
+  expected: string,
+  timeoutMs = 12_000,
+) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const db = new DatabaseSync(databasePath);
+    const row = db.prepare(
+      "SELECT status FROM notification_deliveries WHERE id = ?",
+    ).get(deliveryId) as { status: string } | undefined;
+    db.close();
+    if (row?.status === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`${deliveryId} did not reach ${expected}`);
+}
+
+function countSchedulerStarts(logs: string): number {
+  return logs.match(/scheduler_started/g)?.length ?? 0;
+}
+
 Deno.test({
-  name: "production container runs migrations before readiness",
+  name:
+    "production scheduler starts once after migration and recovers pending row",
   sanitizeResources: false,
   sanitizeOps: false,
   async fn() {
@@ -282,7 +320,98 @@ Deno.test({
       );
       await waitForHttp(legacyPort);
       assertMigrated(legacyDb, true);
+      const legacyLogs = await readContainerLogs(docker, legacyContainer);
+      assertEquals(countSchedulerStarts(legacyLogs), 1);
       await cleanupContainer(docker, legacyContainer);
+
+      const restartDb = new DatabaseSync(legacyDb);
+      restartDb.exec(`
+        INSERT INTO users (id, email, name) VALUES ('nag-user', 'nag@example.com', 'Nag User');
+        INSERT INTO chores (
+          id,
+          user_id,
+          assignee_id,
+          title,
+          due_date,
+          remind_until_done,
+          nag_eligible_since,
+          status
+        ) VALUES (
+          'nag-chore',
+          'nag-user',
+          'nag-user',
+          'Nag Chore',
+          '2030-01-01T10:00:00.000Z',
+          1,
+          '2030-01-01T09:00:00.000Z',
+          'open'
+        );
+        INSERT INTO notification_deliveries (
+          id,
+          chore_id,
+          recipient_id,
+          kind,
+          slot_key,
+          deliver_after
+        ) VALUES (
+          'pending-delivery',
+          'nag-chore',
+          'nag-user',
+          'assigned_nag',
+          '2030-01-01T10:00:00.000Z',
+          '2000-01-01T00:00:00.000Z'
+        );
+      `);
+      restartDb.close();
+      const restartContainer = `chores-prod-restart-${id}`;
+      containers.push(restartContainer);
+      const restartPort = allocatePort();
+      await startContainer(
+        docker,
+        image,
+        restartContainer,
+        legacyDb,
+        restartPort,
+      );
+      await waitForHttp(restartPort);
+      await waitForDeliveryStatus(
+        legacyDb,
+        "pending-delivery",
+        "undeliverable",
+      );
+      const afterRestartDb = new DatabaseSync(legacyDb);
+      assertEquals(
+        afterRestartDb.prepare(`
+          SELECT COUNT(*) AS count
+          FROM notification_deliveries
+          WHERE chore_id = 'nag-chore'
+            AND recipient_id = 'nag-user'
+            AND kind = 'assigned_nag'
+            AND slot_key = '2030-01-01T10:00:00.000Z'
+        `).get() as unknown as CountRow,
+        { count: 1 },
+      );
+      afterRestartDb.close();
+      await cleanupContainer(docker, restartContainer);
+
+      const disabledDb = `${tempDir}/disabled.db`;
+      createLegacyDatabase(disabledDb);
+      await Deno.chmod(disabledDb, 0o666);
+      const disabledContainer = `chores-prod-disabled-${id}`;
+      containers.push(disabledContainer);
+      const disabledPort = allocatePort();
+      await startContainer(
+        docker,
+        image,
+        disabledContainer,
+        disabledDb,
+        disabledPort,
+        { ENABLE_NOTIFICATIONS: "false" },
+      );
+      await waitForHttp(disabledPort);
+      const disabledLogs = await readContainerLogs(docker, disabledContainer);
+      assertEquals(countSchedulerStarts(disabledLogs), 0);
+      await cleanupContainer(docker, disabledContainer);
 
       const incompatibleDb = `${tempDir}/incompatible.db`;
       createIncompatibleDatabase(incompatibleDb);

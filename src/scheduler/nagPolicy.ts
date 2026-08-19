@@ -184,9 +184,22 @@ function applyQuietHours(
 ): Date {
   const parts = localParts(slot, timeZone);
   if (!isInQuietHours(parts, quietHours)) return slot;
+  return nextQuietEnd(slot, timeZone, quietHours);
+}
+
+function quietSlotIsSupersededByNextLadderPoint(
+  slot: Date,
+  nextSlot: Date | undefined,
+  timeZone: string,
+  quietHours: QuietHours,
+): boolean {
+  if (!nextSlot) return false;
+  const parts = localParts(slot, timeZone);
+  if (!isInQuietHours(parts, quietHours)) return false;
   const release = nextQuietEnd(slot, timeZone, quietHours);
-  if (release.getTime() - slot.getTime() <= MS_PER_HOUR) return release;
-  return release;
+  const nextTime = nextSlot.getTime();
+  return nextTime > release.getTime() &&
+    nextTime - release.getTime() <= MS_PER_HOUR;
 }
 
 export function assignedNagSlots(options: {
@@ -220,10 +233,28 @@ export function assignedNagSlots(options: {
     }
   }
 
-  const unique = new Map<string, NagSlot>();
+  const uniqueSlots = new Map<string, Date>();
   for (const slot of slots) {
-    const slotTime = slot.getTime();
-    if (slotTime <= from.getTime() || slotTime > nowTime) continue;
+    if (slot.getTime() <= from.getTime()) continue;
+    uniqueSlots.set(toUtcSecond(slot), slot);
+  }
+
+  const orderedSlots = [...uniqueSlots.values()].sort((left, right) =>
+    left.getTime() - right.getTime()
+  );
+  const unique = new Map<string, NagSlot>();
+  for (let index = 0; index < orderedSlots.length; index++) {
+    const slot = orderedSlots[index];
+    if (slot.getTime() > nowTime) continue;
+    if (
+      quietSlotIsSupersededByNextLadderPoint(
+        slot,
+        orderedSlots[index + 1],
+        options.timeZone,
+        options.quietHours,
+      )
+    ) continue;
+
     const slotKey = toUtcSecond(slot);
     const deliverAfter = toUtcSecond(
       applyQuietHours(slot, options.timeZone, options.quietHours),

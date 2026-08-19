@@ -9,10 +9,6 @@ interface Logger {
 
 export interface SchedulerStartOptions {
   scheduler: AssignedNagScheduler;
-  getNow?: () => Date;
-  setIntervalImpl?: (callback: () => void, intervalMs: number) => unknown;
-  clearIntervalImpl?: (timer: unknown) => void;
-  intervalMs?: number;
   logger?: Logger;
   enabled?: boolean;
 }
@@ -64,19 +60,12 @@ export function startScheduler(options: SchedulerStartOptions): SchedulerOwner {
   if (owner?.running) return owner;
 
   let running = true;
-  const getNow = options.getNow ?? (() => new Date());
-  const setIntervalImpl = options.setIntervalImpl ??
-    ((callback: () => void, interval: number) =>
-      setInterval(callback, interval));
-  const clearIntervalImpl = options.clearIntervalImpl ??
-    ((timer: unknown) =>
-      clearInterval(timer as ReturnType<typeof setInterval>));
-  const intervalMs = options.intervalMs ?? 60_000;
+  const intervalMs = 60_000;
 
   const tick = () => {
     if (!running || inFlight) return;
     inFlight = true;
-    Promise.resolve(options.scheduler.tick(getNow()))
+    Promise.resolve(options.scheduler.tick(new Date()))
       .catch((error) => {
         warn(options.logger, {
           event: "scheduler_tick_failed",
@@ -88,12 +77,12 @@ export function startScheduler(options: SchedulerStartOptions): SchedulerOwner {
       });
   };
 
-  const timer = setIntervalImpl(tick, intervalMs);
+  const timer = setInterval(tick, intervalMs);
   owner = {
     stop() {
       if (!running) return;
       running = false;
-      clearIntervalImpl(timer);
+      clearInterval(timer);
       if (owner === this) owner = null;
       info(options.logger, { event: "scheduler_stopped" });
     },

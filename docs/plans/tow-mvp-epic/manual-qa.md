@@ -247,3 +247,22 @@ tow-mvp-epic/11-add-gotify-tokens-and-notification-port
       leak).
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/11-add-gotify-tokens-and-notification-port" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/12-send-assigned-nag-deliveries-from-the-scheduler" -->
+
+## Send Assigned Nag Deliveries from the Scheduler
+
+Manual verification steps for
+tow-mvp-epic/12-send-assigned-nag-deliveries-from-the-scheduler
+
+- [ ] Open an assigned chore and confirm that “Allow push notifications for this
+      chore” is enabled by default.
+- [ ] Turn the notification option off, save, reopen the chore, and confirm that
+      it remains off; turn it on again and confirm that it remains on.
+- [ ] Configure a test Gotify recipient, create an assigned open chore that is
+      past due, and confirm that the recipient receives a notification with the
+      title format `TOW: <title>`.
+- [ ] Restart the production server and confirm that pending delivery is
+      recovered without a duplicate notification slot.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/12-send-assigned-nag-deliveries-from-the-scheduler" -->

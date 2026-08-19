@@ -138,9 +138,16 @@ function createSlots(
           ON later.chore_id = earlier.chore_id
          AND later.recipient_id = earlier.recipient_id
          AND later.kind = earlier.kind
-         AND later.deliver_after = earlier.deliver_after
          AND later.status = 'pending'
          AND later.slot_key > earlier.slot_key
+         AND (
+           later.deliver_after = earlier.deliver_after
+           OR (
+             earlier.deliver_after > earlier.slot_key
+             AND later.slot_key > earlier.deliver_after
+             AND unixepoch(later.slot_key) <= unixepoch(earlier.deliver_after) + 3600
+           )
+         )
         WHERE earlier.status = 'pending'
           AND earlier.kind = 'assigned_nag'
       )

@@ -160,6 +160,35 @@ Deno.test("quiet-hour coalescing sends one message for overnight slots", async (
   );
 });
 
+Deno.test("quiet-hours forward coalescing supersedes a deferred row when the next ladder slot sends", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "c",
+    dueDate: "2030-01-01T07:30:00.000Z",
+    nagEligibleSince: "2030-01-01T07:29:59.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('deferred', 'c', 'u', 'assigned_nag', '2030-01-01T07:30:00.000Z', '2030-01-01T08:00:00.000Z')
+  `).run();
+  const { scheduler, sent } = makeScheduler(db);
+
+  await scheduler.tick(new Date("2030-01-01T08:30:00.000Z"));
+
+  assertEquals(sent, [{ recipientId: "u", title: "Wash" }]);
+  assertEquals(
+    db.prepare(`
+      SELECT slot_key, status
+      FROM notification_deliveries
+      ORDER BY slot_key
+    `).all(),
+    [
+      { slot_key: "2030-01-01T07:30:00.000Z", status: "superseded" },
+      { slot_key: "2030-01-01T08:30:00.000Z", status: "sent" },
+    ],
+  );
+});
+
 Deno.test("delivery results keep retryable and disabled pending and make missing token terminal", async () => {
   const db = makeDb();
   insertChore(db);

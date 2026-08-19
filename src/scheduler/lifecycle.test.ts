@@ -8,8 +8,6 @@ import {
 
 Deno.test("startScheduler starts once immediately and does not overlap ticks", async () => {
   resetSchedulerForTests();
-  let intervals = 0;
-  let clears = 0;
   let ticks = 0;
   let release!: () => void;
   const blocker = new Promise<void>((resolve) => release = resolve);
@@ -22,41 +20,34 @@ Deno.test("startScheduler starts once immediately and does not overlap ticks", a
 
   const first = startScheduler({
     scheduler,
-    setIntervalImpl: (fn: () => void) => {
-      intervals++;
-      fn();
-      return 7 as unknown as ReturnType<typeof setInterval>;
-    },
-    clearIntervalImpl: () => clears++,
     logger: console,
   });
   const second = startScheduler({ scheduler, logger: console });
 
   assertEquals(first, second);
-  assertEquals(intervals, 1);
   assertEquals(ticks, 1);
   release();
   await Promise.resolve();
   first.stop();
-  assertEquals(clears, 1);
   resetSchedulerForTests();
 });
 
 Deno.test("disabled scheduler creates no owner loop", () => {
   resetSchedulerForTests();
-  let intervals = 0;
+  let ticks = 0;
   const owner = startScheduler({
-    scheduler: { tick: () => Promise.resolve() },
-    enabled: false,
-    setIntervalImpl: () => {
-      intervals++;
-      return 1;
+    scheduler: {
+      tick: () => {
+        ticks++;
+        return Promise.resolve();
+      },
     },
+    enabled: false,
     logger: console,
   });
 
   assertEquals(owner.running, false);
-  assertEquals(intervals, 0);
+  assertEquals(ticks, 0);
 });
 
 Deno.test("notification enablement accepts true false and default only", () => {

@@ -39,6 +39,23 @@ Deno.test("quiet hours defer overnight Nag slots to one 09:00 delivery time", ()
   ]);
 });
 
+Deno.test("quiet-hours release skips a deferred slot when the next ladder point is within one hour", () => {
+  const slots = assignedNagSlots({
+    dueDate: "2030-01-01T07:30:00.000Z",
+    fromExclusive: "2030-01-01T07:29:59.000Z",
+    now: new Date("2030-01-01T08:30:00.000Z"),
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+  });
+
+  assertEquals(slots, [
+    {
+      slotKey: "2030-01-01T08:30:00.000Z",
+      deliverAfter: "2030-01-01T08:30:00.000Z",
+    },
+  ]);
+});
+
 Deno.test("late assignment starts at the next new ladder slot with no backfill", () => {
   const slots = assignedNagSlots({
     dueDate: "2030-01-01T10:00:00.000Z",

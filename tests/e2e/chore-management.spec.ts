@@ -8,6 +8,7 @@ interface ChoreResponse {
   assignee_id: string | null;
   due_date: string | null;
   done: 0 | 1;
+  remind_until_done: 0 | 1;
 }
 
 async function cleanupChores(
@@ -48,6 +49,10 @@ test.describe("Chore management browser flows", () => {
       );
       await page.getByLabel("Due date and time").fill("2030-03-04T05:06");
       await page.getByLabel("Assignment").selectOption("");
+      await expect(page.getByLabel("Allow push notifications for this chore"))
+        .toBeChecked();
+      await page.getByLabel("Allow push notifications for this chore")
+        .uncheck();
       await page.getByRole("button", { name: "Save Chore" }).click();
       await page.getByRole("tab", { name: "Pool" }).click();
 
@@ -78,6 +83,9 @@ test.describe("Chore management browser flows", () => {
       );
       await page.getByLabel("Due date and time").fill("2030-03-05T07:08");
       await page.getByLabel("Assignment").selectOption("");
+      await expect(page.getByLabel("Allow push notifications for this chore"))
+        .not.toBeChecked();
+      await page.getByLabel("Allow push notifications for this chore").check();
       await page.getByRole("button", { name: "Save Chore" }).click();
 
       await page.getByRole("tab", { name: "Pool" }).click();
@@ -99,6 +107,7 @@ test.describe("Chore management browser flows", () => {
       );
       expect(editedChore?.assignee_id).toBeNull();
       expect(editedChore?.due_date).toBeTruthy();
+      expect(editedChore?.remind_until_done).toBe(1);
 
       await editedItem.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("button", { name: "Delete" }).click();

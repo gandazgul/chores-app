@@ -7,12 +7,13 @@ Tow is a household chore app for steady recurring chore management.
 - Add, edit, and delete chores
 - Mark chores as complete
 - User authentication
+- Assigned Chore Push Notifications through Gotify
 
 ## Project Structure
 
-The project is built using AstroJS and Deno. It uses Google Sign-In for
-authentication (not yet implemented) and a local SQLite database managed by Knex
-for data storage.
+The project is built with Astro and Deno. It uses Google Sign-In for
+authentication, SQLite through `node:sqlite` for data storage, and an in-process
+scheduler for assigned Chore Nags.
 
 ## Installation
 
@@ -61,7 +62,18 @@ docker build -f Containerfile -t chores-app .
 docker run -p 8080:8080 --env-file .env chores-app
 ```
 
-This will run the built production application on `http://localhost:8080`.
+This will run the built production application on `http://localhost:8080`. Mount
+`chores.db` on a persistent volume in production. The scheduler assumes one app
+process and one SQLite writer.
+
+## Notifications
+
+Tow sends assigned Chore Nags through Gotify. Configure `GOTIFY_URL` and each
+Member's Gotify Application Token. Set `ENABLE_NOTIFICATIONS=false` to stop the
+scheduler, Delivery Slot creation, and sends. Quiet Hours default to
+`21:00`-`08:00` in `HOUSEHOLD_TZ` and can be changed with `QUIET_HOURS_START`
+and `QUIET_HOURS_END` in `HH:MM` format. Delivery is at least once, so a crash
+after Gotify accepts a message can create one duplicate external message.
 
 ## Contributing
 

@@ -54,7 +54,7 @@ test.describe("Three view chore journey", () => {
       });
       await createChore(request, baseURL, {
         title: todayTitle,
-        dueDate: new Date().toISOString(),
+        dueDate: "2099-01-01T13:00:00.000Z",
       });
       await createChore(request, baseURL, {
         title: futureTitle,
@@ -84,9 +84,11 @@ test.describe("Three view chore journey", () => {
         .toHaveAttribute("aria-selected", "true");
       await expect(page.getByRole("textbox", { name: "Search Board chores" }))
         .toHaveCount(0);
-      await expect(page.locator("li").filter({ hasText: overdueTitle }))
+      await expect(page.locator("li").filter({ hasText: futureTitle }))
         .toBeVisible();
       await expect(page.locator("li").filter({ hasText: todayTitle }))
+        .toBeVisible();
+      await expect(page.locator("li").filter({ hasText: overdueTitle }))
         .toHaveCount(0);
       await expect(
         page.locator("details").filter({ hasText: "Done assigned to you" }),

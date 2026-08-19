@@ -138,27 +138,18 @@ using them.
   opening.
 - **File:** chosen by `DB_ENV` — `./chores.test.db`, `./chores.db`, or
   `./chores.dev.db` for development and any unset value.
-- **Migrations:** none. `src/utils/db.ts` runs `CREATE TABLE IF NOT EXISTS` for
-  all three tables at import. A column added later will not appear in an
-  existing database file, because `IF NOT EXISTS` skips the whole statement.
-  This is the main limitation of
-  [ADR 0003](adr/0003-sqlite-through-node-sqlite-without-a-query-builder.md).
-- **Schema duplication:** `scripts/setup_db.js` repeats the same three
-  `CREATE TABLE` statements. The two copies must be edited together, and
-  `scripts` is excluded from type checking, so nothing catches a divergence.
+- **Migrations:** `src/utils/db.ts` applies the forward-only migration registry
+  at import. The current ledger version is 6.
 
 ### Tables
 
-- `users` — `id`, `email` (unique), `created_at`, `updated_at`.
-- `chores` — `id`, `user_id` (foreign key to `users(id)`), `title`,
-  `description`, `priority`, `done`, `due_date`, `remind_until_done`,
-  `notification_sent_at`, `recurrence` (a JSON string), `created_at`,
-  `updated_at`.
-- `completion_logs` — `id`, `chore_id` (foreign key to `chores(id)`,
-  `ON DELETE CASCADE`), `completed_at`.
-
-`priority`, `remind_until_done`, and `notification_sent_at` exist in the schema
-and no code reads or writes them.
+- `users` — `id`, `email` (unique), profile fields, and an optional
+  `gotify_token`.
+- `chores` — assignment, recurrence, status, Due Date, `remind_until_done`, and
+  `nag_eligible_since` fields.
+- `completion_logs` — one completion record per completed Chore.
+- `notification_deliveries` — durable Push Notification Delivery Slots keyed by
+  Chore, recipient, kind, and policy slot.
 
 ## Authentication
 
@@ -197,13 +188,19 @@ and no code reads or writes them.
 
 - **Image:** `Containerfile`, a two-stage build on `denoland/deno:latest`. The
   builder caches dependencies from `deno.json` and `deno.lock`, then runs
-  `deno task build`. The final stage copies only `dist/`, `deno.json`, and
-  `deno.lock`, runs as the non-root `deno` user, exposes 8080, and starts
-  `dist/server/entry.mjs`.
+  `deno task build`. The final stage copies `dist/`, `src/`, the production
+  startup wrapper, `deno.json`, and `deno.lock`, runs as the non-root `deno`
+  user, exposes 8080, and starts `deno task start`.
 - **Target:** Kubernetes.
+- **Scheduler:** production starts one in-process scheduler after migrations and
+  before the built Astro server import. Development uses the same scheduler
+  through an Astro integration. Set `ENABLE_NOTIFICATIONS=false` to stop the
+  scheduler, Delivery Slot creation, and sends. Quiet Hours default to 21:00 to
+  08:00 household-local time.
 - **Persistence caveat:** the SQLite file is written to the working directory
-  inside the container. It needs a mounted volume to survive a restart, and it
-  confines the application to a single writer.
+  inside the container. It needs a mounted volume to survive a restart, stores
+  pending Delivery Slots, and confines the application to one process and one
+  SQLite writer. External Push Notification delivery is at least once.
 - **Origin caveat:** a reverse proxy must preserve the public scheme, host, and
   port when it builds the request URL for Astro. If the browser sends
   `Origin: https://...` but Astro sees `http://...`, unsafe requests fail with

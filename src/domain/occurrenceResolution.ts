@@ -2,6 +2,10 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ChoreRow, ChoreStatus, SQLiteBoolean } from "../types.ts";
 import { parseRecurrence } from "../types.ts";
 import { calculateNextOccurrence } from "../utils/scheduleUtils.ts";
+import {
+  anchorForAssignedNag,
+  supersedePendingAssignedNagSlots,
+} from "./assignedNagEligibility.ts";
 
 export interface OccurrencePatch {
   title?: string;
@@ -10,6 +14,7 @@ export interface OccurrencePatch {
   dueDate?: string | null;
   assigneeId?: string | null;
   done?: boolean;
+  remindUntilDone?: boolean;
 }
 
 export interface UpdateOccurrenceOptions {
@@ -84,6 +89,9 @@ function buildFinalFields(
     recurrence: string | null;
     assigneeId: string | null;
     unassignedSince: string | null;
+    remindUntilDone: SQLiteBoolean;
+    nagEligibleSince: string | null;
+    supersedeAssignedNag: boolean;
     changed: boolean;
   }
   | { kind: "member_not_found" }
@@ -94,6 +102,7 @@ function buildFinalFields(
   let recurrence = row.recurrence;
   let assigneeId = row.assignee_id;
   let unassignedSince = row.unassigned_since;
+  let remindUntilDone: SQLiteBoolean = row.remind_until_done;
 
   if (patch.title !== undefined) title = patch.title;
   if (patch.description !== undefined) description = patch.description;
@@ -118,10 +127,31 @@ function buildFinalFields(
       unassignedSince = assigneeId === null ? now.toISOString() : null;
     }
   }
+  if (patch.remindUntilDone !== undefined) {
+    remindUntilDone = patch.remindUntilDone ? 1 : 0;
+  }
 
+  const scheduleChanged = dueDate !== row.due_date ||
+    assigneeId !== row.assignee_id || remindUntilDone !== row.remind_until_done;
+  const nextAnchor = scheduleChanged
+    ? anchorForAssignedNag(
+      {
+        ...row,
+        status: "open",
+        assignee_id: assigneeId,
+        due_date: dueDate,
+        remind_until_done: remindUntilDone,
+      },
+      now,
+    )
+    : row.nag_eligible_since;
+  const supersedeAssignedNag = scheduleChanged;
   const changed = title !== row.title || description !== row.description ||
     dueDate !== row.due_date || recurrence !== row.recurrence ||
-    assigneeId !== row.assignee_id || unassignedSince !== row.unassigned_since;
+    assigneeId !== row.assignee_id ||
+    unassignedSince !== row.unassigned_since ||
+    remindUntilDone !== row.remind_until_done ||
+    nextAnchor !== row.nag_eligible_since;
 
   return {
     kind: "fields",
@@ -131,6 +161,9 @@ function buildFinalFields(
     recurrence,
     assigneeId,
     unassignedSince,
+    remindUntilDone,
+    nagEligibleSince: nextAnchor,
+    supersedeAssignedNag,
     changed,
   };
 }
@@ -145,6 +178,8 @@ function updateChore(
     recurrence: string | null;
     assigneeId: string | null;
     unassignedSince: string | null;
+    remindUntilDone: SQLiteBoolean;
+    nagEligibleSince: string | null;
     status: ChoreStatus;
     incrementRevision: boolean;
   },
@@ -157,6 +192,8 @@ function updateChore(
         recurrence = ?,
         assignee_id = ?,
         unassigned_since = ?,
+        remind_until_done = ?,
+        nag_eligible_since = ?,
         status = ?,
         done = ?,
         revision = revision + ?,
@@ -169,6 +206,8 @@ function updateChore(
     fields.recurrence,
     fields.assigneeId,
     fields.unassignedSince,
+    fields.remindUntilDone,
+    fields.status === "open" ? fields.nagEligibleSince : null,
     fields.status,
     syncDone(fields.status),
     fields.incrementRevision ? 1 : 0,
@@ -195,6 +234,7 @@ function insertSuccessor(
     dueDate: string | null;
     recurrence: string | null;
     assigneeId: string | null;
+    remindUntilDone: SQLiteBoolean;
   },
   now: Date,
 ) {
@@ -224,12 +264,14 @@ function insertSuccessor(
       description,
       due_date,
       recurrence,
+      remind_until_done,
+      nag_eligible_since,
       done,
       status,
       recurrence_parent_id,
       revision
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'open', ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'open', ?, 0)
   `).run(
     crypto.randomUUID(),
     parent.user_id,
@@ -239,6 +281,17 @@ function insertSuccessor(
     fields.description,
     nextDueDate.toISOString(),
     fields.recurrence,
+    fields.remindUntilDone,
+    anchorForAssignedNag(
+      {
+        ...parent,
+        status: "open",
+        assignee_id: fields.assigneeId,
+        due_date: nextDueDate.toISOString(),
+        remind_until_done: fields.remindUntilDone,
+      },
+      now,
+    ),
     parent.id,
   );
 }
@@ -249,8 +302,10 @@ function completeOpenOccurrence(
   fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
   now: Date,
 ) {
+  supersedePendingAssignedNagSlots(db, row.id, now);
   updateChore(db, row.id, {
     ...fields,
+    nagEligibleSince: null,
     status: "completed",
     incrementRevision: true,
   });
@@ -262,6 +317,7 @@ function reopenCompletedOccurrence(
   db: DatabaseSync,
   row: ChoreRow,
   fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
+  now: Date,
 ): UpdateOccurrenceResult | null {
   const successor = directSuccessor(db, row.id);
   if (successor) {
@@ -282,6 +338,16 @@ function reopenCompletedOccurrence(
   }
   updateChore(db, row.id, {
     ...fields,
+    nagEligibleSince: anchorForAssignedNag(
+      {
+        ...row,
+        status: "open",
+        assignee_id: fields.assigneeId,
+        due_date: fields.dueDate,
+        remind_until_done: fields.remindUntilDone,
+      },
+      now,
+    ),
     status: "open",
     incrementRevision: true,
   });
@@ -327,8 +393,12 @@ export function updateOccurrence(
     const stateChangesToOpen = hasStatePatch && patch.done === false &&
       status === "completed";
 
+    if (fields.supersedeAssignedNag) {
+      supersedePendingAssignedNagSlots(db, row.id, now);
+    }
+
     if (stateChangesToOpen) {
-      const conflict = reopenCompletedOccurrence(db, row, fields);
+      const conflict = reopenCompletedOccurrence(db, row, fields, now);
       if (conflict) {
         db.exec("ROLLBACK;");
         inTransaction = false;

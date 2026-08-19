@@ -1,4 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
+import {
+  anchorForAssignedNag,
+  supersedePendingAssignedNagSlots,
+} from "./assignedNagEligibility.ts";
 import type { ChoreRow } from "../types.ts";
 
 export type AssignmentAction = "claim" | "assign" | "release" | "reassign";
@@ -31,19 +35,26 @@ function memberExists(db: DatabaseSync, memberId: string): boolean {
 
 function updateAssignment(
   db: DatabaseSync,
-  choreId: string,
+  chore: ChoreRow,
   assigneeId: string | null,
   unassignedSince: string | null,
-  updatedAt: string,
+  now: Date,
 ) {
+  const updatedAt = now.toISOString();
+  const nagEligibleSince = anchorForAssignedNag(
+    { ...chore, assignee_id: assigneeId },
+    now,
+  );
   db.prepare(`
     UPDATE chores
     SET assignee_id = ?,
         unassigned_since = ?,
+        nag_eligible_since = ?,
         revision = revision + 1,
         updated_at = ?
     WHERE id = ?
-  `).run(assigneeId, unassignedSince, updatedAt, choreId);
+  `).run(assigneeId, unassignedSince, nagEligibleSince, updatedAt, chore.id);
+  supersedePendingAssignedNagSlots(db, chore.id, now);
 }
 
 export function transitionAssignment(
@@ -135,10 +146,10 @@ export function transitionAssignment(
 
     updateAssignment(
       db,
-      chore.id,
+      chore,
       assigneeId,
       unassignedSince,
-      now.toISOString(),
+      now,
     );
     const updated = readChore(db, chore.id);
     db.exec("COMMIT;");

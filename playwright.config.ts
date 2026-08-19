@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      `deno task db:setup && ENABLE_AUTH=false deno run -A --env npm:astro dev --host 127.0.0.1 --port ${e2ePort}`,
+      `deno task db:setup && ENABLE_AUTH=false ENABLE_NOTIFICATIONS=false deno run -A --env npm:astro dev --host 127.0.0.1 --port ${e2ePort}`,
     url: e2eBaseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

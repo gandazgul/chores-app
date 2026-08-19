@@ -21,29 +21,30 @@ objectiveCheckWaivers:
 executionAgent: "engineer"
 collaborationRecommendation: "autonomous"
 createdAt: "2026-08-10T16:07:52.492Z"
+updatedAt: "2026-08-19T01:57:30.385Z"
+status: "verified"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 12
 dependencies:
   - "11-add-gotify-tokens-and-notification-port"
 implementedAt: "2026-08-18T01:02:29.938Z"
+verifiedAt: "2026-08-19T01:57:30.385Z"
 userVerifiedAt: null
 executionReport: "- Implemented migration 0006, notification delivery outbox, `nag_eligible_since`, assigned-Nag scheduler policy/tick/lifecycle, dev/prod startup wiring, `ENABLE_NOTIFICATIONS`, Quiet Hours config, and docs updates.\n- Implemented default-on “Allow push notifications for this chore” UI/API behavior, reminder anchor resets, and pending assigned-Nag supersession on assignment, completion, toggle, and Due Date changes.\n- Test changes: Deno test count increased from 78 to 97 (+19); Playwright stayed 14 tests; production lifecycle stayed 1 test but now covers scheduler startup/restart/disabled behavior. No tests were deleted. Rewritten coverage: the Three View e2e initial What's Next expectation now matches existing nearest-future selection behavior; chore-management e2e was extended to cover the new notification checkbox.\n- Verification passed: `deno fmt --check`, `deno task ci` (97 Deno tests), scheduler objective `deno eval` check, `deno task test:production-lifecycle`, and `CI=1 E2E_PORT=18184 deno task test:e2e` (14 Playwright tests).\n- Frontend/browser verification: automated Chromium Playwright used dev server `http://127.0.0.1:18184`; checkbox visible and persisted in `tests/e2e/chore-management.spec.ts`. Manual headed browser and real Gotify delivery were not performed because this session has no headed browser tool or dedicated Gotify credentials."
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
+validationCheckpoint: null
 executionMode: "worktree"
-executionBaselineTree: "01575dff57167c68d395c78188a6f5ce79933d9a"
-worktreeId: "b6ed3fa9"
-worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-12-send-assigned-nag-deliveries-fro-b6ed3fa9"
-worktreeBranch: "worktree/tow-mvp-epic-12-send-assigned-nag-deliveries-fro-b6ed3fa9"
-worktreeBaseBranch: "main"
-worktreeStatus: "completed"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "9633b072c72290ec3d897c52cdf1ca0601c290a1"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "0c5dcd4cbaedcfba03547f3647d5dc72a4390c5f"
 validationCiAttempts: 0
 validationObjectiveCheckAttempts: 0
 validationSemanticRounds: 1
-status: "validated_reviewer"
-validationCheckpoint: null
-updatedAt: "2026-08-19T01:57:22.429Z"
-humanReviewMode: "ask"
-humanReviewDecision: "skipped"
 ---
 
 # Send Assigned Nag Deliveries from the Scheduler

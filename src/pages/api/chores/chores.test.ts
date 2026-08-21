@@ -246,6 +246,64 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "Chores API skips recurring chores and excludes skipped parents from active list",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    ensureUser(OTHER_USER);
+    try {
+      const createRes = await jsonPost({
+        title: "Skip API",
+        rrule: "FREQ=DAILY",
+        dueDate: "2030-01-01T00:00:00.000Z",
+        assigneeId: OTHER_USER.id,
+      });
+      assertEquals(createRes.status, 201);
+      const created = await createRes.json() as Chore;
+
+      const skipRes = await jsonPut(created.id, { resolution: "skipped" });
+      assertEquals(skipRes.status, 200);
+      const skipped = await skipRes.json() as Chore;
+      assertEquals(skipped.status, "skipped");
+      assertEquals(skipped.done, 0);
+
+      const retryRes = await jsonPut(created.id, { resolution: "skipped" });
+      assertEquals(retryRes.status, 200);
+
+      const logs = db.prepare(
+        "SELECT due_at, resolution FROM completion_logs WHERE chore_id = ?",
+      ).all(created.id);
+      assertEquals(logs, [{
+        due_at: "2030-01-01T00:00:00.000Z",
+        resolution: "skipped",
+      }]);
+
+      const spawnedRows = db.prepare(
+        "SELECT * FROM chores WHERE recurrence_parent_id = ?",
+      ).all(created.id) as unknown as ChoreRow[];
+      assertEquals(spawnedRows.length, 1);
+      assertEquals(spawnedRows[0].status, "open");
+      assertEquals(spawnedRows[0].assignee_id, OTHER_USER.id);
+
+      const openGetRes = await GET(
+        context({ locals: MOCK_LOCALS }),
+      ) as Response;
+      const openChores = await openGetRes.json() as Chore[];
+      assertEquals(openChores.some((item) => item.id === created.id), false);
+      assertEquals(
+        openChores.some((item) => item.id === spawnedRows[0].id),
+        true,
+      );
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
   name: "Chores API returns conflict when a touched successor blocks reversal",
   sanitizeResources: false,
   sanitizeOps: false,

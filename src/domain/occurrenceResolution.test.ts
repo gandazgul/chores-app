@@ -203,6 +203,82 @@ Deno.test("recurring completion is idempotent and reversible", () => {
   assertOneOpenPerChain(db);
 });
 
+Deno.test("one-off skip records skipped resolution and due date", () => {
+  const db = makeDb();
+  const id = insertChore(db, { dueDate: "2030-01-01T00:00:00.000Z" });
+
+  const skipped = updateOccurrence(db, id, { resolution: "skipped" });
+  const retry = updateOccurrence(db, id, { resolution: "skipped" });
+
+  assertEquals(skipped.kind, "updated");
+  assertEquals(retry.kind, "updated");
+  assertEquals(chore(db, id).status, "skipped");
+  assertEquals(chore(db, id).done, 0);
+  assertEquals(chore(db, id).revision, 1);
+  assertEquals(
+    db.prepare(
+      "SELECT due_at, resolution FROM completion_logs WHERE chore_id = ?",
+    ).get(id),
+    { due_at: "2030-01-01T00:00:00.000Z", resolution: "skipped" },
+  );
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+      id,
+    ),
+    1,
+  );
+});
+
+Deno.test("recurring skip is idempotent and creates one open successor", () => {
+  const db = makeDb();
+  const recurrence = JSON.stringify({ rrule: "FREQ=DAILY" });
+  const id = insertChore(db, {
+    dueDate: "2030-01-01T00:00:00.000Z",
+    recurrence,
+    assigneeId: "u",
+  });
+  const now = new Date("2030-01-02T00:00:00.000Z");
+
+  updateOccurrence(db, id, { resolution: "skipped" }, { now });
+  updateOccurrence(db, id, { resolution: "skipped" }, { now });
+
+  const parent = chore(db, id);
+  const child = successor(db, id);
+  assertExists(child);
+  assertEquals(parent.status, "skipped");
+  assertEquals(parent.done, 0);
+  assertEquals(parent.revision, 1);
+  assertEquals(child.status, "open");
+  assertEquals(child.done, 0);
+  assertEquals(child.due_date, "2030-01-02T00:00:00.000Z");
+  assertEquals(child.assignee_id, "u");
+  assertEquals(
+    db.prepare(
+      "SELECT due_at, resolution FROM completion_logs WHERE chore_id = ?",
+    ).get(id),
+    { due_at: "2030-01-01T00:00:00.000Z", resolution: "skipped" },
+  );
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM chores WHERE recurrence_parent_id = ?",
+      id,
+    ),
+    1,
+  );
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+      id,
+    ),
+    1,
+  );
+  assertOneOpenPerChain(db);
+});
+
 Deno.test("recurring successor inherits assigned state", () => {
   const db = makeDb();
   const id = insertChore(db, {

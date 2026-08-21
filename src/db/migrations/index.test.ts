@@ -183,7 +183,7 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment 
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 4);
+  assertEquals(ledgerCount(db), 5);
   assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "users").includes("picture"));
   assert(columnNames(db, "chores").includes("status"));
@@ -192,6 +192,7 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment 
   assert(columnNames(db, "chores").includes("assignee_id"));
   assert(columnNames(db, "chores").includes("unassigned_since"));
   assert(columnNames(db, "completion_logs").includes("due_at"));
+  assert(columnNames(db, "completion_logs").includes("resolution"));
 });
 
 Deno.test("baseline databases keep data, backfill status, and converge", () => {
@@ -230,7 +231,7 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 4);
+  assertEquals(ledgerCount(legacy), 5);
   assertEquals(
     legacy.prepare("SELECT email, name, picture FROM users WHERE id = ?").get(
       "legacy-user",
@@ -255,10 +256,13 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
     { status: "completed", revision: 0 },
   );
   assertEquals(
-    legacy.prepare("SELECT due_at FROM completion_logs WHERE id = ?").get(
-      "legacy-log",
-    ),
-    { due_at: "2030-01-02T00:00:00.000Z" },
+    legacy.prepare(
+      "SELECT due_at, resolution FROM completion_logs WHERE id = ?",
+    )
+      .get(
+        "legacy-log",
+      ),
+    { due_at: "2030-01-02T00:00:00.000Z", resolution: "completed" },
   );
 });
 
@@ -305,6 +309,14 @@ Deno.test("occurrence constraints reject invalid states and duplicate links", ()
         .run("log-two", "parent"),
     Error,
   );
+  assertThrows(
+    () =>
+      db.prepare(
+        "UPDATE completion_logs SET resolution = 'bad' WHERE id = 'log'",
+      )
+        .run(),
+    Error,
+  );
 });
 
 Deno.test("recurrence parent foreign key is set null when a parent is deleted", () => {
@@ -333,7 +345,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 4);
+  assertEquals(ledgerCount(db), 5);
   assertEquals(tableSignature(db), firstSignature);
 });
 

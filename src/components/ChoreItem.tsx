@@ -78,6 +78,36 @@ export default function ChoreItem(props: ChoreItemProps) {
     }
   };
 
+  const handleSkip = async () => {
+    if (isLoading()) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/chores/${props.chore.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolution: "skipped" }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as {
+          error?: string;
+        };
+        throw new Error(body.error || "Failed to skip chore");
+      }
+
+      const updatedChore = await response.json() as Chore;
+      props.onUpdate(updatedChore);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to skip");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const assignmentCommand = (targetId: string | null) => {
     if (props.chore.assignee_id === null) {
       if (targetId === null) return null;
@@ -238,6 +268,14 @@ export default function ChoreItem(props: ChoreItemProps) {
                   <option value={member.id}>{member.name || "Member"}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={handleSkip}
+                disabled={isLoading()}
+                class="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Skip
+              </button>
               <button
                 type="button"
                 onClick={(event) =>

@@ -43,6 +43,7 @@ export interface CompletionLogRow {
   chore_id: string;
   completed_at: string;
   due_at: string | null;
+  resolution: "completed" | "skipped";
 }
 
 export interface Chore extends Omit<ChoreRow, "recurrence"> {

@@ -52,6 +52,9 @@ export default function ChoreManager(props: ChoreManagerProps) {
 
   const upsertChore = (chore: Chore) => {
     setChores((current) => {
+      if (chore.status !== "open") {
+        return current.filter((item) => item.id !== chore.id);
+      }
       const index = current.findIndex((item) => item.id === chore.id);
       if (index === -1) return [chore, ...current];
       const next = current.slice();

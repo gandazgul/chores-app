@@ -17,27 +17,27 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:52.630Z"
-updatedAt: "2026-08-22T02:27:40.874Z"
-status: "validated"
+updatedAt: "2026-08-22T02:27:42.943Z"
+status: "validated_reviewer"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 13
 dependencies:
   - "12-send-assigned-nag-deliveries-from-the-scheduler"
 implementedAt: "2026-08-21T04:10:50.499Z"
-validatedAt: "2026-08-22T02:27:40.874Z"
 userVerifiedAt: null
 executionReport: "- Implemented skip resolution: API accepts `resolution: \"skipped\"`; `updateOccurrence` sets `status = \"skipped\"`, keeps `done = 0`, logs `completion_logs.resolution = \"skipped\"`, records `due_at`, and creates one recurring successor in the same transaction.\n- Added migration `0005_completion_log_resolution` with `completed`/`skipped` check and completed backfill; updated migration registry, types, and migration assertions.\n- Updated UI: open chores show a neutral `Skip` button; resolved chores are removed from the active list instead of staying visible as open.\n- Updated docs: `docs/domain-language.md` defines Skip without blame language.\n- Tests changed: added 3 automated tests and removed none; `deno task ci` passed with 59 tests.\n- Browser check: dev server ran at `http://127.0.0.1:8082/` because 8080/8081 were occupied; in headed browser at 1440x1000, created `Skip browser final`, clicked `Skip`, and confirmed `No chores found.` without marking completion; screenshot `./artifacts/skip-final.png`.\n- Browser diagnostics: console showed only Vite debug connection messages; `agent-browser network requests --type xhr,fetch --status 400-599` reported no captured 4xx/5xx requests.\n- Unresolved: scheduler nag-stop behavior could not be completed because this baseline has no scheduler/outbox module to update or test."
 humanReviewMode: "ask"
 humanReviewDecision: "skipped"
+validationMergeRepairWorktree: "/var/folders/hw/zrm0bqr90xz63nflnb2g_qqr0000gn/T/runwield-publish-chores-app-9d7155ab8b969324"
 validationCheckpoint: null
 executionMode: "worktree"
-deliveryEvidence:
-  version: 1
-  mode: "worktree_merge"
-  executionCommit: "92f3756e278d4aaa947162e1ddc6363db5f72104"
-  targetBranch: "main"
-  targetHeadBeforeMerge: "0981b80e3c047e1f7d69e034be233275ea26b42a"
+executionBaselineTree: "52cd041042b45befada1393e74020cefb94b3244"
+worktreeId: "8025b953"
+worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-13-add-skip-resolution-and-nag-stop-8025b953"
+worktreeBranch: "worktree/tow-mvp-epic-13-add-skip-resolution-and-nag-stop-8025b953"
+worktreeBaseBranch: "main"
+worktreeStatus: "completed"
 validationCiAttempts: 0
 validationObjectiveCheckAttempts: 0
 validationSemanticRounds: 0

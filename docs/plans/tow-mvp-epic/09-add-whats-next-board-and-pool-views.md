@@ -18,26 +18,27 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T12:07:52-04:00"
-updatedAt: "2026-08-22T23:47:58.984Z"
-status: "validated_reviewer"
+updatedAt: "2026-08-22T23:48:05.410Z"
+status: "validated"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 9
 dependencies:
   - "08-ship-create-edit-delete-and-assignment-ui"
 implementedAt: "2026-08-22T03:01:16.780Z"
+validatedAt: "2026-08-22T23:48:05.410Z"
 userVerifiedAt: null
 executionReport: "- Implemented plan state was already present; I repaired the E2E journey so its What's Next setup uses current UTC today/yesterday/tomorrow dates instead of fixed 2099 dates, which prevents parallel E2E data from hiding the test rows.\n- Test coverage changed: updated 1 Playwright test; added 0 tests and removed 0 tests.\n- Dev server: `DB_ENV=test ENABLE_AUTH=false deno run -A --env npm:astro dev --host 127.0.0.1 --port 8091`; plan port 8080 was occupied by `/Users/gandazgul/Documents/web/chores-app`.\n- Headed browser verified at `http://127.0.0.1:8091/`: default tab is What's Next; Board tab has Board search and finds `Manual Pool Claim Check 175`; Pool tab shows that Chore and Claim removes it from Pool.\n- Browser evidence: desktop screenshot `artifacts/tow-child-09-desktop-resume.png`; mobile screenshot `artifacts/tow-child-09-mobile-resume.png`; final URL `http://127.0.0.1:8091/`; title `Tow`; console only Vite debug/reconnect logs; no browser errors; no failed XHR/fetch requests captured.\n- Verification passed: `deno test -A src/utils/householdTime.test.ts`; `deno fmt --check tests/e2e/three-view-journey.spec.ts`; `E2E_PORT=8094 deno task test:e2e -- tests/e2e/three-view-journey.spec.ts`; `E2E_PORT=8094 deno task test:e2e` (14 passed); `deno task ci` (102 passed, 0 failed; Astro check reports 1 existing hint in `src/pages/login.astro`).\n- Unresolved blockers: none."
 humanReviewMode: "ask"
 humanReviewDecision: "skipped"
 validationCheckpoint: null
 executionMode: "worktree"
-executionBaselineTree: "27b99dcd29faa8a4de20452a269e877c983519c1"
-worktreeId: "cf420079"
-worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-09-add-whats-next-board-and-pool-vi-cf420079"
-worktreeBranch: "worktree/tow-mvp-epic-09-add-whats-next-board-and-pool-vi-cf420079"
-worktreeBaseBranch: "main"
-worktreeStatus: "completed"
+deliveryEvidence:
+  version: 1
+  mode: "worktree_merge"
+  executionCommit: "7be0cc3a98405bf84f5fc6237a325c425177ca88"
+  targetBranch: "main"
+  targetHeadBeforeMerge: "0981b80e3c047e1f7d69e034be233275ea26b42a"
 validationCiAttempts: 0
 validationObjectiveCheckAttempts: 0
 validationSemanticRounds: 0

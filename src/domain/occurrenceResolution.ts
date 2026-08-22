@@ -7,6 +7,8 @@ import {
   supersedePendingAssignedNagSlots,
 } from "./assignedNagEligibility.ts";
 
+export type OccurrenceResolution = "completed" | "skipped";
+
 export interface OccurrencePatch {
   title?: string;
   description?: string | null;
@@ -15,6 +17,7 @@ export interface OccurrencePatch {
   assigneeId?: string | null;
   done?: boolean;
   remindUntilDone?: boolean;
+  resolution?: OccurrenceResolution;
 }
 
 export interface UpdateOccurrenceOptions {
@@ -219,10 +222,11 @@ function insertCompletionLog(
   db: DatabaseSync,
   choreId: string,
   dueAt: string | null,
+  resolution: OccurrenceResolution,
 ) {
   db.prepare(
-    "INSERT INTO completion_logs (id, chore_id, due_at) VALUES (?, ?, ?)",
-  ).run(crypto.randomUUID(), choreId, dueAt);
+    "INSERT INTO completion_logs (id, chore_id, due_at, resolution) VALUES (?, ?, ?, ?)",
+  ).run(crypto.randomUUID(), choreId, dueAt, resolution);
 }
 
 function insertSuccessor(
@@ -296,21 +300,22 @@ function insertSuccessor(
   );
 }
 
-function completeOpenOccurrence(
+function resolveOpenOccurrence(
   db: DatabaseSync,
   row: ChoreRow,
   fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
   now: Date,
+  resolution: OccurrenceResolution,
 ) {
   supersedePendingAssignedNagSlots(db, row.id, now);
   updateChore(db, row.id, {
     ...fields,
     nagEligibleSince: null,
-    status: "completed",
+    status: resolution,
     incrementRevision: true,
   });
   insertSuccessor(db, row, fields, now);
-  insertCompletionLog(db, row.id, fields.dueDate);
+  insertCompletionLog(db, row.id, fields.dueDate, resolution);
 }
 
 function reopenCompletedOccurrence(
@@ -388,7 +393,9 @@ export function updateOccurrence(
 
     const status = row.status;
     const hasStatePatch = patch.done !== undefined;
-    const stateChangesToCompleted = hasStatePatch && patch.done === true &&
+    const requestedResolution: OccurrenceResolution | null = patch.resolution ??
+      (hasStatePatch && patch.done === true ? "completed" : null);
+    const stateChangesToResolved = requestedResolution !== null &&
       status === "open";
     const stateChangesToOpen = hasStatePatch && patch.done === false &&
       status === "completed";
@@ -404,8 +411,8 @@ export function updateOccurrence(
         inTransaction = false;
         return conflict;
       }
-    } else if (stateChangesToCompleted) {
-      completeOpenOccurrence(db, row, fields, now);
+    } else if (stateChangesToResolved && requestedResolution) {
+      resolveOpenOccurrence(db, row, fields, now, requestedResolution);
     } else if (fields.changed || row.done !== syncDone(status)) {
       updateChore(db, row.id, {
         ...fields,

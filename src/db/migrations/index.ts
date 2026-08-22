@@ -5,6 +5,7 @@ import { userNamesMigration } from "./0003_user_names.ts";
 import { householdAssignmentMigration } from "./0004_household_assignment.ts";
 import { gotifyTokenMigration } from "./0005_gotify_token.ts";
 import { notificationDeliveriesMigration } from "./0006_notification_deliveries.ts";
+import { completionLogResolutionMigration } from "./0007_completion_log_resolution.ts";
 
 export interface Migration {
   version: number;
@@ -25,6 +26,7 @@ const migrations: Migration[] = [
   householdAssignmentMigration,
   gotifyTokenMigration,
   notificationDeliveriesMigration,
+  completionLogResolutionMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

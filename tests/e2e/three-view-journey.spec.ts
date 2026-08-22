@@ -46,28 +46,39 @@ test.describe("Three view chore journey", () => {
     const futureTitle = `Three View Future ${testId}`;
     const poolTitle = `Three View Pool ${testId}`;
     const doneTitle = `Three View Done Search ${testId}`;
+    const now = new Date();
+    const todayNoon = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12),
+    );
+    const todayAfternoon = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 13),
+    );
+    const yesterdayNoon = new Date(todayNoon);
+    yesterdayNoon.setUTCDate(yesterdayNoon.getUTCDate() - 1);
+    const tomorrowNoon = new Date(todayNoon);
+    tomorrowNoon.setUTCDate(tomorrowNoon.getUTCDate() + 1);
 
     try {
       await createChore(request, baseURL, {
         title: overdueTitle,
-        dueDate: "2000-01-01T12:00:00.000Z",
+        dueDate: yesterdayNoon.toISOString(),
       });
       await createChore(request, baseURL, {
         title: todayTitle,
-        dueDate: "2099-01-01T13:00:00.000Z",
+        dueDate: todayAfternoon.toISOString(),
       });
       await createChore(request, baseURL, {
         title: futureTitle,
-        dueDate: "2099-01-01T12:00:00.000Z",
+        dueDate: todayNoon.toISOString(),
       });
       await createChore(request, baseURL, {
         title: poolTitle,
         assigneeId: null,
-        dueDate: "2099-01-02T12:00:00.000Z",
+        dueDate: tomorrowNoon.toISOString(),
       });
       const done = await createChore(request, baseURL, {
         title: doneTitle,
-        dueDate: "2099-01-03T12:00:00.000Z",
+        dueDate: tomorrowNoon.toISOString(),
       });
       const doneResponse = await request.put(`/api/chores/${done.id}`, {
         data: { done: true },

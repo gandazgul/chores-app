@@ -261,7 +261,7 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment,
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 6);
+  assertEquals(ledgerCount(db), 7);
   assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "users").includes("picture"));
   assert(columnNames(db, "users").includes("gotify_token"));
@@ -274,6 +274,7 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment,
   assert(!columnNames(db, "chores").includes("notification_sent_at"));
   assert(columnNames(db, "completion_logs").includes("due_at"));
   assert(columnNames(db, "notification_deliveries").includes("deliver_after"));
+  assert(columnNames(db, "completion_logs").includes("resolution"));
 });
 
 Deno.test("baseline databases keep data, backfill status, and converge", () => {
@@ -312,7 +313,7 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 6);
+  assertEquals(ledgerCount(legacy), 7);
   assertEquals(
     legacy.prepare(
       "SELECT email, name, picture, gotify_token FROM users WHERE id = ?",
@@ -344,10 +345,13 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
     { status: "completed", revision: 0 },
   );
   assertEquals(
-    legacy.prepare("SELECT due_at FROM completion_logs WHERE id = ?").get(
-      "legacy-log",
-    ),
-    { due_at: "2030-01-02T00:00:00.000Z" },
+    legacy.prepare(
+      "SELECT due_at, resolution FROM completion_logs WHERE id = ?",
+    )
+      .get(
+        "legacy-log",
+      ),
+    { due_at: "2030-01-02T00:00:00.000Z", resolution: "completed" },
   );
 });
 
@@ -372,7 +376,7 @@ Deno.test("version-4 databases keep user data and converge with fresh databases"
   applyMigrations(upgraded);
 
   assertEquals(tableSignature(upgraded), tableSignature(fresh));
-  assertEquals(ledgerCount(upgraded), 6);
+  assertEquals(ledgerCount(upgraded), 7);
   assertEquals(
     upgraded.prepare(
       "SELECT email, name, picture, created_at, updated_at, gotify_token FROM users WHERE id = ?",
@@ -431,6 +435,14 @@ Deno.test("occurrence constraints reject invalid states and duplicate links", ()
         .run("log-two", "parent"),
     Error,
   );
+  assertThrows(
+    () =>
+      db.prepare(
+        "UPDATE completion_logs SET resolution = 'bad' WHERE id = 'log'",
+      )
+        .run(),
+    Error,
+  );
 });
 
 Deno.test("recurrence parent foreign key is set null when a parent is deleted", () => {
@@ -459,7 +471,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 6);
+  assertEquals(ledgerCount(db), 7);
   assertEquals(tableSignature(db), firstSignature);
 });
 

@@ -1,5 +1,8 @@
 import type { APIRoute } from "astro";
-import { updateOccurrence } from "../../../domain/occurrenceResolution.ts";
+import {
+  type OccurrenceResolution,
+  updateOccurrence,
+} from "../../../domain/occurrenceResolution.ts";
 import type { ChoreRow } from "../../../types.ts";
 import { parseChoreRow } from "../../../types.ts";
 import db from "../../../utils/db.ts";
@@ -12,6 +15,7 @@ interface ChoreUpdateInput {
   assigneeId?: string | null;
   done?: boolean;
   remindUntilDone?: boolean;
+  resolution?: OccurrenceResolution;
 }
 
 function readNullableString(
@@ -52,6 +56,12 @@ function readUpdateInput(
       return { invalid: "remindUntilDone must be boolean" };
     }
     input.remindUntilDone = record.remindUntilDone;
+  }
+  if (
+    "resolution" in record &&
+    (record.resolution === "completed" || record.resolution === "skipped")
+  ) {
+    input.resolution = record.resolution;
   }
 
   return input;

@@ -266,3 +266,18 @@ tow-mvp-epic/12-send-assigned-nag-deliveries-from-the-scheduler
       recovered without a duplicate notification slot.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/12-send-assigned-nag-deliveries-from-the-scheduler" -->
+<!-- runwield:manual-qa:start child="tow-mvp-epic/13-add-skip-resolution-and-nag-stop-behavior" -->
+
+## Add Skip Resolution and Nag Stop Behavior
+
+Manual verification steps for
+tow-mvp-epic/13-add-skip-resolution-and-nag-stop-behavior
+
+- [ ] Open an open chore in the browser and confirm that a neutral `Skip` action
+      is visible.
+- [ ] Select `Skip`, then confirm the chore leaves the active list and is not
+      shown as completed.
+- [ ] Open `docs/domain-language.md` and confirm that Skip is defined without
+      failure or blame language.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/13-add-skip-resolution-and-nag-stop-behavior" -->

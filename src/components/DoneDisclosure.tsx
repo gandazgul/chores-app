@@ -7,6 +7,7 @@ interface DoneDisclosureProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   forceOpen?: boolean;
   emptyMessage: string;
   onUpdate: (chore: Chore) => void;
@@ -29,6 +30,7 @@ export default function DoneDisclosure(props: DoneDisclosureProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage={props.emptyMessage}
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}

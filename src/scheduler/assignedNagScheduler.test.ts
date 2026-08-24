@@ -6,6 +6,7 @@ import type {
   NotificationSendInput,
   NotificationSendResult,
 } from "../types.ts";
+import { updateOccurrence } from "../domain/occurrenceResolution.ts";
 import { createAssignedNagScheduler } from "./assignedNagScheduler.ts";
 
 interface CountRow {
@@ -31,6 +32,7 @@ function insertChore(db: DatabaseSync, fields: {
   remindUntilDone?: 0 | 1;
   nagEligibleSince?: string | null;
   status?: string;
+  recurrence?: string | null;
 } = {}) {
   const id = fields.id ?? crypto.randomUUID();
   db.prepare(`
@@ -42,8 +44,9 @@ function insertChore(db: DatabaseSync, fields: {
       due_date,
       remind_until_done,
       nag_eligible_since,
-      status
-    ) VALUES (?, 'u', ?, ?, ?, ?, ?, ?)
+      status,
+      recurrence
+    ) VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     fields.assigneeId === undefined ? "u" : fields.assigneeId,
@@ -54,6 +57,7 @@ function insertChore(db: DatabaseSync, fields: {
       ? "2029-12-31T00:00:00.000Z"
       : fields.nagEligibleSince,
     fields.status ?? "open",
+    fields.recurrence ?? null,
   );
   return id;
 }
@@ -103,11 +107,12 @@ Deno.test("real tick sends one overdue assigned chore and persists sent exactly 
   );
 });
 
-Deno.test("tick ignores Pool disabled completed and anchorless chores", async () => {
+Deno.test("tick ignores Pool disabled completed skipped and anchorless chores", async () => {
   const db = makeDb();
   insertChore(db, { id: "pool", assigneeId: null });
   insertChore(db, { id: "disabled", remindUntilDone: 0 });
   insertChore(db, { id: "completed", status: "completed" });
+  insertChore(db, { id: "skipped", status: "skipped" });
   insertChore(db, { id: "anchorless", nagEligibleSince: null });
   const { scheduler, sent } = makeScheduler(db);
 
@@ -211,6 +216,47 @@ Deno.test("delivery results keep retryable and disabled pending and make missing
       attempt_count: 2,
       last_error_code: "missing_token",
     },
+  );
+});
+
+Deno.test("Skip supersedes pending Nags and the recurring successor can Nag", async () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    id: "skip-parent",
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('pending-parent', ?, 'u', 'assigned_nag', '2030-01-01T10:00:00.000Z', '2030-01-01T10:00:00.000Z')
+  `).run(id);
+
+  updateOccurrence(db, id, { resolution: "skipped" }, {
+    now: new Date("2030-01-02T10:00:00.000Z"),
+  });
+  const child = db.prepare(
+    "SELECT id, nag_eligible_since FROM chores WHERE recurrence_parent_id = ?",
+  ).get(id) as { id: string; nag_eligible_since: string | null };
+  const { scheduler, sent } = makeScheduler(db);
+
+  await scheduler.tick(new Date("2030-01-03T10:00:30.000Z"));
+
+  assertEquals(
+    db.prepare(
+      "SELECT status FROM notification_deliveries WHERE id = 'pending-parent'",
+    )
+      .get(),
+    { status: "superseded" },
+  );
+  assertEquals(child.nag_eligible_since, "2030-01-02T10:00:00.000Z");
+  assertEquals(sent.length > 0, true);
+  assertEquals(
+    count(
+      db,
+      `SELECT COUNT(*) AS count
+       FROM notification_deliveries
+       WHERE chore_id = '${child.id}' AND status = 'sent'`,
+    ) > 0,
+    true,
   );
 });
 

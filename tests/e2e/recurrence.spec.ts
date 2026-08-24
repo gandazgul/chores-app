@@ -68,4 +68,53 @@ test.describe("Recurrence Tasks", () => {
       }
     }
   });
+
+  test("skipping a recurring chore spawns one open successor", async ({ baseURL, page, request }) => {
+    const headers = originHeaders(baseURL);
+    const title = `Recurrence Skip ${Date.now()}`;
+    const rrule = "FREQ=DAILY";
+
+    try {
+      const createRes = await request.post("/api/chores", {
+        data: {
+          title,
+          rrule,
+        },
+        headers,
+      });
+      expect(createRes.status()).toBe(201);
+
+      await page.goto("/");
+      await page.locator(
+        'astro-island[component-url*="ChoreManager"][client-render-time]',
+      ).waitFor({ state: "attached" });
+      await page.getByRole("tab", { name: "Board" }).click();
+      await page.locator("li").filter({ hasText: title }).first()
+        .getByRole("button", { name: "Skip" }).click();
+
+      await expect.poll(async () => {
+        const getRes = await request.get("/api/chores");
+        const chores = await getRes.json() as ChoreResponse[];
+        const matchingChores = chores.filter((chore) => chore.title === title);
+        const openSuccessors = matchingChores.filter((chore) => {
+          const recurrence = chore.recurrence;
+          return chore.status === "open" && chore.done === 0 &&
+            typeof recurrence === "object" && recurrence?.rrule === rrule;
+        });
+        const skippedParents = matchingChores.filter((chore) =>
+          chore.status === "skipped"
+        );
+
+        return { open: openSuccessors.length, skipped: skippedParents.length };
+      }).toEqual({ open: 1, skipped: 1 });
+    } finally {
+      const getRes = await request.get("/api/chores");
+      const chores = await getRes.json() as ChoreResponse[];
+      for (const chore of chores) {
+        if (chore.title === title) {
+          await request.delete(`/api/chores/${chore.id}`, { headers });
+        }
+      }
+    }
+  });
 });

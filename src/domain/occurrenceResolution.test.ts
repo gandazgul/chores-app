@@ -113,6 +113,27 @@ function assertOneOpenPerChain(db: DatabaseSync) {
   assertEquals(rows, []);
 }
 
+Deno.test("state commands must be unambiguous", () => {
+  const db = makeDb();
+  const id = insertChore(db);
+
+  const result = updateOccurrence(db, id, {
+    done: true,
+    resolution: "skipped",
+  });
+
+  assertEquals(result.kind, "invalid");
+  assertEquals(chore(db, id).status, "open");
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+      id,
+    ),
+    0,
+  );
+});
+
 Deno.test("one-off completion and un-completion round trip in one transaction", () => {
   const db = makeDb();
   const id = insertChore(db, { dueDate: "2030-01-01T00:00:00.000Z" });
@@ -124,8 +145,10 @@ Deno.test("one-off completion and un-completion round trip in one transaction", 
   assertEquals(chore(db, id).done, 1);
   assertEquals(chore(db, id).revision, 1);
   assertEquals(
-    db.prepare("SELECT due_at FROM completion_logs WHERE chore_id = ?").get(id),
-    { due_at: "2030-01-01T00:00:00.000Z" },
+    db.prepare(
+      "SELECT due_at, resolution FROM completion_logs WHERE chore_id = ?",
+    ).get(id),
+    { due_at: "2030-01-01T00:00:00.000Z", resolution: "completed" },
   );
 
   const reopened = updateOccurrence(db, id, { done: false });
@@ -285,6 +308,64 @@ Deno.test("recurring skip is idempotent and creates one open successor", () => {
   assertOneOpenPerChain(db);
 });
 
+Deno.test("Undo Skip accepts the inclusive deadline and rejects expired requests", () => {
+  const db = makeDb();
+  const id = insertChore(db);
+  const at = (seconds: number) => new Date(Date.UTC(2030, 0, 1, 0, 0, seconds));
+
+  updateOccurrence(db, id, { resolution: "skipped" }, { now: at(0) });
+  const exact = updateOccurrence(db, id, { resolution: "open" }, {
+    now: at(30),
+  });
+  assertEquals(exact.kind, "updated");
+  assertEquals(chore(db, id).status, "open");
+
+  updateOccurrence(db, id, { resolution: "skipped" }, { now: at(40) });
+  const expired = updateOccurrence(db, id, { resolution: "open" }, {
+    now: at(71),
+  });
+
+  assertEquals(expired.kind, "conflict");
+  assertEquals(chore(db, id).status, "skipped");
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+      id,
+    ),
+    1,
+  );
+});
+
+Deno.test("recurring Undo Skip conflicts when the generated successor is missing", () => {
+  const db = makeDb();
+  const id = insertChore(db, {
+    recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+  });
+  updateOccurrence(db, id, { resolution: "skipped" }, {
+    now: new Date("2030-01-01T00:00:00.000Z"),
+  });
+  const child = successor(db, id);
+  assertExists(child);
+  db.prepare("DELETE FROM chores WHERE id = ?").run(child.id);
+  const before = chore(db, id);
+
+  const result = updateOccurrence(db, id, { resolution: "open" }, {
+    now: new Date("2030-01-01T00:00:10.000Z"),
+  });
+
+  assertEquals(result.kind, "conflict");
+  assertEquals(chore(db, id), before);
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs WHERE chore_id = ?",
+      id,
+    ),
+    1,
+  );
+});
+
 Deno.test("recurring successor inherits assigned state", () => {
   const db = makeDb();
   const id = insertChore(db, {
@@ -409,6 +490,49 @@ Deno.test("reversal conflicts leave the parent and chain unchanged", () => {
     assertEquals(result.kind, "conflict");
     assertEquals(chore(db, id), beforeParent);
     assertEquals(chore(db, child.id), beforeChild);
+    assertEquals(count(db, "SELECT COUNT(*) AS count FROM chores"), beforeRows);
+    assertEquals(
+      count(db, "SELECT COUNT(*) AS count FROM completion_logs"),
+      beforeLogs,
+    );
+  }
+});
+
+Deno.test("Undo Skip conflicts when the successor is touched", () => {
+  for (const mode of ["edited", "resolved", "advanced"] as const) {
+    const db = makeDb();
+    const id = insertChore(db, {
+      title: `Skipped parent ${mode}`,
+      recurrence: JSON.stringify({ rrule: "FREQ=DAILY" }),
+    });
+    updateOccurrence(db, id, { resolution: "skipped" }, {
+      now: new Date("2030-01-01T00:00:00.000Z"),
+    });
+    const child = successor(db, id);
+    assertExists(child);
+
+    if (mode === "edited") {
+      updateOccurrence(db, child.id, { title: "Touched" });
+    } else if (mode === "resolved") {
+      updateOccurrence(db, child.id, { done: true });
+    } else {
+      insertChore(db, { id: "skip-grandchild", parentId: child.id });
+    }
+
+    const beforeParent = chore(db, id);
+    const beforeRows = count(db, "SELECT COUNT(*) AS count FROM chores");
+    const beforeLogs = count(
+      db,
+      "SELECT COUNT(*) AS count FROM completion_logs",
+    );
+
+    const result = updateOccurrence(db, id, {
+      title: "Should Not Apply",
+      resolution: "open",
+    }, { now: new Date("2030-01-01T00:00:10.000Z") });
+
+    assertEquals(result.kind, "conflict");
+    assertEquals(chore(db, id), beforeParent);
     assertEquals(count(db, "SELECT COUNT(*) AS count FROM chores"), beforeRows);
     assertEquals(
       count(db, "SELECT COUNT(*) AS count FROM completion_logs"),

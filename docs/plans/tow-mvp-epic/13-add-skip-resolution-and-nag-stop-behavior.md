@@ -63,14 +63,16 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T16:07:52.630Z"
-updatedAt: "2026-08-24T13:18:12.662Z"
-status: "in_progress"
+updatedAt: "2026-08-24T14:12:37.405Z"
+status: "implemented"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 13
 dependencies:
   - "12-send-assigned-nag-deliveries-from-the-scheduler"
+implementedAt: "2026-08-24T14:12:37.405Z"
 userVerifiedAt: null
+executionReport: "- Implemented Skip/Undo: migration v7 adds `completion_logs.resolution`; domain/API support `resolution: \"skipped\" | \"open\"`, reject ambiguous commands, write server `resolved_at`, enforce 30-second inclusive Undo, and protect recurring successor conflicts.\n- Implemented Nag stop and recurrence behavior: Skip clears Nag eligibility, supersedes pending assigned-Nag slots transactionally, records skipped logs, and creates exactly one recurring successor; Undo restores a fresh Nag anchor when valid.\n- Implemented UI behavior: visible secondary Skip, Skipped status, accessible Undo countdown, refresh-safe active-row retention, expiry movement into Done disclosure, and no completion checkmark/Undo in skipped history across What's Next, Board, and Pool.\n- Updated docs: `docs/domain-language.md` now defines Skip as a neutral resolution and updates Completion Log/Recurrence language.\n- Tests changed: +6 Deno tests and +3 Playwright tests; no tests removed. Existing tests were extended for completed log resolution, skipped GET metadata, skipped scheduler exclusion, and production migration v7 readiness.\n- Verification passed: `deno task ci` (108 Deno tests passed; Astro check reports 0 errors/0 warnings/1 existing hint in `src/pages/login.astro`), `CI=1 E2E_PORT=18193 deno task test:e2e` (17 passed), `deno task test:production-lifecycle` (1 passed), and all three Objective Checks passed.\n- Headed browser: worktree dev server ran at `http://127.0.0.1:18080` with `ENABLE_AUTH=false` because `:8080` belonged to another checkout; checked What's Next, Board, and Pool Skip flows, refresh recovery, Undo, keyboard-accessible button names, and 30-second expiry into Done history.\n- Browser evidence: `artifacts/tow13-headed-active-skip.png`, `artifacts/tow13-headed-board-skip.png`, `artifacts/tow13-headed-pool-skip.png`, `artifacts/tow13-headed-pool-expired-done-open.png`; clean fresh headed session had URL `http://127.0.0.1:18080/`, title `Tow`, no captured failed fetch/XHR requests, and only Vite debug console messages.\n- No unresolved blockers."
 humanReviewMode: null
 humanReviewDecision: null
 validationCheckpoint: null
@@ -80,7 +82,10 @@ worktreeId: "8775780b"
 worktreePath: "/Users/gandazgul/.wld/worktrees/--Users-gandazgul-Documents-web-chores-app--/chores-app-tow-mvp-epic-13-add-skip-resolution-and-nag-stop-8775780b"
 worktreeBranch: "worktree/tow-mvp-epic-13-add-skip-resolution-and-nag-stop-8775780b"
 worktreeBaseBranch: "main"
-worktreeStatus: "active"
+worktreeStatus: "completed"
+validationCiAttempts: 0
+validationObjectiveCheckAttempts: 0
+validationSemanticRounds: 0
 ---
 
 # Add Skip Resolution and Nag Stop Behavior

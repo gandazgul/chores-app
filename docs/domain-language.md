@@ -28,7 +28,12 @@ date is calculated from the recurrence rule.
 **Done**: The state indicating that a chore has been completed. _Avoid_: Checked
 off
 
-**Completion Log**: A record that a chore was marked done at a point in time.
+**Skip**: A resolution for an open chore occurrence that will not be completed.
+Skipping closes that occurrence, records a skipped resolution, and creates the
+next occurrence for a recurring chore.
+
+**Completion Log**: A record that an occurrence was completed or skipped at a
+point in time.
 
 ### Assignment
 

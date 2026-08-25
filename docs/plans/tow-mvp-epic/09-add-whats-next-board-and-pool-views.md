@@ -18,17 +18,17 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T12:07:52-04:00"
-updatedAt: "2026-08-16T04:35:18.769Z"
-status: "verified"
+updatedAt: "2026-08-22T23:48:05.410Z"
+status: "validated"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 9
 dependencies:
   - "08-ship-create-edit-delete-and-assignment-ui"
-implementedAt: "2026-08-16T02:53:01.509Z"
-verifiedAt: "2026-08-16T04:35:18.769Z"
+implementedAt: "2026-08-22T03:01:16.780Z"
+validatedAt: "2026-08-22T23:48:05.410Z"
 userVerifiedAt: null
-executionReport: "- Implemented What’s Next, Board, and Pool views over one Solid state source; Board owns Fuse search, Pool shows unassigned rows, and each view has assignment-matched Done disclosure. Review feedback applied: new UI pieces are one component per file, and tabs use mild `rounded-t-sm` top corners with square bottoms.\n- Added `src/utils/householdTime.ts` for UTC default, IANA timezone validation, household date keys, due-date display, and deterministic What’s Next bucket selection.\n- Updated SSR and `GET /api/chores` to return open plus completed rows; production startup validates `HOUSEHOLD_TZ`; `.env.example` documents UTC default and invalid-value rejection.\n- Preserved mutations across derived views: create/edit/delete, Done/reopen, Claim/Assign/Release/Reassign, recurring successor reconciliation, and non-destructive recurring reopen conflicts.\n- Tests changed: added 8 unit tests in `householdTime.test.ts` and 1 Playwright three-view journey; updated existing API/e2e specs to cover completed rows/reopen and to enter Board for full-list expectations; no tests deleted or replaced.\n- Verification passed: `deno test -A src/utils/householdTime.test.ts`; `DB_ENV=test deno test -A src/pages/api/chores/chores.test.ts`; `deno task ci` (64 tests passed; Astro check reports existing login hint only); `E2E_PORT=8094 deno task test:e2e` (13 passed).\n- Headed browser verified on worktree server `http://127.0.0.1:8091/`: desktop and iPhone 14 snapshots saved to `artifacts/tow-child-09-desktop.png` and `artifacts/tow-child-09-mobile.png`; What’s Next default, Board/Pool tabs visible, no clipping, ArrowRight tab selection works, modal Escape returns focus to New Chore, console only Vite debug logs, no failed fetch/XHR captured.\n- Headed data journey verified: oldest overdue bucket wins, then today, then nearest future after completion/reload; Pool chore can be claimed/released, Board search finds it, completed rows remain checked until reload, Done search exposes completed matches, and reopen returns the row to active placement.\n- Configuration verified: no `HOUSEHOLD_TZ` server used UTC labels; `HOUSEHOLD_TZ=America/Los_Angeles` changed display for stored `2030-03-04T02:30:00.000Z` from `Mar 4, 2030, 2:30 AM` UTC to `Mar 3, 2030, 6:30 PM`; `HOUSEHOLD_TZ=Not/AZone deno run -A --env scripts/start_production.ts` exited 1 with a clear HOUSEHOLD_TZ error.\n- Note: port 8080 was occupied by `/Users/gandazgul/Documents/web/chores-app`, so browser verification used worktree-owned ports 8091/8095 and E2E used `E2E_PORT` while keeping default 8080 behavior unchanged."
+executionReport: "- Implemented plan state was already present; I repaired the E2E journey so its What's Next setup uses current UTC today/yesterday/tomorrow dates instead of fixed 2099 dates, which prevents parallel E2E data from hiding the test rows.\n- Test coverage changed: updated 1 Playwright test; added 0 tests and removed 0 tests.\n- Dev server: `DB_ENV=test ENABLE_AUTH=false deno run -A --env npm:astro dev --host 127.0.0.1 --port 8091`; plan port 8080 was occupied by `/Users/gandazgul/Documents/web/chores-app`.\n- Headed browser verified at `http://127.0.0.1:8091/`: default tab is What's Next; Board tab has Board search and finds `Manual Pool Claim Check 175`; Pool tab shows that Chore and Claim removes it from Pool.\n- Browser evidence: desktop screenshot `artifacts/tow-child-09-desktop-resume.png`; mobile screenshot `artifacts/tow-child-09-mobile-resume.png`; final URL `http://127.0.0.1:8091/`; title `Tow`; console only Vite debug/reconnect logs; no browser errors; no failed XHR/fetch requests captured.\n- Verification passed: `deno test -A src/utils/householdTime.test.ts`; `deno fmt --check tests/e2e/three-view-journey.spec.ts`; `E2E_PORT=8094 deno task test:e2e -- tests/e2e/three-view-journey.spec.ts`; `E2E_PORT=8094 deno task test:e2e` (14 passed); `deno task ci` (102 passed, 0 failed; Astro check reports 1 existing hint in `src/pages/login.astro`).\n- Unresolved blockers: none."
 humanReviewMode: "ask"
 humanReviewDecision: "skipped"
 validationCheckpoint: null
@@ -36,12 +36,12 @@ executionMode: "worktree"
 deliveryEvidence:
   version: 1
   mode: "worktree_merge"
-  executionCommit: "d36ce7fd99d6068b27c746787c9e766c4d4f550e"
+  executionCommit: "7be0cc3a98405bf84f5fc6237a325c425177ca88"
   targetBranch: "main"
-  targetHeadBeforeMerge: "a7897339bb6131dcbe24a3d6766bed5f21c6d3bb"
+  targetHeadBeforeMerge: "0981b80e3c047e1f7d69e034be233275ea26b42a"
 validationCiAttempts: 0
 validationObjectiveCheckAttempts: 0
-validationSemanticRounds: 1
+validationSemanticRounds: 0
 ---
 
 # Add Whats Next Board and Pool Views

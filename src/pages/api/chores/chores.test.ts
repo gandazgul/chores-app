@@ -263,8 +263,7 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "Chores API skips recurring chores and excludes skipped parents from active list",
+  name: "Chores API skips recurring chores and returns refresh metadata",
   sanitizeResources: false,
   sanitizeOps: false,
   async fn() {
@@ -286,6 +285,7 @@ Deno.test({
       const skipped = await skipRes.json() as Chore;
       assertEquals(skipped.status, "skipped");
       assertEquals(skipped.done, 0);
+      assert(typeof skipped.resolved_at === "string");
 
       const retryRes = await jsonPut(created.id, { resolution: "skipped" });
       assertEquals(retryRes.status, 200);
@@ -309,11 +309,41 @@ Deno.test({
         context({ locals: MOCK_LOCALS }),
       ) as Response;
       const openChores = await openGetRes.json() as Chore[];
-      assertEquals(openChores.some((item) => item.id === created.id), false);
+      const skippedParent = openChores.find((item) => item.id === created.id);
+      assertExists(skippedParent);
+      assertEquals(skippedParent.status, "skipped");
+      assert(typeof skippedParent.resolved_at === "string");
       assertEquals(
         openChores.some((item) => item.id === spawnedRows[0].id),
         true,
       );
+    } finally {
+      cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name: "Chores API rejects ambiguous or unknown resolution commands",
+  sanitizeResources: false,
+  sanitizeOps: false,
+  async fn() {
+    cleanup();
+    ensureUser(MOCK_USER);
+    try {
+      const createdRes = await jsonPost({ title: "Bad Resolution" });
+      assertEquals(createdRes.status, 201);
+      const created = await createdRes.json() as Chore;
+
+      const unknown = await jsonPut(created.id, { resolution: "completed" });
+      assertEquals(unknown.status, 400);
+
+      const ambiguous = await jsonPut(created.id, {
+        done: true,
+        resolution: "skipped",
+      });
+      assertEquals(ambiguous.status, 400);
+      assertEquals(chore(created.id).status, "open");
     } finally {
       cleanup();
     }

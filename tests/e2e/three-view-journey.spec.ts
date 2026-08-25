@@ -6,6 +6,7 @@ interface ChoreResponse {
   title: string;
   assignee_id: string | null;
   status: "open" | "completed" | "skipped";
+  resolved_at?: string | null;
 }
 
 async function createChore(
@@ -39,6 +40,99 @@ async function cleanupChores(
 }
 
 test.describe("Three view chore journey", () => {
+  test("Skip remains active and survives refresh", async ({ baseURL, page, request }) => {
+    const testId = Date.now().toString();
+    const title = `Skip Active Refresh ${testId}`;
+    try {
+      const created = await createChore(request, baseURL, {
+        title,
+        dueDate: new Date().toISOString(),
+      });
+
+      await page.goto("/");
+      await page.locator(
+        'astro-island[component-url*="ChoreManager"][client-render-time]',
+      ).waitFor({ state: "attached" });
+      await page.getByRole("tab", { name: "Board" }).click();
+
+      const row = page.locator("li").filter({ hasText: title });
+      await expect(row).toBeVisible();
+      const skipResponse = page.waitForResponse((response) =>
+        response.url().includes(`/api/chores/${created.id}`) &&
+        response.request().method() === "PUT"
+      );
+      await row.getByRole("button", { name: "Skip" }).click();
+      await expect((await skipResponse).status()).toBe(200);
+      await expect(row).toContainText("Skipped");
+      await expect(row.getByRole("button", { name: /Undo skip/i }))
+        .toBeVisible();
+
+      const afterSkip = await request.get("/api/chores");
+      const chores = await afterSkip.json() as ChoreResponse[];
+      const skipped = chores.find((chore) => chore.id === created.id);
+      expect(skipped?.status).toBe("skipped");
+      expect(typeof skipped?.resolved_at).toBe("string");
+
+      await page.reload();
+      await page.locator(
+        'astro-island[component-url*="ChoreManager"][client-render-time]',
+      ).waitFor({ state: "attached" });
+      await page.getByRole("tab", { name: "Board" }).click();
+      await expect(row).toBeVisible();
+      await expect(row).toContainText("Skipped");
+      const undoResponse = page.waitForResponse((response) =>
+        response.url().includes(`/api/chores/${created.id}`) &&
+        response.request().method() === "PUT"
+      );
+      await row.getByRole("button", { name: /Undo skip/i }).click();
+      await expect((await undoResponse).status()).toBe(200);
+      await expect(row.getByRole("button", { name: "Mark as done" }))
+        .toBeVisible();
+      await expect(row).not.toContainText("Skipped");
+    } finally {
+      await cleanupChores(request, baseURL, testId);
+    }
+  });
+
+  test("Skipped chore moves to Done when Undo expires", async ({ baseURL, page, request }) => {
+    test.setTimeout(60_000);
+    const testId = Date.now().toString();
+    const title = `Skip Expiry ${testId}`;
+
+    try {
+      await createChore(request, baseURL, {
+        title,
+        dueDate: new Date().toISOString(),
+      });
+
+      await page.goto("/");
+      await page.locator(
+        'astro-island[component-url*="ChoreManager"][client-render-time]',
+      ).waitFor({ state: "attached" });
+      await page.getByRole("tab", { name: "Board" }).click();
+      const row = page.locator("li").filter({ hasText: title });
+      await row.getByRole("button", { name: "Skip" }).click();
+      await expect(row.getByRole("button", { name: /Undo skip/i }))
+        .toBeVisible();
+
+      await expect(row.getByRole("button", { name: /Undo skip/i }))
+        .toHaveCount(0, { timeout: 35_000 });
+      const done = page.locator("details").filter({
+        hasText: "Done household chores",
+      });
+      await done.locator("summary").click();
+      await expect(done.locator("li").filter({ hasText: title }))
+        .toContainText("Skipped");
+      await expect(
+        done.locator("li").filter({ hasText: title }).locator(
+          "button[aria-label='Mark as done']",
+        ),
+      ).toHaveCount(0);
+    } finally {
+      await cleanupChores(request, baseURL, testId);
+    }
+  });
+
   test("What's Next, Board, Pool, search, Done, and reopen work together", async ({ baseURL, page, request }) => {
     const testId = Date.now().toString();
     const overdueTitle = `Three View Overdue ${testId}`;

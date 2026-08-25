@@ -10,6 +10,7 @@ interface BoardViewProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
@@ -48,6 +49,7 @@ export default function BoardView(props: BoardViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage={hasQuery()
           ? "No open chores match your Board search."
           : "No open chores on the Board."}
@@ -64,6 +66,7 @@ export default function BoardView(props: BoardViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         forceOpen={hasQuery() && props.doneChores.length > 0}
         emptyMessage={hasQuery()
           ? "No Done chores match your Board search."

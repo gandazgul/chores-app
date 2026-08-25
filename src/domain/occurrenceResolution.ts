@@ -8,6 +8,12 @@ import {
 } from "./assignedNagEligibility.ts";
 
 export type OccurrenceResolution = "completed" | "skipped";
+export type OccurrenceCommand = "skipped" | "open";
+
+interface CompletionLogState {
+  completed_at: string;
+  resolution: OccurrenceResolution;
+}
 
 export interface OccurrencePatch {
   title?: string;
@@ -17,7 +23,7 @@ export interface OccurrencePatch {
   assigneeId?: string | null;
   done?: boolean;
   remindUntilDone?: boolean;
-  resolution?: OccurrenceResolution;
+  resolution?: OccurrenceCommand;
 }
 
 export interface UpdateOccurrenceOptions {
@@ -40,9 +46,12 @@ function syncDone(status: ChoreStatus): SQLiteBoolean {
 }
 
 function readChore(db: DatabaseSync, id: string): ChoreRow | undefined {
-  return db.prepare("SELECT * FROM chores WHERE id = ?").get(id) as unknown as
-    | ChoreRow
-    | undefined;
+  return db.prepare(`
+    SELECT chores.*, completion_logs.completed_at AS resolved_at
+    FROM chores
+    LEFT JOIN completion_logs ON completion_logs.chore_id = chores.id
+    WHERE chores.id = ?
+  `).get(id) as unknown as ChoreRow | undefined;
 }
 
 function memberExists(db: DatabaseSync, memberId: string): boolean {
@@ -63,6 +72,21 @@ function directSuccessor(
   return db.prepare("SELECT * FROM chores WHERE recurrence_parent_id = ?").get(
     id,
   ) as unknown as ChoreRow | undefined;
+}
+
+function readCompletionLog(
+  db: DatabaseSync,
+  choreId: string,
+): CompletionLogState | undefined {
+  return db.prepare(
+    "SELECT completed_at, resolution FROM completion_logs WHERE chore_id = ?",
+  ).get(choreId) as unknown as CompletionLogState | undefined;
+}
+
+function hasRecurrence(row: ChoreRow): boolean {
+  const parsed = parseRecurrence(row.recurrence);
+  return typeof parsed === "object" && parsed !== null &&
+    typeof parsed.rrule === "string";
 }
 
 function recurrenceJson(rrule: string | null): string | null {
@@ -223,10 +247,11 @@ function insertCompletionLog(
   choreId: string,
   dueAt: string | null,
   resolution: OccurrenceResolution,
+  now: Date,
 ) {
   db.prepare(
-    "INSERT INTO completion_logs (id, chore_id, due_at, resolution) VALUES (?, ?, ?, ?)",
-  ).run(crypto.randomUUID(), choreId, dueAt, resolution);
+    "INSERT INTO completion_logs (id, chore_id, completed_at, due_at, resolution) VALUES (?, ?, ?, ?, ?)",
+  ).run(crypto.randomUUID(), choreId, now.toISOString(), dueAt, resolution);
 }
 
 function insertSuccessor(
@@ -315,7 +340,7 @@ function resolveOpenOccurrence(
     incrementRevision: true,
   });
   insertSuccessor(db, row, fields, now);
-  insertCompletionLog(db, row.id, fields.dueDate, resolution);
+  insertCompletionLog(db, row.id, fields.dueDate, resolution, now);
 }
 
 function reopenCompletedOccurrence(
@@ -323,8 +348,29 @@ function reopenCompletedOccurrence(
   row: ChoreRow,
   fields: Extract<ReturnType<typeof buildFinalFields>, { kind: "fields" }>,
   now: Date,
+  options: { requireSuccessor: boolean; requireRecentSkip: boolean } = {
+    requireSuccessor: false,
+    requireRecentSkip: false,
+  },
 ): UpdateOccurrenceResult | null {
+  const log = readCompletionLog(db, row.id);
+  if (options.requireRecentSkip) {
+    if (!log || log.resolution !== "skipped") {
+      return { kind: "conflict", reason: "skip log is missing" };
+    }
+    const resolvedAt = new Date(log.completed_at);
+    if (Number.isNaN(resolvedAt.getTime())) {
+      return { kind: "conflict", reason: "skip timestamp is invalid" };
+    }
+    if (now.getTime() > resolvedAt.getTime() + 30_000) {
+      return { kind: "conflict", reason: "undo window expired" };
+    }
+  }
+
   const successor = directSuccessor(db, row.id);
+  if (!successor && options.requireSuccessor) {
+    return { kind: "conflict", reason: "successor is missing" };
+  }
   if (successor) {
     if (successor.status !== "open") {
       return { kind: "conflict", reason: "successor is resolved" };
@@ -391,28 +437,41 @@ export function updateOccurrence(
       return fields;
     }
 
+    if (patch.done !== undefined && patch.resolution !== undefined) {
+      db.exec("ROLLBACK;");
+      inTransaction = false;
+      return { kind: "invalid", reason: "Specify either done or resolution" };
+    }
+
     const status = row.status;
-    const hasStatePatch = patch.done !== undefined;
-    const requestedResolution: OccurrenceResolution | null = patch.resolution ??
-      (hasStatePatch && patch.done === true ? "completed" : null);
-    const stateChangesToResolved = requestedResolution !== null &&
-      status === "open";
-    const stateChangesToOpen = hasStatePatch && patch.done === false &&
-      status === "completed";
+    const completionRequested = patch.done === true;
+    const uncompletionRequested = patch.done === false;
+    const skipRequested = patch.resolution === "skipped";
+    const undoSkipRequested = patch.resolution === "open";
+    const stateChangesToCompleted = completionRequested && status === "open";
+    const stateChangesToSkipped = skipRequested && status === "open";
+    const stateChangesToOpen =
+      (uncompletionRequested && status === "completed") ||
+      (undoSkipRequested && status === "skipped");
 
     if (fields.supersedeAssignedNag) {
       supersedePendingAssignedNagSlots(db, row.id, now);
     }
 
     if (stateChangesToOpen) {
-      const conflict = reopenCompletedOccurrence(db, row, fields, now);
+      const conflict = reopenCompletedOccurrence(db, row, fields, now, {
+        requireSuccessor: status === "skipped" && hasRecurrence(row),
+        requireRecentSkip: status === "skipped",
+      });
       if (conflict) {
         db.exec("ROLLBACK;");
         inTransaction = false;
         return conflict;
       }
-    } else if (stateChangesToResolved && requestedResolution) {
-      resolveOpenOccurrence(db, row, fields, now, requestedResolution);
+    } else if (stateChangesToCompleted) {
+      resolveOpenOccurrence(db, row, fields, now, "completed");
+    } else if (stateChangesToSkipped) {
+      resolveOpenOccurrence(db, row, fields, now, "skipped");
     } else if (fields.changed || row.done !== syncDone(status)) {
       updateChore(db, row.id, {
         ...fields,

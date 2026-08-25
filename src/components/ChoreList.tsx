@@ -6,6 +6,7 @@ interface ChoreListProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   emptyMessage: string;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
@@ -24,6 +25,7 @@ export default function ChoreList(props: ChoreListProps) {
             members={props.members}
             currentMemberId={props.currentMemberId}
             householdTimeZone={props.householdTimeZone}
+            nowMs={props.nowMs}
             onUpdate={props.onUpdate}
             onEdit={props.onEdit}
             onReconcile={props.onReconcile}

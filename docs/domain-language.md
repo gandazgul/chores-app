@@ -2,7 +2,7 @@
 
 This glossary covers Tow, the implemented household chore management product:
 authenticated household members manage shared chores, optionally schedule chores
-to recur, and record completions.
+to recur, and record occurrence resolutions.
 
 ## Language
 
@@ -32,8 +32,8 @@ off
 Skipping closes that occurrence, records a skipped resolution, and creates the
 next occurrence for a recurring chore.
 
-**Completion Log**: A record that an occurrence was completed or skipped at a
-point in time.
+**Completion Log**: A record that an occurrence was resolved at a point in time.
+The resolution is completed or skipped.
 
 ### Assignment
 
@@ -61,10 +61,10 @@ different Member.
 ### Recurrence
 
 **Recurrence**: A schedule attached to a chore that causes future occurrences to
-be created after completion.
+be created after completion or Skip.
 
-**Recurring Chore**: A chore with recurrence. When marked done, the current
-chore is completed and a new chore is created for the next occurrence.
+**Recurring Chore**: A chore with recurrence. When marked done or skipped, the
+current chore is resolved and a new chore is created for the next occurrence.
 
 **RRULE**: The recurrence-rule string format used to describe recurrence, such
 as daily, weekly, or monthly schedules.

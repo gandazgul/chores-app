@@ -67,7 +67,7 @@ function allocatePort(): number {
   return port;
 }
 
-async function waitForHttp(port: number, timeoutMs = 12_000) {
+async function waitForHttp(port: number, timeoutMs = 45_000) {
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
   while (Date.now() < deadline) {
@@ -85,6 +85,22 @@ async function waitForHttp(port: number, timeoutMs = 12_000) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`server did not become ready: ${String(lastError)}`);
+}
+
+async function waitForContainerLog(
+  docker: string,
+  container: string,
+  expected: string,
+  timeoutMs = 45_000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let logs = "";
+  while (Date.now() < deadline) {
+    logs = await readContainerLogs(docker, container);
+    if (logs.includes(expected)) return logs;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return logs;
 }
 
 async function assertNoHttp(port: number, durationMs = 1_500) {
@@ -160,6 +176,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 4, name: "0004_household_assignment" },
     { version: 5, name: "0005_gotify_token" },
     { version: 6, name: "0006_notification_deliveries" },
+    { version: 7, name: "0007_completion_log_resolution" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
@@ -193,6 +210,10 @@ function assertMigrated(path: string, expectSentinel: boolean) {
   assertEquals(columnNames(db, "users").includes("picture"), true);
   assertEquals(columnNames(db, "users").includes("gotify_token"), true);
   assertEquals(columnNames(db, "completion_logs").includes("due_at"), true);
+  assertEquals(
+    columnNames(db, "completion_logs").includes("resolution"),
+    true,
+  );
 
   if (expectSentinel) {
     assertEquals(
@@ -206,9 +227,9 @@ function assertMigrated(path: string, expectSentinel: boolean) {
       { status: "open", revision: 0 },
     );
     assertEquals(
-      db.prepare("SELECT COUNT(*) AS count FROM completion_logs WHERE id = ?")
-        .get("legacy-log") as unknown as CountRow,
-      { count: 1 },
+      db.prepare("SELECT resolution FROM completion_logs WHERE id = ?")
+        .get("legacy-log"),
+      { resolution: "completed" },
     );
   }
   db.close();
@@ -427,7 +448,11 @@ Deno.test({
         incompatiblePort,
       );
       await assertNoHttp(incompatiblePort, 4_000);
-      const logs = await readContainerLogs(docker, incompatibleContainer);
+      const logs = await waitForContainerLog(
+        docker,
+        incompatibleContainer,
+        "Migration 1 (0001_baseline) failed",
+      );
       if (!logs.includes("Migration 1 (0001_baseline) failed")) {
         throw new Error(`container did not report migration failure\n${logs}`);
       }

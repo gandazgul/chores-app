@@ -8,6 +8,7 @@ interface PoolViewProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
@@ -33,6 +34,7 @@ export default function PoolView(props: PoolViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage="The Pool is empty."
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}
@@ -45,6 +47,7 @@ export default function PoolView(props: PoolViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage="No Done Pool chores."
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}

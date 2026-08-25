@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import Fuse from "fuse.js";
 import type { Chore, Member } from "../types.ts";
 import { selectWhatsNextChores } from "../utils/householdTime.ts";
@@ -19,8 +19,16 @@ function isOpen(chore: Chore): boolean {
   return chore.status === "open";
 }
 
-function isCompleted(chore: Chore): boolean {
-  return chore.status === "completed";
+const UNDO_WINDOW_MS = 30_000;
+
+function resolvedAtMs(chore: Chore): number | null {
+  if (!chore.resolved_at) return null;
+  const value = new Date(chore.resolved_at).getTime();
+  return Number.isNaN(value) ? null : value;
+}
+
+function isResolved(chore: Chore): boolean {
+  return chore.status === "completed" || chore.status === "skipped";
 }
 
 function sortByDueDate(chores: Chore[]): Chore[] {
@@ -55,6 +63,12 @@ export default function ChoreManager(props: ChoreManagerProps) {
   const [returnFocusTo, setReturnFocusTo] = createSignal<HTMLElement | null>(
     null,
   );
+  const [nowMs, setNowMs] = createSignal(Date.now());
+
+  createEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 1_000);
+    onCleanup(() => clearInterval(interval));
+  });
 
   const fuse = createMemo(() =>
     new Fuse(chores(), {
@@ -71,22 +85,36 @@ export default function ChoreManager(props: ChoreManagerProps) {
 
   const retainedIds = () => localCompletedIds();
   const isRetained = (chore: Chore) => retainedIds().has(chore.id);
-  const isActiveRow = (chore: Chore) => isOpen(chore) || isRetained(chore);
-  const isDoneRow = (chore: Chore) => isCompleted(chore) && !isRetained(chore);
+  const isRecentSkip = (chore: Chore) => {
+    if (chore.status !== "skipped") return false;
+    const resolved = resolvedAtMs(chore);
+    return resolved !== null && nowMs() <= resolved + UNDO_WINDOW_MS;
+  };
+  const isActiveRow = (chore: Chore) =>
+    isOpen(chore) || isRetained(chore) || isRecentSkip(chore);
+  const isDoneRow = (chore: Chore) => isResolved(chore) && !isActiveRow(chore);
 
   const whatsNextSelection = createMemo(() => {
-    const candidates = chores().map((chore) =>
-      isRetained(chore) ? { ...chore, status: "open" as const } : chore
+    const currentChores = chores();
+    const candidates = currentChores.map((chore) =>
+      isActiveRow(chore) ? { ...chore, status: "open" as const } : chore
     );
-    return selectWhatsNextChores(
+    const selection = selectWhatsNextChores(
       candidates,
       props.currentMemberId,
       new Date(),
       props.householdTimeZone,
     );
+    const selectedIds = new Set(selection.chores.map((chore) => chore.id));
+    return {
+      dateKey: selection.dateKey,
+      chores: currentChores.filter((chore) => selectedIds.has(chore.id)),
+    };
   });
 
-  const whatsNextActive = createMemo(() => whatsNextSelection().chores);
+  const whatsNextActive = createMemo(() =>
+    sortByDueDate(whatsNextSelection().chores)
+  );
   const whatsNextDone = createMemo(() =>
     sortByDueDate(
       chores().filter((chore) =>
@@ -135,9 +163,6 @@ export default function ChoreManager(props: ChoreManagerProps) {
 
   const upsertChore = (chore: Chore) => {
     setChores((current) => {
-      if (chore.status !== "open") {
-        return current.filter((item) => item.id !== chore.id);
-      }
       const index = current.findIndex((item) => item.id === chore.id);
       if (index === -1) return [chore, ...current];
       const next = current.slice();
@@ -174,15 +199,16 @@ export default function ChoreManager(props: ChoreManagerProps) {
     });
   };
 
-  const sharedViewProps = {
+  const sharedViewProps = () => ({
     members: props.members,
     currentMemberId: props.currentMemberId,
     householdTimeZone: props.householdTimeZone,
+    nowMs: nowMs(),
     onUpdate: upsertChore,
     onEdit: openEdit,
     onReconcile: reconcileChores,
     onToggleSuccess: recordToggleSuccess,
-  };
+  });
 
   return (
     <div class="w-full max-w-none h-full min-h-0 flex flex-col">
@@ -229,7 +255,7 @@ export default function ChoreManager(props: ChoreManagerProps) {
             activeChores={whatsNextActive()}
             doneChores={whatsNextDone()}
             dateLabel={dateKeyLabel(whatsNextSelection().dateKey)}
-            {...sharedViewProps}
+            {...sharedViewProps()}
           />
         )}
         {activeView() === "board" && (
@@ -238,14 +264,14 @@ export default function ChoreManager(props: ChoreManagerProps) {
             doneChores={boardDone()}
             searchQuery={searchQuery()}
             onSearch={setSearchQuery}
-            {...sharedViewProps}
+            {...sharedViewProps()}
           />
         )}
         {activeView() === "pool" && (
           <PoolView
             activeChores={poolActive()}
             doneChores={poolDone()}
-            {...sharedViewProps}
+            {...sharedViewProps()}
           />
         )}
       </div>

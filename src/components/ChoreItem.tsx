@@ -7,6 +7,7 @@ interface ChoreItemProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
@@ -73,7 +74,10 @@ export default function ChoreItem(props: ChoreItemProps) {
     }
   };
 
-  const handleSkip = async () => {
+  const applyResolution = async (
+    resolution: "skipped" | "open",
+    errorMessage: string,
+  ) => {
     if (isLoading()) return;
 
     setIsLoading(true);
@@ -83,25 +87,29 @@ export default function ChoreItem(props: ChoreItemProps) {
       const response = await fetch(`/api/chores/${props.chore.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resolution: "skipped" }),
+        body: JSON.stringify({ resolution }),
       });
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as {
           error?: string;
         };
-        throw new Error(body.error || "Failed to skip chore");
+        if (response.status === 409) await props.onReconcile();
+        throw new Error(body.error || errorMessage);
       }
 
       const updatedChore = await response.json() as Chore;
       props.onUpdate(updatedChore);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to skip");
+      setError(err instanceof Error ? err.message : errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleSkip = () => applyResolution("skipped", "Failed to skip chore");
+  const handleUndoSkip = () => applyResolution("open", "Failed to undo skip");
 
   const assignmentCommand = (targetId: string | null) => {
     if (props.chore.assignee_id === null) {
@@ -162,6 +170,14 @@ export default function ChoreItem(props: ChoreItemProps) {
   const due = () =>
     formatHouseholdDueDate(props.chore.due_date, props.householdTimeZone);
   const currentRecurrence = () => recurrence(props.chore);
+  const isSkipped = () => props.chore.status === "skipped";
+  const remainingUndoSeconds = () => {
+    if (!props.chore.resolved_at) return 0;
+    const resolvedAt = new Date(props.chore.resolved_at).getTime();
+    if (Number.isNaN(resolvedAt)) return 0;
+    return Math.max(0, Math.ceil((resolvedAt + 30_000 - props.nowMs) / 1_000));
+  };
+  const canUndoSkip = () => isSkipped() && remainingUndoSeconds() > 0;
 
   return (
     <li
@@ -170,19 +186,31 @@ export default function ChoreItem(props: ChoreItemProps) {
       }`}
     >
       <div class="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={isLoading()}
-          class={`w-7 h-7 mt-1 rounded-sm border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${
-            isDone()
-              ? "bg-green-500 border-green-500 text-white"
-              : "border-gray-300 hover:border-primary"
-          } ${isLoading() ? "opacity-50 cursor-not-allowed" : ""}`}
-          aria-label={isDone() ? "Mark as undone" : "Mark as done"}
-        >
-          {isDone() && <div class="i-mdi-check w-4 h-4" />}
-        </button>
+        {isSkipped()
+          ? (
+            <span
+              class="w-7 h-7 mt-1 rounded-sm border-2 border-amber-300 bg-amber-50 text-amber-700 flex-shrink-0 flex items-center justify-center"
+              aria-label="Skipped"
+              role="img"
+            >
+              <div class="i-mdi-skip-next w-4 h-4" aria-hidden="true" />
+            </span>
+          )
+          : (
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={isLoading()}
+              class={`w-7 h-7 mt-1 rounded-sm border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${
+                isDone()
+                  ? "bg-green-500 border-green-500 text-white"
+                  : "border-gray-300 hover:border-primary"
+              } ${isLoading() ? "opacity-50 cursor-not-allowed" : ""}`}
+              aria-label={isDone() ? "Mark as undone" : "Mark as done"}
+            >
+              {isDone() && <div class="i-mdi-check w-4 h-4" />}
+            </button>
+          )}
 
         <div class="min-w-0 flex-1">
           <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -202,6 +230,12 @@ export default function ChoreItem(props: ChoreItemProps) {
                 </p>
               )}
               <div class="flex flex-wrap gap-2 mt-2 text-xs">
+                {isSkipped() && (
+                  <span class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                    <div class="i-mdi-skip-next w-3 h-3" aria-hidden="true" />
+                    Skipped
+                  </span>
+                )}
                 {due() && (
                   <span class={isDone() ? "text-gray-400" : "text-muted-text"}>
                     Due: {due()}
@@ -264,14 +298,28 @@ export default function ChoreItem(props: ChoreItemProps) {
                   <option value={member.id}>{member.name || "Member"}</option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={handleSkip}
-                disabled={isLoading()}
-                class="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Skip
-              </button>
+              {canUndoSkip()
+                ? (
+                  <button
+                    type="button"
+                    onClick={handleUndoSkip}
+                    disabled={isLoading()}
+                    class="px-3 py-1.5 text-sm border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50"
+                    aria-label={`Undo skip for ${props.chore.title}. ${remainingUndoSeconds()} seconds remaining`}
+                  >
+                    Undo ({remainingUndoSeconds()}s)
+                  </button>
+                )
+                : !isSkipped() && (
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={isLoading()}
+                    class="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Skip
+                  </button>
+                )}
               <button
                 type="button"
                 onClick={(event) =>

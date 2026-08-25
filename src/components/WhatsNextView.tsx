@@ -9,6 +9,7 @@ interface WhatsNextViewProps {
   members: Member[];
   currentMemberId: string;
   householdTimeZone: string;
+  nowMs: number;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
@@ -36,6 +37,7 @@ export default function WhatsNextView(props: WhatsNextViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage="No assigned dated work in the next bucket."
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}
@@ -48,6 +50,7 @@ export default function WhatsNextView(props: WhatsNextViewProps) {
         members={props.members}
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
+        nowMs={props.nowMs}
         emptyMessage="No Done chores assigned to you."
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}

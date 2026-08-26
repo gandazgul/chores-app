@@ -35,6 +35,7 @@ export default function PoolView(props: PoolViewProps) {
         currentMemberId={props.currentMemberId}
         householdTimeZone={props.householdTimeZone}
         nowMs={props.nowMs}
+        showPoolAge
         emptyMessage="The Pool is empty."
         onUpdate={props.onUpdate}
         onEdit={props.onEdit}

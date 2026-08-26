@@ -165,7 +165,7 @@ test.describe("Three view chore journey", () => {
         title: futureTitle,
         dueDate: todayNoon.toISOString(),
       });
-      await createChore(request, baseURL, {
+      const pool = await createChore(request, baseURL, {
         title: poolTitle,
         assigneeId: null,
         dueDate: tomorrowNoon.toISOString(),
@@ -230,12 +230,46 @@ test.describe("Three view chore journey", () => {
           "button[aria-label='Mark as done']",
         ),
       ).toBeVisible();
+      await page.getByRole("textbox", { name: "Search Board chores" }).fill("");
 
       await page.getByRole("tab", { name: "Pool" }).click();
-      await expect(page.locator("li").filter({ hasText: poolTitle }))
-        .toBeVisible();
+      const poolRow = page.locator("li").filter({ hasText: poolTitle });
+      await expect(poolRow).toBeVisible();
+      await expect(poolRow).toContainText("In Pool for less than a day");
       await expect(page.locator("details").filter({ hasText: "Done in Pool" }))
         .not.toHaveAttribute("open", "");
+
+      const claimResponse = page.waitForResponse((response) =>
+        response.url().includes(`/api/chores/${pool.id}`) &&
+        response.request().method() === "POST"
+      );
+      await poolRow.getByRole("button", { name: "Claim" }).click();
+      await expect((await claimResponse).status()).toBe(200);
+      await expect(poolRow).toHaveCount(0);
+
+      await page.getByRole("tab", { name: "Board" }).click();
+      const claimedRow = page.locator("li").filter({ hasText: poolTitle });
+      await expect(claimedRow).toBeVisible();
+      await expect(claimedRow).not.toContainText("In Pool for");
+      const releaseResponse = page.waitForResponse((response) =>
+        response.url().includes(`/api/chores/${pool.id}/assignment`) &&
+        response.request().method() === "POST"
+      );
+      await claimedRow.getByRole("button", { name: "Release" }).click();
+      await expect((await releaseResponse).status()).toBe(200);
+
+      await page.getByRole("tab", { name: "Pool" }).click();
+      await expect(poolRow).toBeVisible();
+      await expect(poolRow).toContainText("In Pool for less than a day");
+
+      const donePoolResponse = page.waitForResponse((response) =>
+        response.url().includes(`/api/chores/${pool.id}`) &&
+        response.request().method() === "PUT"
+      );
+      await poolRow.getByRole("button", { name: "Mark as done" }).click();
+      await expect((await donePoolResponse).status()).toBe(200);
+      await expect(poolRow).toBeVisible();
+      await expect(poolRow).not.toContainText("In Pool for");
     } finally {
       await cleanupChores(request, baseURL, testId);
     }

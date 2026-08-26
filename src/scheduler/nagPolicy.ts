@@ -266,6 +266,44 @@ export function assignedNagSlots(options: {
   );
 }
 
+export function resolvePoolBlastLeadHours(
+  getEnv: (name: string) => string | undefined,
+): number | null {
+  const raw = getEnv("POOL_BLAST_LEAD_HOURS")?.trim();
+  if (!raw || raw === "0") return null;
+  if (!/^\d+$/u.test(raw)) {
+    throw new Error(
+      "POOL_BLAST_LEAD_HOURS must be unset, 0, or a positive whole number",
+    );
+  }
+  const hours = Number(raw);
+  if (hours <= 0) return null;
+  if (!Number.isSafeInteger(hours)) {
+    throw new Error(
+      "POOL_BLAST_LEAD_HOURS must be unset, 0, or a positive whole number",
+    );
+  }
+  return hours;
+}
+
+export function poolBlastSlot(options: {
+  dueDate: string | null;
+  leadHours: number | null;
+  timeZone: string;
+  quietHours: QuietHours;
+}): NagSlot | null {
+  if (options.leadHours === null || options.dueDate === null) return null;
+  const due = new Date(options.dueDate);
+  if (Number.isNaN(due.getTime())) return null;
+
+  const slot = new Date(due.getTime() - options.leadHours * MS_PER_HOUR);
+  const slotKey = toUtcSecond(slot);
+  const deliverAfter = toUtcSecond(
+    applyQuietHours(slot, options.timeZone, options.quietHours),
+  );
+  return { slotKey, deliverAfter };
+}
+
 export function quietHoursContain(
   instant: Date,
   timeZone: string,

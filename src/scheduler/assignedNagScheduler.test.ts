@@ -29,6 +29,7 @@ function insertChore(db: DatabaseSync, fields: {
   assigneeId?: string | null;
   title?: string;
   dueDate?: string | null;
+  unassignedSince?: string | null;
   remindUntilDone?: 0 | 1;
   nagEligibleSince?: string | null;
   status?: string;
@@ -40,16 +41,18 @@ function insertChore(db: DatabaseSync, fields: {
       id,
       user_id,
       assignee_id,
+      unassigned_since,
       title,
       due_date,
       remind_until_done,
       nag_eligible_since,
       status,
       recurrence
-    ) VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, 'u', ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     fields.assigneeId === undefined ? "u" : fields.assigneeId,
+    fields.unassignedSince === undefined ? null : fields.unassignedSince,
     fields.title ?? "Wash",
     fields.dueDate === undefined ? "2030-01-01T10:00:00.000Z" : fields.dueDate,
     fields.remindUntilDone ?? 1,
@@ -82,6 +85,7 @@ function makeScheduler(
     notificationPort: port,
     timeZone: "UTC",
     quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: null,
     batchSize: 10,
     logger: console,
   });
@@ -142,6 +146,7 @@ Deno.test("quiet-hour coalescing sends one message for overnight slots", async (
     },
     timeZone: "UTC",
     quietHours: { start: "21:00", end: "09:00" },
+    poolBlastLeadHours: null,
     batchSize: 10,
     logger: console,
   });
@@ -295,6 +300,7 @@ Deno.test("batch ordering is stable and finite", async () => {
     },
     timeZone: "UTC",
     quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: null,
     batchSize: 1,
     logger: console,
   });
@@ -308,5 +314,294 @@ Deno.test("batch ordering is stable and finite", async () => {
       "SELECT COUNT(*) AS count FROM notification_deliveries WHERE status = 'pending'",
     ),
     1,
+  );
+});
+
+Deno.test("Pool Blast disabled creates no rows and supersedes old pending rows", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('old', 'pool', 'u', 'pool_blast', '2030-01-01T10:00:00.000Z', '2030-01-01T10:00:00.000Z')
+  `).run();
+  const { scheduler, sent } = makeScheduler(db);
+
+  await scheduler.tick(new Date("2030-01-01T10:00:00.000Z"));
+
+  assertEquals(sent, []);
+  assertEquals(
+    db.prepare("SELECT status FROM notification_deliveries WHERE id = 'old'")
+      .get(),
+    { status: "superseded" },
+  );
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM notification_deliveries WHERE kind = 'pool_blast' AND status = 'pending'",
+    ),
+    0,
+  );
+});
+
+Deno.test("Pool Blast keeps a pending row valid when quiet hours change deliver_after", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "pool",
+    title: "Pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T01:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('pending', 'pool', 'u', 'pool_blast', '2030-01-01T01:00:00.000Z', '2030-01-01T01:00:00.000Z')
+  `).run();
+  const sent: NotificationSendInput[] = [];
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: {
+      send: (input) => {
+        sent.push(input);
+        return Promise.resolve({ status: "sent" });
+      },
+    },
+    timeZone: "UTC",
+    quietHours: { start: "00:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 10,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T08:00:01.000Z"));
+
+  assertEquals(sent.length, 2);
+  assertEquals(
+    db.prepare(`
+      SELECT status, sent_at
+      FROM notification_deliveries
+      WHERE id = 'pending'
+    `).get(),
+    { status: "sent", sent_at: "2030-01-01T08:00:01.000Z" },
+  );
+});
+
+Deno.test("Pool Blast creates one slot for every Member and not across restarts", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T10:00:00.789Z",
+  });
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: { send: () => Promise.resolve({ status: "disabled" }) },
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 10,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T10:00:01.000Z"));
+  await scheduler.tick(new Date("2030-01-01T10:00:02.000Z"));
+
+  assertEquals(
+    db.prepare(`
+      SELECT recipient_id, kind, slot_key, deliver_after, status
+      FROM notification_deliveries
+      ORDER BY recipient_id
+    `).all(),
+    [
+      {
+        recipient_id: "u",
+        kind: "pool_blast",
+        slot_key: "2030-01-01T10:00:00.000Z",
+        deliver_after: "2030-01-01T10:00:00.000Z",
+        status: "pending",
+      },
+      {
+        recipient_id: "v",
+        kind: "pool_blast",
+        slot_key: "2030-01-01T10:00:00.000Z",
+        deliver_after: "2030-01-01T10:00:00.000Z",
+        status: "pending",
+      },
+    ],
+  );
+});
+
+Deno.test("Pool Blast eligibility gates prevent late Pool entry and disabled reminders", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "late-entry",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T10:00:00.000Z",
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  insertChore(db, {
+    id: "no-due",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: null,
+  });
+  insertChore(db, {
+    id: "disabled",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    remindUntilDone: 0,
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  insertChore(db, {
+    id: "assigned",
+    assigneeId: "u",
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: { send: () => Promise.resolve({ status: "sent" }) },
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 10,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T10:00:01.000Z"));
+
+  assertEquals(
+    count(
+      db,
+      "SELECT COUNT(*) AS count FROM notification_deliveries WHERE kind = 'pool_blast'",
+    ),
+    0,
+  );
+});
+
+Deno.test("Pool Blast replaces stale unattempted slots and blocks replacements after an attempt", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after, attempt_count)
+    VALUES ('unattempted', 'pool', 'u', 'pool_blast', '2030-01-01T09:00:00.000Z', '2030-01-01T09:00:00.000Z', 0)
+  `).run();
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after, attempt_count)
+    VALUES ('attempted', 'pool', 'v', 'pool_blast', '2030-01-01T09:00:00.000Z', '2030-01-01T09:00:00.000Z', 1)
+  `).run();
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: { send: () => Promise.resolve({ status: "disabled" }) },
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 10,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T10:00:01.000Z"));
+
+  assertEquals(
+    db.prepare(`
+      SELECT recipient_id, slot_key, status, attempt_count
+      FROM notification_deliveries
+      WHERE kind = 'pool_blast'
+      ORDER BY recipient_id, slot_key
+    `).all(),
+    [
+      {
+        recipient_id: "u",
+        slot_key: "2030-01-01T09:00:00.000Z",
+        status: "superseded",
+        attempt_count: 0,
+      },
+      {
+        recipient_id: "u",
+        slot_key: "2030-01-01T10:00:00.000Z",
+        status: "pending",
+        attempt_count: 0,
+      },
+      {
+        recipient_id: "v",
+        slot_key: "2030-01-01T09:00:00.000Z",
+        status: "superseded",
+        attempt_count: 1,
+      },
+    ],
+  );
+});
+
+Deno.test("Pool Blast delivery isolates recipient results and shares a fair batch", async () => {
+  const db = makeDb();
+  db.exec("INSERT INTO users (id, email, name) VALUES ('w', 'w@x', 'Third');");
+  insertChore(db, {
+    id: "assigned",
+    title: "Assigned",
+    assigneeId: "u",
+    dueDate: "2030-01-01T10:00:00.000Z",
+  });
+  insertChore(db, {
+    id: "pool",
+    title: "Pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T10:00:00.000Z",
+  });
+  const sent: NotificationSendInput[] = [];
+  const outcomes: Array<NotificationSendResult | "throw"> = [
+    { status: "disabled" },
+    { status: "retryable_failure", reason: "network_error" },
+    "throw",
+    { status: "sent" },
+    { status: "sent" },
+    { status: "sent" },
+    { status: "sent" },
+    { status: "sent" },
+  ];
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: {
+      send: (input) => {
+        sent.push(input);
+        const outcome = outcomes.shift() ?? { status: "sent" };
+        if (outcome === "throw") throw new Error("network");
+        return Promise.resolve(outcome);
+      },
+    },
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 2,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T10:00:00.000Z"));
+  await scheduler.tick(new Date("2030-01-01T10:00:01.000Z"));
+  await scheduler.tick(new Date("2030-01-01T10:00:02.000Z"));
+  await scheduler.tick(new Date("2030-01-01T10:00:03.000Z"));
+
+  assertEquals(sent.length >= 5, true);
+  assertEquals(
+    db.prepare(`
+      SELECT recipient_id, status, last_attempt_at IS NULL AS no_attempt_time
+      FROM notification_deliveries
+      WHERE kind = 'pool_blast'
+      ORDER BY recipient_id
+    `).all(),
+    [
+      { recipient_id: "u", status: "sent", no_attempt_time: 0 },
+      { recipient_id: "v", status: "sent", no_attempt_time: 0 },
+      { recipient_id: "w", status: "sent", no_attempt_time: 0 },
+    ],
   );
 });

@@ -46,7 +46,11 @@ rights. _Avoid_: Owner
 
 **Pool**: The unassigned inbox for chores that are up for grabs. A Pool chore
 has no Assignee and records when it entered the Pool. The Pool creates ambient
-in-app pressure only.
+in-app pressure by default.
+
+**Pool Age**: The elapsed time since a Chore most recently entered the Pool.
+Pool Age comes only from `unassigned_since`. It is not creation age or Due Date
+age.
 
 **Claim**: A Member moves a Pool chore to themself.
 
@@ -94,6 +98,11 @@ or browser data channels.
 policy slot. Assigned Nags start at the Due Date, then one hour later, four
 hours later, and then at 09:00 and 18:00 in the household timezone until the
 Chore is no longer eligible.
+
+**Pool Blast**: An optional Push Notification for an open Pool Chore with a Due
+Date and reminders enabled. It is disabled unless the server configures a
+positive whole-hour lead time. When enabled, Tow creates at most one Pool Blast
+intent per Chore and Member, with retries on the same Delivery Slot.
 
 **Delivery Slot**: The durable row that records one logical notification for one
 Chore, recipient, kind, and policy time. A Delivery Slot is pending, sent,

@@ -1,4 +1,5 @@
 ---
+planId: "95aab844-6647-4148-981b-84c6b832368a"
 classification: "PROJECT"
 complexity: "HIGH"
 summary: "Take the app from a single-user chore list to the Tow MVP defined in the product brief: foundations (TypeScript conversion, schema migrations, transactional and reversible completion, the Tow rename), household (user provisioning behind an allowlist, assignment with a pool, edit/delete UI, a 'what's next' landing view), and notifications (per-user Gotify tokens, an in-process nag scheduler, skip as a first-class resolution, the age-keyed pool nudge)."
@@ -14,11 +15,20 @@ affectedPaths:
   - ".env.example"
   - ".github/workflows/docker-publish.yml"
 createdAt: "2026-08-10T11:17:05-04:00"
-updatedAt: "2026-08-10T16:07:53.501Z"
-status: "ready_for_work"
+updatedAt: "2026-08-26T18:06:04.731Z"
+status: "validated"
 origin: "internal"
+validatedAt: "2026-08-26T18:05:43.812Z"
 userVerifiedAt: null
-planId: "95aab844-6647-4148-981b-84c6b832368a"
+workRecord:
+  status: "generated"
+  recordId: "32420f1f-9712-4368-90fb-4273d1c6ece6"
+  path: "docs/work-records/2026-08-26-tow-mvp-completed.md"
+  lastAttemptAt: "2026-08-26T18:05:46.471Z"
+validationCheckpoint: null
+epicCompletionMode: "done_enough"
+epicDoneEnoughAt: "2026-08-26T18:05:43.812Z"
+epicDoneEnoughSummary: "All 14 child plans are completed after tow-mvp-epic/14-add-pool-age-nudge-and-pool-blast."
 ---
 
 # Tow MVP Epic — Foundations, Household, Notifications (P0 + P1 + P3)

@@ -281,3 +281,22 @@ tow-mvp-epic/13-add-skip-resolution-and-nag-stop-behavior
       failure or blame language.
 
 <!-- runwield:manual-qa:end child="tow-mvp-epic/13-add-skip-resolution-and-nag-stop-behavior" -->
+
+<!-- runwield:manual-qa:start child="tow-mvp-epic/14-add-pool-age-nudge-and-pool-blast" -->
+
+## Add Pool Age Nudge and Pool Blast
+
+Manual verification steps for tow-mvp-epic/14-add-pool-age-nudge-and-pool-blast
+
+- [ ] Open Pool on desktop and narrow mobile screens. Confirm each open Chore
+      shows subdued age text and that the text does not overlap controls or wrap
+      incorrectly.
+- [ ] Claim a Pool Chore, then Release it. Confirm it leaves the active Pool,
+      returns with the label `In Pool for less than a day`, and does not show
+      age in other views or completed Pool rows.
+- [ ] With an isolated test database, confirm that an unset
+      `POOL_BLAST_LEAD_HOURS` creates no Pool Blast rows. Set a positive whole
+      number, run one scheduler tick with an eligible Chore and two Members, and
+      confirm one row per Member with the expected slot and delivery time.
+
+<!-- runwield:manual-qa:end child="tow-mvp-epic/14-add-pool-age-nudge-and-pool-blast" -->

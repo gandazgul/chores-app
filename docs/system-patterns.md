@@ -227,13 +227,20 @@ this route.** Only the end-to-end tests use it, for cleanup.
 
 ## Notifications
 
-The assigned-Nag scheduler is an in-process loop. It starts after migrations in
+The notification scheduler is one in-process loop. It starts after migrations in
 production and through Astro server lifecycle hooks in development. It inserts
 Delivery Slots before it sends through the notification port. A Delivery Slot is
 unique for one Chore, recipient, kind, and policy slot. This makes restarts
 safe, but external Gotify delivery is at least once. A crash after Gotify
 accepts a message and before SQLite records success can duplicate the external
 message.
+
+Assigned Nags and Pool Blasts share this scheduler and outbox. Assigned Nags use
+the accepted ladder. Pool Blasts are opt-in with `POOL_BLAST_LEAD_HOURS`: unset,
+blank, or `0` disables them; a positive whole number creates one Due-Date-based
+slot for each Member while the Chore is open in the Pool and reminder-enabled.
+Pool Blast retries stay on the same Delivery Slot, and one Member's result does
+not block another Member's row.
 
 Set `ENABLE_NOTIFICATIONS=false` to start no scheduler, create no Delivery
 Slots, and send nothing. The deployment must run one replica with one persistent
@@ -257,10 +264,6 @@ SQLite volume.
 These appear in the product documents but no code implements them. Do not treat
 them as patterns.
 
-- **Pool blast notifications.** The delivery table reserves the `pool_blast`
-  kind, but this scheduler creates and sends assigned Nags only.
-- **Skip resolution.** The schema has `status = 'skipped'`, but no UI creates
-  Skip records yet.
 - **Offline support.** `public/manifest.json` and the manifest link make the app
   installable, but there is no service worker, so the app does not work offline.
 - **Priority.** The `priority` column exists; nothing reads or writes it.

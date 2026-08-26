@@ -5,7 +5,11 @@ import type {
   NotificationPort,
   NotificationSendResult,
 } from "../types.ts";
-import { assignedNagSlots, type QuietHours } from "./nagPolicy.ts";
+import {
+  assignedNagSlots,
+  poolBlastSlot,
+  type QuietHours,
+} from "./nagPolicy.ts";
 
 interface Logger {
   info?(event: Record<string, unknown>): void;
@@ -19,6 +23,7 @@ export interface AssignedNagSchedulerOptions {
   notificationPort: NotificationPort;
   timeZone: string;
   quietHours: QuietHours;
+  poolBlastLeadHours: number | null;
   batchSize: number;
   logger: Logger;
 }
@@ -41,14 +46,14 @@ function duePendingRows(db: DatabaseSync, now: Date, batchSize: number) {
     SELECT *
     FROM notification_deliveries
     WHERE status = 'pending'
-      AND kind = 'assigned_nag'
+      AND kind IN ('assigned_nag', 'pool_blast')
       AND deliver_after <= ?
-    ORDER BY deliver_after, slot_key, id
+    ORDER BY updated_at, deliver_after, slot_key, id
     LIMIT ?
   `).all(now.toISOString(), batchSize) as unknown as NotificationDeliveryRow[];
 }
 
-function eligibleChores(db: DatabaseSync): ChoreRow[] {
+function eligibleAssignedNagChores(db: DatabaseSync): ChoreRow[] {
   return db.prepare(`
     SELECT *
     FROM chores
@@ -60,7 +65,28 @@ function eligibleChores(db: DatabaseSync): ChoreRow[] {
   `).all() as unknown as ChoreRow[];
 }
 
-function maxRecordedSlotKey(db: DatabaseSync, choreId: string): string | null {
+function eligiblePoolBlastChores(db: DatabaseSync): ChoreRow[] {
+  return db.prepare(`
+    SELECT *
+    FROM chores
+    WHERE status = 'open'
+      AND assignee_id IS NULL
+      AND due_date IS NOT NULL
+      AND remind_until_done = 1
+      AND unassigned_since IS NOT NULL
+  `).all() as unknown as ChoreRow[];
+}
+
+function userIds(db: DatabaseSync): string[] {
+  const rows = db.prepare("SELECT id FROM users ORDER BY id")
+    .all() as unknown as { id: string }[];
+  return rows.map((row) => row.id);
+}
+
+function maxRecordedAssignedNagSlotKey(
+  db: DatabaseSync,
+  choreId: string,
+): string | null {
   const row = db.prepare(`
     SELECT MAX(slot_key) AS slot_key
     FROM notification_deliveries
@@ -68,6 +94,92 @@ function maxRecordedSlotKey(db: DatabaseSync, choreId: string): string | null {
       AND kind = 'assigned_nag'
   `).get(choreId) as unknown as { slot_key: string | null };
   return row.slot_key;
+}
+
+function poolEntryPrecedesSlot(
+  chore: ChoreRow,
+  slotKey: string,
+): boolean {
+  if (!chore.unassigned_since) return false;
+  const enteredAt = new Date(chore.unassigned_since).getTime();
+  const slotAt = new Date(slotKey).getTime();
+  if (Number.isNaN(enteredAt) || Number.isNaN(slotAt)) return false;
+  return enteredAt < slotAt;
+}
+
+function currentPoolBlastSlot(
+  chore: ChoreRow,
+  options: AssignedNagSchedulerOptions,
+) {
+  const slot = poolBlastSlot({
+    dueDate: chore.due_date,
+    leadHours: options.poolBlastLeadHours,
+    timeZone: options.timeZone,
+    quietHours: options.quietHours,
+  });
+  if (!slot) return null;
+  if (!poolEntryPrecedesSlot(chore, slot.slotKey)) return null;
+  return slot;
+}
+
+function pendingPoolBlastRows(db: DatabaseSync): NotificationDeliveryRow[] {
+  return db.prepare(`
+    SELECT *
+    FROM notification_deliveries
+    WHERE kind = 'pool_blast'
+      AND status = 'pending'
+  `).all() as unknown as NotificationDeliveryRow[];
+}
+
+function choreById(db: DatabaseSync, choreId: string): ChoreRow | undefined {
+  return db.prepare("SELECT * FROM chores WHERE id = ?").get(
+    choreId,
+  ) as unknown as ChoreRow | undefined;
+}
+
+function poolBlastRowMatchesCurrentSlot(
+  options: AssignedNagSchedulerOptions,
+  row: NotificationDeliveryRow,
+): boolean {
+  const chore = choreById(options.db, row.chore_id);
+  if (!chore) return false;
+  if (
+    chore.status !== "open" || chore.assignee_id !== null ||
+    chore.remind_until_done !== 1
+  ) return false;
+  const slot = currentPoolBlastSlot(chore, options);
+  return !!slot && row.slot_key === slot.slotKey &&
+    row.deliver_after === slot.deliverAfter;
+}
+
+function hasAttemptedPoolBlast(
+  db: DatabaseSync,
+  choreId: string,
+  recipientId: string,
+): boolean {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM notification_deliveries
+    WHERE chore_id = ?
+      AND recipient_id = ?
+      AND kind = 'pool_blast'
+      AND attempt_count > 0
+  `).get(choreId, recipientId) as unknown as { count: number };
+  return Number(row.count) > 0;
+}
+
+function supersedeStalePoolBlastRows(
+  options: AssignedNagSchedulerOptions,
+  now: Date,
+) {
+  for (const row of pendingPoolBlastRows(options.db)) {
+    if (poolBlastRowMatchesCurrentSlot(options, row)) continue;
+    options.db.prepare(`
+      UPDATE notification_deliveries
+      SET status = 'superseded', updated_at = ?
+      WHERE id = ? AND status = 'pending'
+    `).run(now.toISOString(), row.id);
+  }
 }
 
 function createSlots(
@@ -94,8 +206,10 @@ function createSlots(
         )
     `).run(now.toISOString());
 
-    for (const chore of eligibleChores(db)) {
-      const recorded = maxRecordedSlotKey(db, chore.id);
+    supersedeStalePoolBlastRows(options, now);
+
+    for (const chore of eligibleAssignedNagChores(db)) {
+      const recorded = maxRecordedAssignedNagSlotKey(db, chore.id);
       const fromExclusive = recorded && recorded > chore.nag_eligible_since!
         ? recorded
         : chore.nag_eligible_since!;
@@ -125,6 +239,35 @@ function createSlots(
           slot.slotKey,
           slot.deliverAfter,
         );
+      }
+    }
+
+    if (options.poolBlastLeadHours !== null) {
+      const recipients = userIds(db);
+      for (const chore of eligiblePoolBlastChores(db)) {
+        const slot = currentPoolBlastSlot(chore, options);
+        if (!slot || slot.slotKey > now.toISOString()) continue;
+        for (const recipientId of recipients) {
+          if (hasAttemptedPoolBlast(db, chore.id, recipientId)) continue;
+          db.prepare(`
+            INSERT OR IGNORE INTO notification_deliveries (
+              id,
+              chore_id,
+              recipient_id,
+              kind,
+              slot_key,
+              deliver_after,
+              status
+            )
+            VALUES (?, ?, ?, 'pool_blast', ?, ?, 'pending')
+          `).run(
+            crypto.randomUUID(),
+            chore.id,
+            recipientId,
+            slot.slotKey,
+            slot.deliverAfter,
+          );
+        }
       }
     }
 
@@ -161,19 +304,24 @@ function createSlots(
 }
 
 function readEligibleForDelivery(
-  db: DatabaseSync,
+  options: AssignedNagSchedulerOptions,
   row: NotificationDeliveryRow,
 ): ChoreRow | undefined {
-  return db.prepare(`
-    SELECT *
-    FROM chores
-    WHERE id = ?
-      AND status = 'open'
-      AND assignee_id = ?
-      AND due_date IS NOT NULL
-      AND remind_until_done = 1
-      AND nag_eligible_since IS NOT NULL
-  `).get(row.chore_id, row.recipient_id) as unknown as ChoreRow | undefined;
+  if (row.kind === "assigned_nag") {
+    return options.db.prepare(`
+      SELECT *
+      FROM chores
+      WHERE id = ?
+        AND status = 'open'
+        AND assignee_id = ?
+        AND due_date IS NOT NULL
+        AND remind_until_done = 1
+        AND nag_eligible_since IS NOT NULL
+    `).get(row.chore_id, row.recipient_id) as unknown as ChoreRow | undefined;
+  }
+
+  if (!poolBlastRowMatchesCurrentSlot(options, row)) return undefined;
+  return choreById(options.db, row.chore_id);
 }
 
 function errorCode(result: NotificationSendResult): string | null {
@@ -199,6 +347,15 @@ function recordResult(
           updated_at = ?
       WHERE id = ? AND status = 'pending'
     `).run(nowIso, nowIso, nowIso, row.id);
+    return;
+  }
+  if (result.status === "disabled") {
+    db.prepare(`
+      UPDATE notification_deliveries
+      SET last_error_code = NULL,
+          updated_at = ?
+      WHERE id = ? AND status = 'pending'
+    `).run(nowIso, row.id);
     return;
   }
   if (result.status === "undeliverable") {
@@ -231,7 +388,7 @@ async function deliverDueRows(
 ) {
   const rows = duePendingRows(options.db, now, options.batchSize);
   for (const row of rows) {
-    const chore = readEligibleForDelivery(options.db, row);
+    const chore = readEligibleForDelivery(options, row);
     if (!chore) {
       options.db.prepare(`
         UPDATE notification_deliveries
@@ -248,7 +405,8 @@ async function deliverDueRows(
       });
       recordResult(options.db, row, result, now);
       log(options.logger, result.status === "sent" ? "info" : "warn", {
-        event: "assigned_nag_delivery_result",
+        event: "notification_delivery_result",
+        kind: row.kind,
         deliveryId: row.id,
         choreId: row.chore_id,
         recipientId: row.recipient_id,
@@ -263,7 +421,8 @@ async function deliverDueRows(
         now,
       );
       log(options.logger, "warn", {
-        event: "assigned_nag_delivery_result",
+        event: "notification_delivery_result",
+        kind: row.kind,
         deliveryId: row.id,
         choreId: row.chore_id,
         recipientId: row.recipient_id,

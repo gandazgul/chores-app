@@ -1,6 +1,7 @@
 import { createEffect, createSignal } from "solid-js";
 import type { Chore, Member } from "../types.ts";
 import { formatHouseholdDueDate } from "../utils/householdTime.ts";
+import { formatPoolAge } from "../utils/poolAge.ts";
 
 interface ChoreItemProps {
   chore: Chore;
@@ -8,6 +9,7 @@ interface ChoreItemProps {
   currentMemberId: string;
   householdTimeZone: string;
   nowMs: number;
+  showPoolAge?: boolean;
   onUpdate: (chore: Chore) => void;
   onEdit: (chore: Chore, opener: HTMLElement) => void;
   onReconcile: () => Promise<void>;
@@ -171,6 +173,10 @@ export default function ChoreItem(props: ChoreItemProps) {
     formatHouseholdDueDate(props.chore.due_date, props.householdTimeZone);
   const currentRecurrence = () => recurrence(props.chore);
   const isSkipped = () => props.chore.status === "skipped";
+  const poolAge = () =>
+    props.showPoolAge && props.chore.status === "open"
+      ? formatPoolAge(props.chore.unassigned_since, props.nowMs)
+      : null;
   const remainingUndoSeconds = () => {
     if (!props.chore.resolved_at) return 0;
     const resolvedAt = new Date(props.chore.resolved_at).getTime();
@@ -245,6 +251,13 @@ export default function ChoreItem(props: ChoreItemProps) {
                   <span class="px-2 py-0.5 bg-gray-100 text-gray-600 flex items-center gap-1">
                     <div class="i-mdi-sync w-3 h-3"></div>
                     {getRRuleFrequency(currentRecurrence()?.rrule ?? "")}
+                  </span>
+                )}
+                {poolAge() && (
+                  <span class="px-2 py-0.5 bg-gray-100 text-gray-600 flex items-center gap-1">
+                    <div class="i-mdi-timer-outline w-3 h-3" aria-hidden="true">
+                    </div>
+                    {poolAge()}
                   </span>
                 )}
                 <span class="px-2 py-0.5 bg-[#e6f3f5] text-primary flex items-center gap-1">

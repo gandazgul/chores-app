@@ -1,6 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   assignedNagSlots,
+  poolBlastSlot,
+  resolvePoolBlastLeadHours,
   resolveQuietHours,
   testInternals,
 } from "./nagPolicy.ts";
@@ -97,5 +99,78 @@ Deno.test("quiet-hour configuration validates HH:MM values", () => {
       name === "QUIET_HOURS_START" ? "20:30" : "07:15"
     ),
     { start: "20:30", end: "07:15" },
+  );
+});
+
+Deno.test("Pool Blast lead-hours configuration is opt-in", () => {
+  assertEquals(resolvePoolBlastLeadHours(() => undefined), null);
+  assertEquals(resolvePoolBlastLeadHours(() => ""), null);
+  assertEquals(resolvePoolBlastLeadHours(() => " 0 "), null);
+  assertEquals(resolvePoolBlastLeadHours(() => "24"), 24);
+});
+
+Deno.test("Pool Blast lead-hours configuration rejects invalid values", () => {
+  for (const value of ["-1", "1.5", "soon", "0x10"]) {
+    try {
+      resolvePoolBlastLeadHours(() => value);
+      throw new Error("expected configuration error");
+    } catch (error) {
+      assertEquals(
+        error instanceof Error &&
+          error.message.includes("POOL_BLAST_LEAD_HOURS"),
+        true,
+      );
+    }
+  }
+});
+
+Deno.test("Pool Blast slot uses due date minus lead hours", () => {
+  assertEquals(
+    poolBlastSlot({
+      dueDate: "2030-01-02T10:30:45.789Z",
+      leadHours: 24,
+      timeZone: "UTC",
+      quietHours: { start: "21:00", end: "08:00" },
+    }),
+    {
+      slotKey: "2030-01-01T10:30:45.000Z",
+      deliverAfter: "2030-01-01T10:30:45.000Z",
+    },
+  );
+});
+
+Deno.test("Pool Blast slot applies Quiet Hours without forward coalescing", () => {
+  assertEquals(
+    poolBlastSlot({
+      dueDate: "2030-01-02T06:30:00.000Z",
+      leadHours: 24,
+      timeZone: "UTC",
+      quietHours: { start: "21:00", end: "08:00" },
+    }),
+    {
+      slotKey: "2030-01-01T06:30:00.000Z",
+      deliverAfter: "2030-01-01T08:00:00.000Z",
+    },
+  );
+});
+
+Deno.test("Pool Blast slot is absent when disabled or anchorless", () => {
+  assertEquals(
+    poolBlastSlot({
+      dueDate: "2030-01-02T10:30:00.000Z",
+      leadHours: null,
+      timeZone: "UTC",
+      quietHours: { start: "21:00", end: "08:00" },
+    }),
+    null,
+  );
+  assertEquals(
+    poolBlastSlot({
+      dueDate: null,
+      leadHours: 24,
+      timeZone: "UTC",
+      quietHours: { start: "21:00", end: "08:00" },
+    }),
+    null,
   );
 });

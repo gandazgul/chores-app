@@ -203,9 +203,11 @@ The Pool blast kind is `pool_blast`. It has one ladder point:
 due_date - POOL_BLAST_LEAD_HOURS
 ```
 
-`POOL_BLAST_LEAD_HOURS` defaults to `24`. A value of `0` or an unset value
-disables the blast. The scheduler and `.env.example` must add this environment
-variable when the code reads it, not before.
+`POOL_BLAST_LEAD_HOURS` is opt-in. An unset, blank, or `0` value disables the
+blast. A positive whole number enables one blast that many hours before the Due
+Date. Invalid, negative, or fractional values stop startup clearly. The
+scheduler and `.env.example` must add this environment variable when the code
+reads it, not before.
 
 Pool blast eligibility is:
 
@@ -220,11 +222,18 @@ Recipients are every Member. A Pool item with no due date never blasts.
 The no-backfill anchor for Pool blast is the existing `chores.unassigned_since`.
 If an item enters the Pool after its lead point has passed, it never creates
 that blast. Because `slot_key` derives from `due_date` alone, an item that
-leaves and re-enters the Pool cannot blast twice for the same due date and
-recipient. The uniqueness key enforces the Epic rule: at most one blast per item
-and recipient. Forward coalescing does not apply to this one-point ladder. If
-quiet hours defer a Pool blast, the blast is delivered at the quiet-hours end
-unless the item stops being eligible first.
+leaves and re-enters the Pool cannot blast twice for the same Due Date and
+recipient.
+
+The implementation also enforces a lifetime limit per Chore and Member. A stale
+unattempted Pool Blast can be superseded and replaced after a Due Date or lead
+time change. After any send attempt, that Chore and Member cannot receive a new
+logical Pool Blast; retries stay on the same Delivery Slot. This keeps the Pool
+from becoming repeated push behavior after edits or Pool re-entry.
+
+Forward coalescing does not apply to this one-point ladder. If quiet hours defer
+a Pool blast, the blast is delivered at the quiet-hours end unless the item
+stops being eligible first.
 
 ### Handoffs
 

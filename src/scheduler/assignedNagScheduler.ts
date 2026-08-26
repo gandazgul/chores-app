@@ -148,8 +148,7 @@ function poolBlastRowMatchesCurrentSlot(
     chore.remind_until_done !== 1
   ) return false;
   const slot = currentPoolBlastSlot(chore, options);
-  return !!slot && row.slot_key === slot.slotKey &&
-    row.deliver_after === slot.deliverAfter;
+  return !!slot && row.slot_key === slot.slotKey;
 }
 
 function hasAttemptedPoolBlast(

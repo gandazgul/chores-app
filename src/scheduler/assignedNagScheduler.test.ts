@@ -348,6 +348,48 @@ Deno.test("Pool Blast disabled creates no rows and supersedes old pending rows",
   );
 });
 
+Deno.test("Pool Blast keeps a pending row valid when quiet hours change deliver_after", async () => {
+  const db = makeDb();
+  insertChore(db, {
+    id: "pool",
+    title: "Pool",
+    assigneeId: null,
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+    dueDate: "2030-01-02T01:00:00.000Z",
+  });
+  db.prepare(`
+    INSERT INTO notification_deliveries (id, chore_id, recipient_id, kind, slot_key, deliver_after)
+    VALUES ('pending', 'pool', 'u', 'pool_blast', '2030-01-01T01:00:00.000Z', '2030-01-01T01:00:00.000Z')
+  `).run();
+  const sent: NotificationSendInput[] = [];
+  const scheduler = createAssignedNagScheduler({
+    db,
+    notificationPort: {
+      send: (input) => {
+        sent.push(input);
+        return Promise.resolve({ status: "sent" });
+      },
+    },
+    timeZone: "UTC",
+    quietHours: { start: "00:00", end: "08:00" },
+    poolBlastLeadHours: 24,
+    batchSize: 10,
+    logger: console,
+  });
+
+  await scheduler.tick(new Date("2030-01-01T08:00:01.000Z"));
+
+  assertEquals(sent.length, 2);
+  assertEquals(
+    db.prepare(`
+      SELECT status, sent_at
+      FROM notification_deliveries
+      WHERE id = 'pending'
+    `).get(),
+    { status: "sent", sent_at: "2030-01-01T08:00:01.000Z" },
+  );
+});
+
 Deno.test("Pool Blast creates one slot for every Member and not across restarts", async () => {
   const db = makeDb();
   insertChore(db, {

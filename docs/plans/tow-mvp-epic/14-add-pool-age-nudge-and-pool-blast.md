@@ -22,8 +22,8 @@ devServerCommand: "deno task dev"
 devServerUrl: "http://127.0.0.1:8080"
 devServerHmr: true
 createdAt: "2026-08-10T12:07:52-04:00"
-updatedAt: "2026-08-26T01:30:38.308Z"
-status: "implemented"
+updatedAt: "2026-08-26T18:05:24.496Z"
+status: "validated_reviewer"
 origin: "internal"
 parentPlan: "tow-mvp-epic"
 order: 14
@@ -32,8 +32,8 @@ dependencies:
 implementedAt: "2026-08-26T01:30:38.308Z"
 userVerifiedAt: null
 executionReport: "- Implemented Pool age UI: open Pool rows show `In Pool for less than a day` / `1 day` / `N days` from `unassigned_since`; age is omitted from What's Next, Board, completed Pool rows, and locally retained resolved rows.\n- Implemented Pool Blast in the existing scheduler/outbox: opt-in `POOL_BLAST_LEAD_HOURS`, per-Member `pool_blast` slots, quiet-hours `deliver_after`, stale pending supersession, unattempted-slot replacement, attempted lifetime blocking, shared fair delivery batch, and per-recipient result isolation.\n- Fixed row identity exposed by the new e2e flow: `ChoreList` now uses Solid `<For>` so Claim/Release/Done actions keep current Chore ids after list movement.\n- Updated `.env.example`, ADR 0007, `docs/domain-language.md`, and `docs/system-patterns.md` to state Pool Age, optional Pool Blast, disabled-by-default config, and at-least-once delivery behavior.\n- Test coverage changed: added `src/utils/poolAge.test.ts` with 5 tests; added 5 Pool Blast policy tests; added 5 scheduler Pool Blast/fairness tests; updated 1 Playwright journey test; removed 0 tests. Deno unit count is now 123; Playwright count is 17.\n- Verification passed: `deno fmt --check`; `deno test -A src/utils/poolAge.test.ts src/scheduler/nagPolicy.test.ts src/scheduler/assignedNagScheduler.test.ts`; `deno task ci` (123 passed; Astro reports the existing `src/pages/login.astro` unused-function hint); `deno task test:production-lifecycle`; `E2E_PORT=18083 deno task test:e2e -- tests/e2e/three-view-journey.spec.ts` (3 passed); `CI=1 E2E_PORT=18085 deno task test:e2e` (17 passed with one Gotify-settings retry); `CI=1 E2E_PORT=18086 deno task test:e2e -- tests/e2e/gotify-settings.spec.ts` (1 passed); isolated Pool Blast config check passed.\n- Dev server/browser: plan port 8080 was occupied by another Deno dev server, so final worktree server ran at `http://127.0.0.1:18080/` with `DB_ENV=test ENABLE_AUTH=false ENABLE_NOTIFICATIONS=false deno run -A --env npm:astro dev --host 127.0.0.1 --port 18080`.\n- Headed browser verified at desktop 1440x1000 and mobile 390x844: created a Chore, released it to Pool, saw neutral age label, claimed it, released it again, and confirmed Pool age returned as `In Pool for less than a day`; screenshots `artifacts/tow-child-14-final-desktop-pool-age.png`, `artifacts/tow-child-14-final-desktop-done-no-age.png`, `artifacts/tow-child-14-final-mobile-pool.png`.\n- Browser diagnostics: final URL `http://127.0.0.1:18080/`, title `Tow`, console only Vite debug connect logs, no agent-browser errors, no captured 400-599 XHR/fetch requests.\n- Unresolved blockers: none."
-humanReviewMode: null
-humanReviewDecision: null
+humanReviewMode: "ask"
+humanReviewDecision: "skipped"
 validationCheckpoint: null
 executionMode: "worktree"
 executionBaselineTree: "a30bf61d46dd24bf0ed199b8ad343ddab6c95a9f"
@@ -43,7 +43,7 @@ worktreeBranch: "worktree/tow-mvp-epic-14-add-pool-age-nudge-and-pool-blas-21aca
 worktreeBaseBranch: "main"
 worktreeStatus: "completed"
 validationCiAttempts: 0
-validationSemanticRounds: 0
+validationSemanticRounds: 1
 ---
 
 # Add Pool Age Nudge and Pool Blast

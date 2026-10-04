@@ -23,7 +23,14 @@ jobs:
           deno-version: v2.9.7
       - run: deno install --frozen
       - run: deno task ci
-      - run: deno run -A npm:playwright install --with-deps chromium
+      # Playwright's browser archive extraction hangs under Deno on a fresh runner.
+      # Use Node only for the installer; application and tests still run on Deno.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
       - run: deno task test:e2e
         env:
           DB_PATH: /tmp/tow-e2e.db

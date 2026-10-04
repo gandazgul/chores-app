@@ -1,6 +1,7 @@
 import type { APIContext, MiddlewareNext } from "astro";
 import type { UserPayload } from "./types.ts";
 import { getSession } from "./utils/auth.ts";
+import { resolvePublicOrigin } from "./utils/publicOrigin.ts";
 
 const MOCK_USER: UserPayload = {
   id: "r0wk2VvPQFhW7bpLpq3MxMhjodD2",
@@ -16,7 +17,9 @@ function hasSameOriginEvidence(context: APIContext): boolean {
     return true;
   }
 
-  return context.request.headers.get("origin") === context.url.origin;
+  const expected = resolvePublicOrigin(Deno.env.get("PUBLIC_ORIGIN")) ??
+    context.url.origin;
+  return context.request.headers.get("origin") === expected;
 }
 
 export async function onRequest(
@@ -25,6 +28,13 @@ export async function onRequest(
 ): Promise<Response | void> {
   if (!hasSameOriginEvidence(context)) {
     return new Response("Forbidden", { status: 403 });
+  }
+
+  if (
+    context.url.pathname === "/healthz" &&
+    SAFE_METHODS.has(context.request.method)
+  ) {
+    return next();
   }
 
   const envEnableAuth = Deno.env.get("ENABLE_AUTH");

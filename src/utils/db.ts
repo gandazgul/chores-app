@@ -15,7 +15,9 @@ switch (Deno.env.get("DB_ENV")) {
     break;
 }
 
-const db = new DatabaseSync(dbPath, { timeout: 10_000 });
+const db = new DatabaseSync(Deno.env.get("DB_PATH") || dbPath, {
+  timeout: 10_000,
+});
 db.exec("PRAGMA foreign_keys = ON;");
 applyMigrations(db);
 

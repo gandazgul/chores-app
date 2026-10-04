@@ -1,38 +1,24 @@
-# Use Deno's debian base image
-FROM denoland/deno:latest AS builder
-
+FROM docker.io/denoland/deno:2.9.7 AS builder
 WORKDIR /app
-
-# Cache dependencies
+ENV DENO_DIR=/deno-dir
 COPY deno.json deno.lock ./
-RUN deno install
-
-# Copy application code
+RUN deno install --frozen
 COPY . .
-
-# Build the Astro site
 RUN deno task build
+# Include dynamic server imports in the offline runtime cache.
+RUN deno cache --frozen scripts/start_production.ts dist/server/entry.mjs
 
-# Final production image
-FROM denoland/deno:latest
-
+FROM docker.io/denoland/deno:2.9.7
 WORKDIR /app
-
-# Copy production artifacts, startup migration code, and config from builder
+ENV DENO_DIR=/deno-dir DENO_NO_UPDATE_CHECK=1 DB_ENV=production DB_PATH=/data/chores.db
+COPY --from=builder --chown=deno:deno /deno-dir /deno-dir
+COPY --from=builder --chown=deno:deno /app/node_modules ./node_modules
 COPY --from=builder --chown=deno:deno /app/dist ./dist
 COPY --from=builder --chown=deno:deno /app/src ./src
 COPY --from=builder --chown=deno:deno /app/scripts/start_production.ts ./scripts/start_production.ts
-COPY --from=builder --chown=deno:deno /app/deno.json ./deno.json
-COPY --from=builder --chown=deno:deno /app/deno.lock ./deno.lock
-
-# Set non-root user
+COPY --from=builder --chown=deno:deno /app/scripts/backup_db.ts ./scripts/backup_db.ts
+COPY --from=builder --chown=deno:deno /app/deno.json /app/deno.lock ./
+RUN mkdir -p /data && chown deno:deno /data
 USER deno
-
-# Port standard Deno uses
 EXPOSE 8080
-
-# Default environment port (can be overridden)
-ENV PORT=8080
-ENV HOST=0.0.0.0
-
-CMD ["task", "start"]
+CMD ["run", "-A", "--cached-only", "--frozen", "scripts/start_production.ts"]

@@ -1,76 +1,37 @@
 # Roadmap
 
-_Last revised: 2026-08-10_
-
-This document has two halves. **Where We Are** records the verified state of the
-app as of this revision — every claim was checked against the code, not against
-older docs. **What's Next** captures the direction agreed in the product
-discussion of 2026-08-10, organized by milestone.
-
----
+_Last revised: 2026-10-04_
 
 ## Where We Are
 
-### Built and working
+The household MVP is implemented: Google sign-in with an email allowlist and
+persisted members; shared chore CRUD; assignment, claim and release; What's
+Next, Board and Pool; fuzzy search; recurrence; transactional completion and
+Skip/Undo; per-member Gotify tokens; assigned nags and optional Pool Blast;
+forward-only SQLite migrations; TypeScript source and tests.
 
-- User authentication via Google Sign-In (JWT session cookies, Astro
-  middleware).
-- Chore CRUD API (`GET`/`POST` on `/api/chores`, `PUT`/`DELETE` on
-  `/api/chores/[id]`), secured by auth middleware.
-- Displaying, adding, completing, and deleting chores.
-- Chore descriptions.
-- Data persistence in local SQLite via `node:sqlite`.
-- Recurring chores via `rrule`, including spawning the next occurrence as a new
-  row on completion.
-- Completion logging.
-- **Fuzzy search for chores** (Fuse.js, in `ChoreList`).
-- Error handling and validation.
-- Testing: unit/integration (Deno test runner) and E2E (Playwright).
-- Deployment: containerized, CI/CD pipeline.
-- PWA installability (manifest and meta tags).
-- UI/UX styling with UnoCSS.
+Deployment preparation now includes a pinned Deno image with cached runtime
+dependencies, configurable `DB_PATH`, an HTTPS `PUBLIC_ORIGIN` CSRF boundary,
+startup configuration validation, `/healthz`, graceful HTTP shutdown, and
+consistent SQLite backup snapshots. The neighboring `k8s-infrastructure`
+repository contains the Tow overlay for `todo.dumbhome.uk`: one replica with
+Recreate updates, YASR persistence, sealed credentials, health probes, and a
+nightly backup to the backup volume.
 
-### Corrections to older documentation
+Release validation passes 126 unit/integration tests, 17 browser tests, and the
+production container lifecycle test against the x86-64 release image. The latter
+covers fresh/legacy migrations, backup restoration, pending-delivery recovery,
+HTTPS-origin checks, and a read-only root filesystem. GitHub Actions gates image
+publication on these checks.
 
-Two claims in prior docs were wrong and are corrected here:
+The remaining acceptance checks require the real deployment and account:
+Google's authorized origin, Google sign-in, a member's Gotify application token,
+and notification receipt on their phone. See README for deployment and restore
+procedures. Fuzzy scheduling and quota recurrence remain future product work.
 
-- The previous roadmap listed **fuzzy search as unbuilt**. It is built and in
-  use.
-- The former `IMPLEMENTATION_PLAN.md` described **Knex** as the database layer.
-  The code uses raw `node:sqlite` (`DatabaseSync`) with no query builder. That
-  file is now deleted; what was still true in it moved into `tech-context.md`
-  and the ADRs.
-
-### Known gaps in the current build
-
-These are facts about the code today, not planned work:
-
-- **The differentiating feature does not exist.** There is no notification code
-  anywhere — no scheduler, no Gotify client, no per-user notification config.
-  The `remind_until_done` and `notification_sent_at` columns are reserved but
-  never read or written.
-- **Users are never persisted.** Login verifies the Google token and mints a
-  session without ever inserting a row into `users`. The only
-  `INSERT INTO
-  users` in the repo is in test setup. Because `chores.user_id`
-  is a foreign key with `PRAGMA foreign_keys = ON`, a second real user adding a
-  chore will fail the insert.
-- **There is no registration gate.** Any Google account that reaches the
-  instance receives a valid session and full access.
-- **There is no migration mechanism.** Tables are created with
-  `CREATE TABLE IF
-  NOT EXISTS` and nothing else; an existing database cannot
-  be altered.
-- **No edit UI and no delete button**, despite a working `DELETE` endpoint. The
-  modal is add-only.
-- **No skip action**, despite the product brief requiring "done or skipped."
-- **No assignment.** `chores.user_id` is the creator/owner and doubles as the
-  visibility filter; there is no assignee.
-- **`priority` is dead weight** — the column is written by nobody and displayed
-  nowhere.
-- **TypeScript baseline:** application source, Solid islands, tests, and the
-  Playwright config are canonical TypeScript. `deno task ci` includes Deno type
-  checking and Astro frontmatter checking.
+The milestones below preserve the original product direction. P0, P1 and P3 were
+implemented by the completed Tow MVP epic; they are not an outstanding
+implementation checklist.
 
 ---
 

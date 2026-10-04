@@ -13,6 +13,9 @@ import { assignedNagSchedulerIntegration } from "./src/scheduler/astroIntegratio
 // https://astro.build/config
 export default defineConfig({
   output: "server",
+  // middleware.ts enforces exact origin matching for ALL unsafe requests,
+  // including JSON, against PUBLIC_ORIGIN behind TLS-terminating ingress.
+  security: { checkOrigin: false },
   server: {
     port: 8080,
     host: "0.0.0.0",

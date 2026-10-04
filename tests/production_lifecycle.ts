@@ -40,7 +40,7 @@ async function runCommand(
 
 async function findDockerCli(): Promise<string> {
   const configured = Deno.env.get("DOCKER_CLI");
-  const candidates = configured ? [configured] : ["docker", "podman"];
+  const candidates = configured ? [configured] : ["podman", "docker"];
 
   for (const candidate of candidates) {
     try {
@@ -72,10 +72,10 @@ async function waitForHttp(port: number, timeoutMs = 45_000) {
   let lastError: unknown;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/`, {
+      const response = await fetch(`http://127.0.0.1:${port}/healthz`, {
         signal: AbortSignal.timeout(500),
       });
-      if (response.status > 0) {
+      if (response.status === 200) {
         await response.body?.cancel();
         return;
       }
@@ -107,7 +107,7 @@ async function assertNoHttp(port: number, durationMs = 1_500) {
   const deadline = Date.now() + durationMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/`, {
+      const response = await fetch(`http://127.0.0.1:${port}/healthz`, {
         signal: AbortSignal.timeout(300),
       });
       await response.body?.cancel();
@@ -246,18 +246,25 @@ async function startContainer(
   const envArgs = Object.entries({
     DB_ENV: "production",
     ENABLE_AUTH: "false",
+    PUBLIC_ORIGIN: "https://todo.example.test",
+    DB_PATH: `/data/${databasePath.split("/").at(-1)}`,
+    QUIET_HOURS_START: "00:00",
+    QUIET_HOURS_END: "00:00",
     ...extraEnv,
   }).flatMap(([key, value]) => ["--env", `${key}=${value}`]);
   await runCommand(docker, [
     "run",
     "--detach",
+    "--read-only",
+    "--tmpfs",
+    "/tmp",
     "--name",
     name,
     ...envArgs,
     "--publish",
     `${port}:8080`,
     "--volume",
-    `${databasePath}:/app/chores.db`,
+    `${databasePath.slice(0, databasePath.lastIndexOf("/"))}:/data`,
     image,
   ]);
 }
@@ -302,19 +309,23 @@ Deno.test({
   async fn() {
     const docker = await findDockerCli();
     const id = crypto.randomUUID();
-    const image = `chores-app-production-lifecycle:${id}`;
+    const existingImage = Deno.env.get("PRODUCTION_TEST_IMAGE");
+    const image = existingImage || `chores-app-production-lifecycle:${id}`;
     const tempDir = await Deno.makeTempDir({ prefix: "chores-prod-life-" });
+    await Deno.chmod(tempDir, 0o777);
     const containers: string[] = [];
 
     try {
-      await runCommand(docker, [
-        "build",
-        "--file",
-        "Containerfile",
-        "--tag",
-        image,
-        ".",
-      ]);
+      if (!existingImage) {
+        await runCommand(docker, [
+          "build",
+          "--file",
+          "Containerfile",
+          "--tag",
+          image,
+          ".",
+        ]);
+      }
 
       const freshDb = `${tempDir}/fresh.db`;
       await createWritableFile(freshDb);
@@ -324,7 +335,82 @@ Deno.test({
       await startContainer(docker, image, freshContainer, freshDb, freshPort);
       await waitForHttp(freshPort);
       assertMigrated(freshDb, false);
+      // The built server must accept public HTTPS origins for JSON and forms,
+      // reject forged origins/headers, and work without module downloads.
+      for (
+        const contentType of [
+          "application/json",
+          "application/x-www-form-urlencoded",
+        ]
+      ) {
+        for (
+          const origin of [
+            "https://todo.example.test",
+            "https://evil.example",
+            "null",
+          ]
+        ) {
+          const response = await fetch(
+            `http://127.0.0.1:${freshPort}/api/auth/login`,
+            {
+              method: "POST",
+              headers: {
+                Origin: origin,
+                "Content-Type": contentType,
+                "X-Forwarded-Proto": "https",
+                "X-Forwarded-Host": "evil.example",
+              },
+              body: contentType === "application/json" ? "{}" : "test=1",
+            },
+          );
+          assertEquals(
+            response.status,
+            origin === "https://todo.example.test"
+              ? (contentType === "application/json" ? 400 : 401)
+              : 403,
+          );
+          await response.body?.cancel();
+        }
+      }
+      const freshLogs = await readContainerLogs(docker, freshContainer);
+      assertEquals(freshLogs.includes("Download"), false);
+      await runCommand(docker, [
+        "exec",
+        freshContainer,
+        "deno",
+        "run",
+        "-A",
+        "--cached-only",
+        "scripts/backup_db.ts",
+        "/data/backup.db",
+      ]);
+      assertMigrated(`${tempDir}/backup.db`, false);
       await cleanupContainer(docker, freshContainer);
+
+      const restoredContainer = `chores-prod-restored-${id}`;
+      containers.push(restoredContainer);
+      const restoredPort = allocatePort();
+      await startContainer(
+        docker,
+        image,
+        restoredContainer,
+        `${tempDir}/backup.db`,
+        restoredPort,
+        {
+          ENABLE_AUTH: "true",
+          GOOGLE_CLIENT_ID: "lifecycle-test-client",
+          SESSION_SECRET: "lifecycle-test-secret-with-at-least-32-characters",
+          ALLOWED_EMAILS: "member@example.test",
+        },
+      );
+      await waitForHttp(restoredPort);
+      const protectedResponse = await fetch(
+        `http://127.0.0.1:${restoredPort}/`,
+        { redirect: "manual" },
+      );
+      assertEquals(protectedResponse.status, 302);
+      await protectedResponse.body?.cancel();
+      await cleanupContainer(docker, restoredContainer);
 
       const legacyDb = `${tempDir}/legacy.db`;
       createLegacyDatabase(legacyDb);
@@ -460,7 +546,9 @@ Deno.test({
       for (const container of containers) {
         await cleanupContainer(docker, container);
       }
-      await runCommand(docker, ["rmi", image], { check: false });
+      if (!existingImage) {
+        await runCommand(docker, ["rmi", image], { check: false });
+      }
       await Deno.remove(tempDir, { recursive: true });
     }
   },

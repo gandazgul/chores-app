@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+node_modules
+dist
+.astro
+.idea
+.wld
+test-results
+playwright-report
+artifacts
+docs
+*.log

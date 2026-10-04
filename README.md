@@ -31,17 +31,17 @@ deno install
 ### Running the development server:
 
 ```bash
-deno run dev
+deno task dev
 ```
 
 This will start the development server. Open
-[http://localhost:5173](http://localhost:5173) (or the port specified in your
+[http://localhost:8080](http://localhost:8080) (or the port specified in your
 console) to view it in the browser.
 
 ### Building for production:
 
 ```bash
-deno run build
+deno task build
 ```
 
 This command builds the app for production to the `dist` folder. It correctly
@@ -51,20 +51,95 @@ is ready to be deployed!
 
 ### Running the container locally:
 
-The application can also be run locally using the provided `Containerfile` via
-Docker or Podman:
+Build and run with Podman:
 
 ```bash
-# Build the container image
-docker build -f Containerfile -t chores-app .
-
-# Run the container
-docker run -p 8080:8080 --env-file .env chores-app
+podman build -f Containerfile -t tow .
+podman volume create tow-data
+podman run --rm -p 8080:8080 --env-file .env -v tow-data:/data tow
 ```
 
-This will run the built production application on `http://localhost:8080`. Mount
-`chores.db` on a persistent volume in production. The scheduler assumes one app
-process and one SQLite writer.
+The image uses Deno 2.9.7 and includes its runtime dependencies. Startup uses
+`--cached-only --frozen`; it never installs packages. SQLite lives at
+`/data/chores.db` in the container (`DB_PATH` overrides the path). Mount the
+whole directory so SQLite journals persist beside the database. Without a
+container, `DB_ENV` selects the legacy development/test/production filename.
+
+## Production deployment
+
+The deployment at `https://todo.dumbhome.uk` is defined in the neighboring
+`k8s-infrastructure` repository: `apps/Tow.yaml` and
+`apps/generic/overlays/tow/`, registered for the `gandazgul` cluster. It uses
+YASR `configs/tow`, port 8080, one replica, and `Recreate` updates because the
+scheduler and SQLite assume one app process. `/healthz` checks database access
+and becomes reachable only after startup migrations and scheduler setup.
+
+Required configuration:
+
+- `PUBLIC_ORIGIN=https://todo.dumbhome.uk`
+- `ENABLE_AUTH=true`, `COOKIE_SECURE=true`
+- `GOOGLE_CLIENT_ID`, a stable random `SESSION_SECRET`, and `ALLOWED_EMAILS`
+- `HOUSEHOLD_TZ`, `GOTIFY_URL=https://notify.dumbhome.uk`
+
+Set the Google OAuth web client's Authorized JavaScript origins to include
+`https://todo.dumbhome.uk`. Sign-in uses a popup and posts the credential to
+`/api/auth/login`; there is no OAuth redirect callback route. Each household
+account must be explicitly allowlisted and each member adds their own Gotify
+application token in Settings. Google client secrets are not used by Tow.
+
+`PUBLIC_ORIGIN` is authoritative for every unsafe request, including forms and
+JSON. The app ignores forwarded headers for CSRF decisions. Astro's narrower
+form-only origin check is replaced by this middleware so TLS termination at
+ingress works without trusting arbitrary proxy headers. Direct development uses
+the request origin when `PUBLIC_ORIGIN` is unset.
+
+The cluster's shared SealedSecret holds `TOW_GOOGLE_CLIENT_ID`,
+`TOW_SESSION_SECRET`, and `TOW_ALLOWED_EMAILS`. Raw values belong only in the
+ignored `clusters/gandazgul/secrets.env`; regenerate using the infrastructure
+repository's `configure-cluster.sh` workflow.
+
+### Backups and recovery
+
+The `tow-backup` CronJob creates a consistent SQLite snapshot at 04:00 in the
+household timezone, on the backup volume under `apps/tow`. Successful backups
+retain 30 days. Run a manual backup before each migration-bearing release:
+
+```bash
+kubectl create job --from=cronjob/tow-backup tow-backup-before-release
+kubectl wait --for=condition=complete job/tow-backup-before-release --timeout=120s
+```
+
+The image also exposes
+`deno run -A --cached-only scripts/backup_db.ts DESTINATION`. It uses SQLite
+`VACUUM INTO`, not a copy of a live database. Protect backups as secrets because
+they include members' Gotify tokens.
+
+To restore: stop Tow (scale to zero and temporarily suspend its Flux
+Kustomization if GitOps is active), save the current data directory, replace
+`chores.db` with a verified snapshot while no writer is running, and restore
+ownership to UID/GID 1993. Do not reuse journal/WAL files from another database.
+Start an image compatible with that snapshot, verify `/healthz` and household
+data, then resume Flux. Migrations are forward-only; rolling an image back does
+not roll the schema back.
+
+### Release checks
+
+```bash
+deno task ci
+E2E_PORT=18080 deno task test:e2e
+DOCKER_CLI=podman deno task test:production-lifecycle
+```
+
+Browser tests use a separate database and never reuse an existing server. The
+container lifecycle test covers fresh and legacy migrations, a read-only root
+filesystem, HTTPS-origin form/JSON requests, backup restoration, scheduler
+recovery, disabled notifications, and refusal to serve an incompatible schema.
+GitHub Actions runs these checks before publishing immutable SHA-tagged images
+to GHCR. Pin deployment images by digest; the homelab also supports Harbor.
+
+Before household use, verify Google sign-in, create/assign/complete/skip a
+chore, receive a real Gotify notification, and confirm persistence after a pod
+restart.
 
 ## Notifications
 

@@ -78,7 +78,7 @@ Deno.test({
     );
     assertEquals(
       fetches[0].init?.body,
-      JSON.stringify({ message: "TOW: Do dishes" }),
+      JSON.stringify({ message: "TOW: Do dishes", priority: 4 }),
     );
     assert(!JSON.stringify(result).includes("secret-token"));
   },

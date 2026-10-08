@@ -130,7 +130,7 @@ export function createNotificationPort(
             "Content-Type": "application/json",
             "X-Gotify-Key": token,
           },
-          body: JSON.stringify({ message: `TOW: ${input.title}` }),
+          body: JSON.stringify({ message: `TOW: ${input.title}`, priority: 4 }),
         });
         const result = classifyStatus(response.status);
         if (result.status !== "sent") {

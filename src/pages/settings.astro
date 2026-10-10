@@ -1,5 +1,9 @@
 ---
 import NotificationSettings from "../components/NotificationSettings.tsx";
+import QuietHoursSettings from "../components/QuietHoursSettings.tsx";
+import { readQuietHoursSettings } from "../notifications/quietHours.ts";
+import { resolveQuietHours } from "../scheduler/nagPolicy.ts";
+import { resolveHouseholdTimeZone } from "../utils/householdTime.ts";
 import Layout from "../layouts/Layout.astro";
 import db from "../utils/db.ts";
 
@@ -8,6 +12,9 @@ interface TokenStateRow {
 }
 
 const user = Astro.locals.user;
+const defaults = resolveQuietHours((name) => Deno.env.get(name));
+const timeZone = resolveHouseholdTimeZone(Deno.env.get("HOUSEHOLD_TZ"));
+const quietHours = user ? readQuietHoursSettings(db, user.id, defaults) : null;
 let gotifyConfigured = false;
 if (user) {
   const row = db.prepare(
@@ -18,7 +25,7 @@ if (user) {
 ---
 
 <Layout>
-  <div class="w-full flex-1 flex flex-col bg-white">
+  <div class="w-full flex-1 min-h-0 overflow-y-auto flex flex-col bg-white">
     <header class="bg-[#e6f3f5] border-b border-[#c7e3e8] shadow-sm p-4 flex items-center justify-between gap-3 flex-wrap">
       <div class="flex items-center gap-3 min-w-0 flex-1 basis-[13.75rem]">
         <img src="/icon.png" alt="Tow logo" class="w-8 h-8 rounded-lg shadow-sm flex-shrink-0" />
@@ -39,6 +46,7 @@ if (user) {
     </header>
 
     <main class="w-full max-w-2xl mx-auto p-4 sm:p-6 flex flex-col gap-4">
+      {quietHours && <QuietHoursSettings client:load initialSettings={quietHours} timeZone={timeZone} />}
       <NotificationSettings client:load initialGotifyConfigured={gotifyConfigured} />
     </main>
   </div>

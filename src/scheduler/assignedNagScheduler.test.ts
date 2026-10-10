@@ -8,6 +8,7 @@ import type {
 } from "../types.ts";
 import { updateOccurrence } from "../domain/occurrenceResolution.ts";
 import { createAssignedNagScheduler } from "./assignedNagScheduler.ts";
+import { saveQuietHoursSettings } from "../notifications/quietHours.ts";
 
 interface CountRow {
   count: number;
@@ -91,6 +92,101 @@ function makeScheduler(
   });
   return { scheduler, sent };
 }
+
+Deno.test("personal quiet hours apply independently and release deferred reminders once", async () => {
+  const db = makeDb();
+  saveQuietHoursSettings(db, "u", {
+    enabled: true,
+    start: "01:00",
+    end: "09:00",
+  });
+  for (const assigneeId of ["u", "v"]) {
+    insertChore(db, { assigneeId, dueDate: "2030-01-01T20:30:00.000Z" });
+  }
+  const { scheduler, sent } = makeScheduler(db);
+  await scheduler.tick(new Date("2030-01-01T20:30:30.000Z"));
+  assertEquals(sent.length, 2);
+  await scheduler.tick(new Date("2030-01-01T21:30:30.000Z"));
+  assertEquals(sent.slice(2), [{ recipientId: "u", title: "Wash" }]);
+  await scheduler.tick(new Date("2030-01-02T00:30:30.000Z"));
+  assertEquals(sent.slice(3), [{ recipientId: "u", title: "Wash" }]);
+  await scheduler.tick(new Date("2030-01-02T02:00:00.000Z"));
+  assertEquals(sent.length, 4);
+  await scheduler.tick(new Date("2030-01-02T09:00:30.000Z"));
+  assertEquals(sent.length, 6);
+  await scheduler.tick(new Date("2030-01-02T09:00:45.000Z"));
+  assertEquals(sent.length, 6);
+  db.close();
+});
+
+Deno.test("changing personal hours reschedules pending reminders and disabling releases them", async () => {
+  const db = makeDb();
+  insertChore(db, { dueDate: "2030-01-01T20:30:00.000Z" });
+  const { scheduler, sent } = makeScheduler(db);
+  await scheduler.tick(new Date("2030-01-01T20:30:30.000Z"));
+  await scheduler.tick(new Date("2030-01-01T21:30:30.000Z"));
+  assertEquals(sent.length, 1);
+  saveQuietHoursSettings(db, "u", {
+    enabled: true,
+    start: "01:00",
+    end: "09:00",
+  });
+  await scheduler.tick(new Date("2030-01-01T21:31:00.000Z"));
+  assertEquals(sent.length, 2);
+  // A missed midnight reminder must not be delivered inside the new quiet hours.
+  await scheduler.tick(new Date("2030-01-02T02:00:00.000Z"));
+  assertEquals(sent.length, 2);
+  assertEquals(
+    db.prepare(
+      "SELECT deliver_after FROM notification_deliveries WHERE status = 'pending'",
+    ).get(),
+    { deliver_after: "2030-01-02T09:00:00.000Z" },
+  );
+  saveQuietHoursSettings(db, "u", {
+    enabled: false,
+    start: "01:00",
+    end: "09:00",
+  });
+  await scheduler.tick(new Date("2030-01-02T02:01:00.000Z"));
+  assertEquals(sent.length, 3);
+  await scheduler.tick(new Date("2030-01-02T02:01:30.000Z"));
+  assertEquals(sent.length, 3);
+  db.close();
+});
+
+Deno.test("pool reminders use each recipient's quiet hours", async () => {
+  const db = makeDb();
+  saveQuietHoursSettings(db, "u", {
+    enabled: true,
+    start: "01:00",
+    end: "09:00",
+  });
+  insertChore(db, {
+    assigneeId: null,
+    dueDate: "2030-01-01T22:30:00.000Z",
+    unassignedSince: "2030-01-01T00:00:00.000Z",
+  });
+  const recipients: string[] = [];
+  const scheduler = createAssignedNagScheduler({
+    db,
+    timeZone: "UTC",
+    quietHours: { start: "21:00", end: "08:00" },
+    poolBlastLeadHours: 1,
+    batchSize: 10,
+    logger: {},
+    notificationPort: {
+      send(input) {
+        recipients.push(input.recipientId);
+        return Promise.resolve({ status: "sent" });
+      },
+    },
+  });
+  await scheduler.tick(new Date("2030-01-01T21:30:30.000Z"));
+  assertEquals(recipients, ["u"]);
+  await scheduler.tick(new Date("2030-01-02T08:00:30.000Z"));
+  assertEquals(recipients, ["u", "v"]);
+  db.close();
+});
 
 Deno.test("real tick sends one overdue assigned chore and persists sent exactly once", async () => {
   const db = makeDb();

@@ -20,6 +20,9 @@ test.describe("Gotify notification settings", () => {
       headers: originHeaders(baseURL),
     });
     await page.reload();
+    await page.locator(
+      'astro-island[component-url*="NotificationSettings"][client-render-time]',
+    ).waitFor({ state: "attached" });
     const input = page.getByLabel("Gotify Application Token");
     await expect(input).toHaveAttribute("type", "password");
     await expect(input).toHaveAttribute("autocomplete", "new-password");
@@ -49,6 +52,9 @@ test.describe("Gotify notification settings", () => {
     ).toBe(false);
 
     await page.reload();
+    await page.locator(
+      'astro-island[component-url*="NotificationSettings"][client-render-time]',
+    ).waitFor({ state: "attached" });
     await expect(page.locator("section p", { hasText: /^Configured$/ }))
       .toBeVisible();
     await expect(input).toHaveValue("");
@@ -75,6 +81,9 @@ test.describe("Gotify notification settings", () => {
     expect(await apiState.json()).toEqual({ gotifyConfigured: true });
 
     await page.reload();
+    await page.locator(
+      'astro-island[component-url*="NotificationSettings"][client-render-time]',
+    ).waitFor({ state: "attached" });
     await expect(page.locator("section p", { hasText: /^Configured$/ }))
       .toBeVisible();
     await page.getByRole("button", { name: "Clear Token" }).click();

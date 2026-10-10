@@ -6,10 +6,12 @@ import type {
   NotificationSendResult,
 } from "../types.ts";
 import {
+  applyQuietHours,
   assignedNagSlots,
   poolBlastSlot,
   type QuietHours,
 } from "./nagPolicy.ts";
+import { recipientQuietHours } from "../notifications/quietHours.ts";
 
 interface Logger {
   info?(event: Record<string, unknown>): void;
@@ -217,7 +219,11 @@ function createSlots(
         fromExclusive,
         now,
         timeZone: options.timeZone,
-        quietHours: options.quietHours,
+        quietHours: recipientQuietHours(
+          db,
+          chore.assignee_id!,
+          options.quietHours,
+        ),
       });
       for (const slot of slots) {
         db.prepare(`
@@ -270,6 +276,22 @@ function createSlots(
       }
     }
 
+    // Re-evaluate unsent reminders against current personal preferences. This
+    // also prevents delayed/retried messages from leaking into quiet hours.
+    const pending = db.prepare(
+      "SELECT * FROM notification_deliveries WHERE status = 'pending'",
+    )
+      .all() as unknown as NotificationDeliveryRow[];
+    for (const row of pending) {
+      const deliverAfter = personalDeliveryTime(options, row, now);
+      if (deliverAfter !== row.deliver_after) {
+        db.prepare(
+          "UPDATE notification_deliveries SET deliver_after = ? WHERE id = ? AND status = 'pending'",
+        )
+          .run(deliverAfter, row.id);
+      }
+    }
+
     db.prepare(`
       UPDATE notification_deliveries
       SET status = 'superseded', updated_at = ?
@@ -300,6 +322,32 @@ function createSlots(
     db.exec("ROLLBACK;");
     throw error;
   }
+}
+
+function personalDeliveryTime(
+  options: AssignedNagSchedulerOptions,
+  row: NotificationDeliveryRow,
+  now: Date,
+): string {
+  const quiet = recipientQuietHours(
+    options.db,
+    row.recipient_id,
+    options.quietHours,
+  );
+  const scheduled = applyQuietHours(
+    new Date(row.slot_key),
+    options.timeZone,
+    quiet,
+  );
+  const allowedNow = applyQuietHours(now, options.timeZone, quiet);
+  // Outside quiet hours retain the actual schedule, rather than changing it
+  // on every tick. Coalescing relies on equal scheduled release times.
+  return new Date(
+    Math.max(
+      scheduled.getTime(),
+      allowedNow.getTime() > now.getTime() ? allowedNow.getTime() : 0,
+    ),
+  ).toISOString();
 }
 
 function readEligibleForDelivery(
@@ -398,6 +446,10 @@ async function deliverDueRows(
     }
 
     try {
+      // Re-read after earlier asynchronous sends: a member can change their
+      // preferences while a delivery batch is in progress.
+      const deliverAfter = personalDeliveryTime(options, row, now);
+      if (deliverAfter > now.toISOString()) continue;
       const result = await options.notificationPort.send({
         recipientId: row.recipient_id,
         title: chore.title,

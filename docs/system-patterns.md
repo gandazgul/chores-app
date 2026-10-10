@@ -242,6 +242,14 @@ slot for each Member while the Chore is open in the Pool and reminder-enabled.
 Pool Blast retries stay on the same Delivery Slot, and one Member's result does
 not block another Member's row.
 
+Quiet Hours are personal preferences on `users`, edited through the
+authenticated `/api/users/me/quiet-hours` endpoint. Nullable preferences inherit
+the server defaults; a saved preference overrides them. The scheduler reads each
+recipient's hours for assigned slots and recalculates pending deliveries for
+both kinds on every tick. It also checks quiet hours immediately before sending,
+including retries. Changes preserve slot identity and never reset sent
+deliveries. All times use `HOUSEHOLD_TZ`.
+
 Set `ENABLE_NOTIFICATIONS=false` to start no scheduler, create no Delivery
 Slots, and send nothing. The deployment must run one replica with one persistent
 SQLite volume.

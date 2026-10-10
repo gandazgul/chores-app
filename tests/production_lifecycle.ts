@@ -177,6 +177,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 5, name: "0005_gotify_token" },
     { version: 6, name: "0006_notification_deliveries" },
     { version: 7, name: "0007_completion_log_resolution" },
+    { version: 8, name: "0008_personal_quiet_hours" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
@@ -432,6 +433,9 @@ Deno.test({
       await cleanupContainer(docker, legacyContainer);
 
       const restartDb = new DatabaseSync(legacyDb);
+      // Use a real overdue slot: personal quiet hours recalculate unsent
+      // delivery times from slot_key, so a future slot is not due yet.
+      const pendingDue = new Date(Date.now() - 60_000).toISOString();
       restartDb.exec(`
         INSERT INTO users (id, email, name) VALUES ('nag-user', 'nag@example.com', 'Nag User');
         INSERT INTO chores (
@@ -448,9 +452,9 @@ Deno.test({
           'nag-user',
           'nag-user',
           'Nag Chore',
-          '2030-01-01T10:00:00.000Z',
+          '${pendingDue}',
           1,
-          '2030-01-01T09:00:00.000Z',
+          '${pendingDue}',
           'open'
         );
         INSERT INTO notification_deliveries (
@@ -465,8 +469,8 @@ Deno.test({
           'nag-chore',
           'nag-user',
           'assigned_nag',
-          '2030-01-01T10:00:00.000Z',
-          '2000-01-01T00:00:00.000Z'
+          '${pendingDue}',
+          '${pendingDue}'
         );
       `);
       restartDb.close();
@@ -494,8 +498,8 @@ Deno.test({
           WHERE chore_id = 'nag-chore'
             AND recipient_id = 'nag-user'
             AND kind = 'assigned_nag'
-            AND slot_key = '2030-01-01T10:00:00.000Z'
-        `).get() as unknown as CountRow,
+            AND slot_key = ?
+        `).get(pendingDue) as unknown as CountRow,
         { count: 1 },
       );
       afterRestartDb.close();

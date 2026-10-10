@@ -261,7 +261,7 @@ Deno.test("fresh databases receive occurrence-resolution, user-name, assignment,
   ) {
     assert(hasTable(db, table), `${table} exists`);
   }
-  assertEquals(ledgerCount(db), 7);
+  assertEquals(ledgerCount(db), 8);
   assert(columnNames(db, "users").includes("name"));
   assert(columnNames(db, "users").includes("picture"));
   assert(columnNames(db, "users").includes("gotify_token"));
@@ -313,7 +313,7 @@ Deno.test("baseline databases keep data, backfill status, and converge", () => {
 
   assertEquals(tableSignature(legacy), tableSignature(fresh));
   assertEquals(foreignKeySignature(legacy), foreignKeySignature(fresh));
-  assertEquals(ledgerCount(legacy), 7);
+  assertEquals(ledgerCount(legacy), 8);
   assertEquals(
     legacy.prepare(
       "SELECT email, name, picture, gotify_token FROM users WHERE id = ?",
@@ -376,7 +376,7 @@ Deno.test("version-4 databases keep user data and converge with fresh databases"
   applyMigrations(upgraded);
 
   assertEquals(tableSignature(upgraded), tableSignature(fresh));
-  assertEquals(ledgerCount(upgraded), 7);
+  assertEquals(ledgerCount(upgraded), 8);
   assertEquals(
     upgraded.prepare(
       "SELECT email, name, picture, created_at, updated_at, gotify_token FROM users WHERE id = ?",
@@ -471,7 +471,7 @@ Deno.test("already current databases skip applied migrations", () => {
 
   applyMigrations(db);
 
-  assertEquals(ledgerCount(db), 7);
+  assertEquals(ledgerCount(db), 8);
   assertEquals(tableSignature(db), firstSignature);
 });
 

@@ -82,16 +82,19 @@ single configured Pool blast below.
 
 ### Quiet hours
 
-Quiet hours are controlled by these environment variables when the scheduler
-reads them:
+Quiet hours are personal preferences editable in Notification Settings (added
+October 2026). Until a Member saves their preferences, these environment
+variables supply the defaults:
 
 - `QUIET_HOURS_START`, default `21:00`;
 - `QUIET_HOURS_END`, default `08:00`.
 
 Both values are household-local `HH:MM` values in `HOUSEHOLD_TZ`. If either
 variable is unset, the scheduler uses the default for that variable. Quiet hours
-exist in the MVP by default. Per-Member timezones and per-Member quiet hours are
-out of scope for the MVP.
+exist by default. Each Member can choose different start/end times or disable
+quiet hours. Per-Member timezones remain out of scope: the settings page
+displays the household timezone. Saved preferences apply to pending slots and
+retries on the next scheduler check; sent slots are not replayed.
 
 A slot whose ladder instant falls inside the quiet-hours window is deferred, not
 dropped. Its delivery time becomes the next quiet-hours end. For example, with

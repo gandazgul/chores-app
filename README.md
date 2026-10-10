@@ -145,10 +145,15 @@ restart.
 
 Tow sends assigned Chore Nags through Gotify. Configure `GOTIFY_URL` and each
 Member's Gotify Application Token. Set `ENABLE_NOTIFICATIONS=false` to stop the
-scheduler, Delivery Slot creation, and sends. Quiet Hours default to
-`21:00`-`08:00` in `HOUSEHOLD_TZ` and can be changed with `QUIET_HOURS_START`
-and `QUIET_HOURS_END` in `HH:MM` format. Delivery is at least once, so a crash
-after Gotify accepts a message can create one duplicate external message.
+scheduler, Delivery Slot creation, and sends. Each Member can enable or disable
+personal Quiet Hours and choose start/end times in Notification Settings. Times
+use `HOUSEHOLD_TZ`. Until a Member saves a preference, `QUIET_HOURS_START` and
+`QUIET_HOURS_END` supply the defaults (`21:00`-`08:00`, in `HH:MM` format).
+Changes apply to unsent reminders on the next scheduler check, including Pool
+Blasts and retries; sent reminders are never replayed by a settings change.
+Quiet Hours postpone delivery rather than muting a notification's sound.
+Delivery is at least once, so a crash after Gotify accepts a message can create
+one duplicate external message.
 
 ## Contributing
 

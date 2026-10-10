@@ -177,7 +177,7 @@ function nextQuietEnd(
   return localInstant(fromDayNumber(day), end, timeZone);
 }
 
-function applyQuietHours(
+export function applyQuietHours(
   slot: Date,
   timeZone: string,
   quietHours: QuietHours,

@@ -141,15 +141,15 @@ restarts are idempotent:
   delivery instant.
 - Status is one of `pending`, `sent`, `superseded`, or `undeliverable`.
 
-A recipient with no `users.gotify_token` at send time makes the delivery row
-terminal `undeliverable`. The sender does not retry that row. Token lookup still
-happens at send time, so a Member who adds a token later can receive the next
-slot.
+A recipient without credentials for the selected provider at send time makes the
+delivery row terminal `undeliverable`. The sender does not retry that row. Token
+lookup still happens at send time, so a Member who adds a token later can
+receive the next slot.
 
-Delivery is at-least-once, not exactly-once. If Gotify accepts a message and the
-process crashes before SQLite commits the `sent` transition, a later tick can
-send that external message again. That duplicate is acceptable and must be
-understood by tests and operators.
+Delivery is at-least-once, not exactly-once. If the provider accepts a message
+and the process crashes before SQLite commits the `sent` transition, a later
+tick can send that external message again. That duplicate is acceptable and must
+be understood by tests and operators.
 
 The scheduler ticks every 60 seconds. A row is sent on the first tick where
 `deliver_after <= now`, so timing assertions must tolerate up to one tick of

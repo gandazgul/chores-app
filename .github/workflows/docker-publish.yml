@@ -38,6 +38,13 @@ jobs:
       - run: deno task test:production-lifecycle
         env:
           DOCKER_CLI: podman
+      # This UI suite mocks provider calls; no Pushover credentials or messages.
+      - run: deno task test:e2e tests/e2e/pushover-settings.spec.ts
+        env:
+          DB_PATH: /tmp/tow-pushover-e2e.db
+          E2E_PORT: "18081"
+          NOTIFICATION_PROVIDER: pushover
+          PUSHOVER_APP_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
   publish:
     if: github.event_name == 'push'

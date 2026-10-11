@@ -178,6 +178,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 6, name: "0006_notification_deliveries" },
     { version: 7, name: "0007_completion_log_resolution" },
     { version: 8, name: "0008_personal_quiet_hours" },
+    { version: 9, name: "0009_pushover" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>
@@ -210,6 +211,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
   assertEquals(columnNames(db, "users").includes("name"), true);
   assertEquals(columnNames(db, "users").includes("picture"), true);
   assertEquals(columnNames(db, "users").includes("gotify_token"), true);
+  assertEquals(columnNames(db, "users").includes("pushover_user_key"), true);
   assertEquals(columnNames(db, "completion_logs").includes("due_at"), true);
   assertEquals(
     columnNames(db, "completion_logs").includes("resolution"),
@@ -517,12 +519,44 @@ Deno.test({
         disabledContainer,
         disabledDb,
         disabledPort,
-        { ENABLE_NOTIFICATIONS: "false" },
+        {
+          ENABLE_NOTIFICATIONS: "false",
+          NOTIFICATION_PROVIDER: "pushover",
+          PUSHOVER_APP_TOKEN: "a".repeat(30),
+        },
       );
       await waitForHttp(disabledPort);
       const disabledLogs = await readContainerLogs(docker, disabledContainer);
       assertEquals(countSchedulerStarts(disabledLogs), 0);
+      const settingsResponse = await fetch(
+        `http://127.0.0.1:${disabledPort}/settings`,
+      );
+      assertEquals(settingsResponse.status, 200);
+      const settingsHtml = await settingsResponse.text();
+      assertEquals(settingsHtml.includes("Pushover notifications"), true);
+      assertEquals(settingsHtml.includes("a".repeat(30)), false);
       await cleanupContainer(docker, disabledContainer);
+
+      const missingTokenContainer = `chores-prod-no-pushover-token-${id}`;
+      containers.push(missingTokenContainer);
+      const missingTokenPort = allocatePort();
+      await startContainer(
+        docker,
+        image,
+        missingTokenContainer,
+        disabledDb,
+        missingTokenPort,
+        {
+          NOTIFICATION_PROVIDER: "pushover",
+        },
+      );
+      await assertNoHttp(missingTokenPort, 4_000);
+      await waitForContainerLog(
+        docker,
+        missingTokenContainer,
+        "PUSHOVER_APP_TOKEN is required",
+      );
+      await cleanupContainer(docker, missingTokenContainer);
 
       const incompatibleDb = `${tempDir}/incompatible.db`;
       createIncompatibleDatabase(incompatibleDb);

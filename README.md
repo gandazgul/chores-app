@@ -7,7 +7,7 @@ Tow is a household chore app for steady recurring chore management.
 - Add, edit, and delete chores
 - Mark chores as complete
 - User authentication
-- Assigned Chore Push Notifications through Gotify
+- Assigned Chore Push Notifications through Pushover or Gotify
 
 ## Project Structure
 
@@ -79,13 +79,13 @@ Required configuration:
 - `PUBLIC_ORIGIN=https://todo.dumbhome.uk`
 - `ENABLE_AUTH=true`, `COOKIE_SECURE=true`
 - `GOOGLE_CLIENT_ID`, a stable random `SESSION_SECRET`, and `ALLOWED_EMAILS`
-- `HOUSEHOLD_TZ`, `GOTIFY_URL=https://notify.dumbhome.uk`
+- `HOUSEHOLD_TZ` and the notification provider configuration below
 
 Set the Google OAuth web client's Authorized JavaScript origins to include
 `https://todo.dumbhome.uk`. Sign-in uses a popup and posts the credential to
 `/api/auth/login`; there is no OAuth redirect callback route. Each household
-account must be explicitly allowlisted and each member adds their own Gotify
-application token in Settings. Google client secrets are not used by Tow.
+account must be explicitly allowlisted and each member connects notifications in
+Settings. Google client secrets are not used by Tow.
 
 `PUBLIC_ORIGIN` is authoritative for every unsafe request, including forms and
 JSON. The app ignores forwarded headers for CSRF decisions. Astro's narrower
@@ -112,7 +112,7 @@ kubectl wait --for=condition=complete job/tow-backup-before-release --timeout=12
 The image also exposes
 `deno run -A --cached-only scripts/backup_db.ts DESTINATION`. It uses SQLite
 `VACUUM INTO`, not a copy of a live database. Protect backups as secrets because
-they include members' Gotify tokens.
+they include members' notification credentials.
 
 To restore: stop Tow (scale to zero and temporarily suspend its Flux
 Kustomization if GitOps is active), save the current data directory, replace
@@ -138,22 +138,45 @@ GitHub Actions runs these checks before publishing immutable SHA-tagged images
 to GHCR. Pin deployment images by digest; the homelab also supports Harbor.
 
 Before household use, verify Google sign-in, create/assign/complete/skip a
-chore, receive a real Gotify notification, and confirm persistence after a pod
+chore, receive a real phone notification, and confirm persistence after a pod
 restart.
 
 ## Notifications
 
-Tow sends assigned Chore Nags through Gotify. Configure `GOTIFY_URL` and each
-Member's Gotify Application Token. Set `ENABLE_NOTIFICATIONS=false` to stop the
-scheduler, Delivery Slot creation, and sends. Each Member can enable or disable
-personal Quiet Hours and choose start/end times in Notification Settings. Times
-use `HOUSEHOLD_TZ`. Until a Member saves a preference, `QUIET_HOURS_START` and
-`QUIET_HOURS_END` supply the defaults (`21:00`-`08:00`, in `HH:MM` format).
-Changes apply to unsent reminders on the next scheduler check, including Pool
-Blasts and retries; sent reminders are never replayed by a settings change.
-Quiet Hours postpone delivery rather than muting a notification's sound.
-Delivery is at least once, so a crash after Gotify accepts a message can create
-one duplicate external message.
+Tow supports Pushover and Gotify. `NOTIFICATION_PROVIDER` chooses one provider
+for the household; it defaults to `gotify` for existing deployments. There is no
+automatic fallback between providers.
+
+For Pushover, set `NOTIFICATION_PROVIDER=pushover` and supply a server-side
+`PUSHOVER_APP_TOKEN` from a
+[registered Pushover application](https://pushover.net/apps/build). Keep this
+token in deployment secrets, never in source or browser code. Each Member saves
+their own Pushover user key in Settings. Tow validates the key and an active
+device with Pushover before replacing a saved key. Settings never returns or
+renders the saved key. Messages use normal priority (`0`) and the Pushover
+sound, honoring Pushover's own quiet hours and Android sound settings. See the
+[Pushover API](https://pushover.net/api) for account and delivery limits.
+
+The Settings test button sends immediately to the signed-in Member, bypassing
+Tow quiet hours without altering reminder history. Tests are limited to one
+attempt per Member per 30 seconds. A successful API result means Pushover
+accepted the message; confirm the notification and sound on the phone. Provider
+errors and logs never expose API tokens, user keys, or raw response bodies.
+
+For Gotify, configure `GOTIFY_URL` and each Member's Gotify Application Token.
+Switching providers keeps existing credentials and sent history. Configure
+members' keys before enabling the new provider's scheduler; already-sent slots
+are never replayed merely because the provider changed.
+
+Set `ENABLE_NOTIFICATIONS=false` to stop the scheduler, Delivery Slot creation,
+and test sends. Each Member can enable or disable personal Quiet Hours and
+choose start/end times in Notification Settings. Times use `HOUSEHOLD_TZ`. Until
+a Member saves a preference, `QUIET_HOURS_START` and `QUIET_HOURS_END` supply
+the defaults (`21:00`-`08:00`, in `HH:MM` format). Changes apply to unsent
+reminders on the next scheduler check, including Pool Blasts and retries; sent
+reminders are never replayed by a settings change. Quiet Hours postpone delivery
+rather than muting a notification's sound. Delivery is at least once, so a crash
+after the provider accepts a message can create one duplicate external message.
 
 ## Contributing
 

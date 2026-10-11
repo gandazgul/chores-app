@@ -1,5 +1,8 @@
 ---
 import NotificationSettings from "../components/NotificationSettings.tsx";
+import PushoverSettings from "../components/PushoverSettings.tsx";
+import { resolveNotificationProvider } from "../notifications/provider.ts";
+import { resolvePushoverToken } from "../notifications/pushover.ts";
 import QuietHoursSettings from "../components/QuietHoursSettings.tsx";
 import { readQuietHoursSettings } from "../notifications/quietHours.ts";
 import { resolveQuietHours } from "../scheduler/nagPolicy.ts";
@@ -12,6 +15,10 @@ interface TokenStateRow {
 }
 
 const user = Astro.locals.user;
+const getEnv = (name: string) => Deno.env.get(name);
+const provider = resolveNotificationProvider(getEnv);
+const pushoverReady = !!resolvePushoverToken(getEnv);
+const pushoverConfigured = user ? Boolean(db.prepare("SELECT pushover_user_key IS NOT NULL AS configured FROM users WHERE id = ?").get(user.id)?.configured) : false;
 const defaults = resolveQuietHours((name) => Deno.env.get(name));
 const timeZone = resolveHouseholdTimeZone(Deno.env.get("HOUSEHOLD_TZ"));
 const quietHours = user ? readQuietHoursSettings(db, user.id, defaults) : null;
@@ -47,7 +54,9 @@ if (user) {
 
     <main class="w-full max-w-2xl mx-auto p-4 sm:p-6 flex flex-col gap-4">
       {quietHours && <QuietHoursSettings client:load initialSettings={quietHours} timeZone={timeZone} />}
-      <NotificationSettings client:load initialGotifyConfigured={gotifyConfigured} />
+      {provider === "pushover"
+        ? <PushoverSettings client:load initialConfigured={pushoverConfigured} serverReady={pushoverReady} />
+        : <NotificationSettings client:load initialGotifyConfigured={gotifyConfigured} />}
     </main>
   </div>
 </Layout>

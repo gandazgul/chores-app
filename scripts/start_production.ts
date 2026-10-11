@@ -1,6 +1,8 @@
 import { resolvePublicOrigin } from "../src/utils/publicOrigin.ts";
 import "../src/utils/db.ts";
 import { resolveGotifyConfig } from "../src/notifications/notificationPort.ts";
+import { resolveNotificationProvider } from "../src/notifications/provider.ts";
+import { resolvePushoverToken } from "../src/notifications/pushover.ts";
 import { resolveNotificationsEnabled } from "../src/scheduler/lifecycle.ts";
 import { resolveQuietHours } from "../src/scheduler/nagPolicy.ts";
 import { startRuntimeScheduler } from "../src/scheduler/runtime.ts";
@@ -20,7 +22,15 @@ if (Deno.env.get("ENABLE_AUTH")?.toLowerCase() !== "false") {
 }
 
 resolveHouseholdTimeZone(Deno.env.get("HOUSEHOLD_TZ"));
-resolveGotifyConfig((name) => Deno.env.get(name));
+const getEnv = (name: string) => Deno.env.get(name);
+if (resolveNotificationProvider(getEnv) === "pushover") {
+  const token = resolvePushoverToken(getEnv);
+  if (resolveNotificationsEnabled(getEnv) && !token) {
+    throw new Error("PUSHOVER_APP_TOKEN is required for Pushover notifications");
+  }
+} else {
+  resolveGotifyConfig(getEnv);
+}
 resolveNotificationsEnabled((name) => Deno.env.get(name));
 resolveQuietHours((name) => Deno.env.get(name));
 

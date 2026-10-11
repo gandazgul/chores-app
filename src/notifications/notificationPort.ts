@@ -1,4 +1,6 @@
 import db from "../utils/db.ts";
+import { resolveNotificationProvider } from "./provider.ts";
+import { createPushoverNotificationPort } from "./pushover.ts";
 import type {
   NotificationPort,
   NotificationSendInput,
@@ -160,8 +162,19 @@ export function createNotificationPort(
   };
 }
 
-export const notificationPort = createNotificationPort({
+const runtimeOptions = {
   getEnv: (name) => Deno.env.get(name),
-  fetchImpl: fetch,
+  fetchImpl: (input, init) => fetch(input, init),
   logger: console,
-});
+} satisfies GotifyNotificationPortOptions;
+
+const gotifyPort = createNotificationPort(runtimeOptions);
+const pushoverPort = createPushoverNotificationPort({ ...runtimeOptions, db });
+
+export const notificationPort: NotificationPort = {
+  send(input) {
+    return resolveNotificationProvider(runtimeOptions.getEnv) === "pushover"
+      ? pushoverPort.send(input)
+      : gotifyPort.send(input);
+  },
+};

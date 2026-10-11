@@ -52,11 +52,15 @@ export type NotificationSendResult =
   | { status: "disabled" }
   | {
     status: "undeliverable";
-    reason: "missing_token" | "auth_rejected" | "gotify_rejected";
+    reason:
+      | "missing_token"
+      | "auth_rejected"
+      | "gotify_rejected"
+      | "pushover_rejected";
   }
   | {
     status: "retryable_failure";
-    reason: "network_error" | "gotify_unavailable";
+    reason: "network_error" | "gotify_unavailable" | "pushover_unavailable";
   };
 
 export interface NotificationSendInput {

@@ -20,6 +20,7 @@ playwright-report/
 
 # Editor directories and files
 .DS_Store
+.history/
 # BEGIN RunWield owned runtime state
 .wld/plan-locks
 .wld/plan-transitions

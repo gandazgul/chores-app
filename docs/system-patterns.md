@@ -231,9 +231,20 @@ The notification scheduler is one in-process loop. It starts after migrations in
 production and through Astro server lifecycle hooks in development. It inserts
 Delivery Slots before it sends through the notification port. A Delivery Slot is
 unique for one Chore, recipient, kind, and policy slot. This makes restarts
-safe, but external Gotify delivery is at least once. A crash after Gotify
+safe, but external push delivery is at least once. A crash after the provider
 accepts a message and before SQLite records success can duplicate the external
 message.
+
+`NOTIFICATION_PROVIDER` selects Gotify (the backward-compatible default) or
+Pushover for the household. Both use the same port and outbox. Pushover keeps
+the application token in `PUSHOVER_APP_TOKEN` and each Member's private user key
+in `users.pushover_user_key`. Its authenticated settings endpoint validates with
+the provider before saving, returns only configured state, and never reflects
+credentials. The test endpoint targets only the signed-in Member, requires
+same-origin POST, limits attempts to one per 30 seconds, and bypasses Tow quiet
+hours without creating delivery slots. Pushover success requires both HTTP
+success and JSON `status: 1`; it proves acceptance, not phone receipt. Transport
+errors and HTTP 429/5xx remain retryable. Requests time out after 10 seconds.
 
 Assigned Nags and Pool Blasts share this scheduler and outbox. Assigned Nags use
 the accepted ladder. Pool Blasts are opt-in with `POOL_BLAST_LEAD_HOURS`: unset,

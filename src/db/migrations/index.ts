@@ -7,6 +7,7 @@ import { gotifyTokenMigration } from "./0005_gotify_token.ts";
 import { notificationDeliveriesMigration } from "./0006_notification_deliveries.ts";
 import { completionLogResolutionMigration } from "./0007_completion_log_resolution.ts";
 import { personalQuietHoursMigration } from "./0008_personal_quiet_hours.ts";
+import { pushoverMigration } from "./0009_pushover.ts";
 
 export interface Migration {
   version: number;
@@ -29,6 +30,7 @@ const migrations: Migration[] = [
   notificationDeliveriesMigration,
   completionLogResolutionMigration,
   personalQuietHoursMigration,
+  pushoverMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

@@ -56,11 +56,16 @@ export type NotificationSendResult =
       | "missing_token"
       | "auth_rejected"
       | "gotify_rejected"
-      | "pushover_rejected";
+      | "pushover_rejected"
+      | "fcm_rejected";
   }
   | {
     status: "retryable_failure";
-    reason: "network_error" | "gotify_unavailable" | "pushover_unavailable";
+    reason:
+      | "network_error"
+      | "gotify_unavailable"
+      | "pushover_unavailable"
+      | "fcm_unavailable";
   };
 
 export interface NotificationSendInput {

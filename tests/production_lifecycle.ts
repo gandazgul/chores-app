@@ -179,6 +179,7 @@ function assertMigrated(path: string, expectSentinel: boolean) {
     { version: 7, name: "0007_completion_log_resolution" },
     { version: 8, name: "0008_personal_quiet_hours" },
     { version: 9, name: "0009_pushover" },
+    { version: 10, name: "0010_mobile_devices" },
   ]);
   assertEquals(
     columnNames(db, "chores").filter((name) =>

@@ -15,3 +15,6 @@ playwright-report
 artifacts
 docs
 *.log
+
+mobile
+.impeccable

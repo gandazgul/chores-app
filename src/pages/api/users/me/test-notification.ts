@@ -21,11 +21,11 @@ export const POST: APIRoute = async ({ locals }) => {
   }
   const getEnv = (name: string) => Deno.env.get(name);
   if (
-    resolveNotificationProvider(getEnv) !== "pushover" ||
+    !["pushover", "fcm"].includes(resolveNotificationProvider(getEnv)) ||
     !resolveNotificationsEnabled(getEnv)
   ) {
     return json({
-      error: "Pushover notifications are not enabled on the server.",
+      error: "Push notifications are not enabled on the server.",
     }, 503);
   }
   const now = Date.now();
@@ -41,13 +41,13 @@ export const POST: APIRoute = async ({ locals }) => {
   if (result.status === "sent") {
     return json({
       message:
-        "Pushover accepted the test. Check your phone for the notification and sound.",
+        "The provider accepted the test. Check your phone for the notification and sound.",
     });
   }
   if (result.status === "undeliverable") {
     return json({
       error:
-        "The test was not accepted. Check or reconnect your Pushover user key.",
+        "The test was not accepted. Reconnect notifications and try again.",
     }, 400);
   }
   return json({ error: "The test could not be sent. Try again shortly." }, 503);

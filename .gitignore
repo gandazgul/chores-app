@@ -37,3 +37,6 @@ playwright-report/
 # Test and browser artifacts
 artifacts/
 test-results/
+
+# Local native UI review captures
+.impeccable/review/

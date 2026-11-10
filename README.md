@@ -9,6 +9,15 @@ Tow is a household chore app for steady recurring chore management.
 - User authentication
 - Assigned Chore Push Notifications through Pushover or Gotify
 
+## Android app
+
+The native Flutter Android client lives in [`mobile/`](mobile/README.md). It
+uses this shared household server and supports direct notifications through
+Firebase Cloud Messaging (`NOTIFICATION_PROVIDER=fcm`). Firebase app
+configuration, Android OAuth registration, and a server-side FCM service account
+are required before a household rollout. The existing web client remains
+available.
+
 ## Project Structure
 
 The project is built with Astro and Deno. It uses Google Sign-In for
@@ -143,9 +152,11 @@ restart.
 
 ## Notifications
 
-Tow supports Pushover and Gotify. `NOTIFICATION_PROVIDER` chooses one provider
-for the household; it defaults to `gotify` for existing deployments. There is no
-automatic fallback between providers.
+Tow supports Firebase Cloud Messaging, Pushover, and Gotify. See the
+[Android setup guide](mobile/README.md) for FCM configuration.
+`NOTIFICATION_PROVIDER` chooses one provider for the household; it defaults to
+`gotify` for existing deployments. There is no automatic fallback between
+providers.
 
 For Pushover, set `NOTIFICATION_PROVIDER=pushover` and supply a server-side
 `PUSHOVER_APP_TOKEN` from a

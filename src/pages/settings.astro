@@ -54,7 +54,9 @@ if (user) {
 
     <main class="w-full max-w-2xl mx-auto p-4 sm:p-6 flex flex-col gap-4">
       {quietHours && <QuietHoursSettings client:load initialSettings={quietHours} timeZone={timeZone} />}
-      {provider === "pushover"
+      {provider === "fcm"
+        ? <section><h2 class="text-xl font-bold">Android notifications</h2><p class="mt-2">Open Settings in the Tow Android app to connect this phone, allow notifications, and send a test.</p></section>
+        : provider === "pushover"
         ? <PushoverSettings client:load initialConfigured={pushoverConfigured} serverReady={pushoverReady} />
         : <NotificationSettings client:load initialGotifyConfigured={gotifyConfigured} />}
     </main>

@@ -1,3 +1,4 @@
+import { createFcmAccessToken, createFcmNotificationPort } from "./fcm.ts";
 import db from "../utils/db.ts";
 import { resolveNotificationProvider } from "./provider.ts";
 import { createPushoverNotificationPort } from "./pushover.ts";
@@ -171,9 +172,23 @@ const runtimeOptions = {
 const gotifyPort = createNotificationPort(runtimeOptions);
 const pushoverPort = createPushoverNotificationPort({ ...runtimeOptions, db });
 
+const fcmPort = createFcmNotificationPort({
+  db,
+  fetchImpl: fetch,
+  getCredentials: createFcmAccessToken({
+    readServiceAccount: () => {
+      const path = Deno.env.get("FCM_SERVICE_ACCOUNT_FILE");
+      return path ? JSON.parse(Deno.readTextFileSync(path)) : null;
+    },
+    fetchImpl: fetch,
+  }),
+});
+
 export const notificationPort: NotificationPort = {
   send(input) {
-    return resolveNotificationProvider(runtimeOptions.getEnv) === "pushover"
+    const provider = resolveNotificationProvider(runtimeOptions.getEnv);
+    if (provider === "fcm") return fcmPort.send(input);
+    return provider === "pushover"
       ? pushoverPort.send(input)
       : gotifyPort.send(input);
   },

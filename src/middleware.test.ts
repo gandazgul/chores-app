@@ -163,3 +163,41 @@ Deno.test("middleware permits unsafe methods with exact same-origin evidence", a
     restoreEnv(snapshot);
   }
 });
+
+Deno.test("mobile bearer sessions bypass CSRF only after verification; browser tokens and invalid bearer fail closed", async () => {
+  const snapshot = Object.fromEntries(
+    ["ENABLE_AUTH", "SESSION_SECRET", "ALLOWED_EMAILS"].map((
+      key,
+    ) => [key, Deno.env.get(key)]),
+  );
+  Deno.env.set("ENABLE_AUTH", "true");
+  Deno.env.set("SESSION_SECRET", "mobile-test-secret");
+  Deno.env.set("ALLOWED_EMAILS", "mobile@example.com");
+  const { createSession, getSession } = await import("./utils/auth.ts");
+  const user = { id: "mobile", name: "Mobile", email: "mobile@example.com" };
+  try {
+    const mobile = await createSession(user, true);
+    const web = await createSession(user);
+    assertEquals(await getSession(mobile), null);
+    assertEquals(await getSession(web, true), null);
+    for (
+      const [token, status] of [[mobile, 204], [web, 401], [
+        "bad",
+        401,
+      ]] as const
+    ) {
+      const context = contextFor("PUT");
+      context.url.pathname = "/api/chores/example";
+      context.request.headers.set("Authorization", `Bearer ${token}`);
+      const response = await onRequest(
+        context,
+        () => Promise.resolve(new Response(null, { status: 204 })),
+      );
+      assertEquals(response?.status, status);
+    }
+    Deno.env.set("ALLOWED_EMAILS", "someoneelse@example.com");
+    assertEquals(await getSession(mobile, true), null);
+  } finally {
+    restoreEnv(snapshot);
+  }
+});

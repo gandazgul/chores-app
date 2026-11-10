@@ -9,6 +9,7 @@ import {
 
 export async function createAuthorizedSession(
   user: UserPayload,
+  mobile = false,
 ): Promise<string> {
   if (!isEmailAllowed(user.email)) {
     throw new Error("User email is not allowed");
@@ -24,7 +25,7 @@ export async function createAuthorizedSession(
       updated_at = CURRENT_TIMESTAMP
   `).run(user.id, user.email, user.name, user.picture ?? null);
 
-  return await createSession(user);
+  return await createSession(user, mobile);
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {

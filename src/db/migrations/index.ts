@@ -9,6 +9,8 @@ import { completionLogResolutionMigration } from "./0007_completion_log_resoluti
 import { personalQuietHoursMigration } from "./0008_personal_quiet_hours.ts";
 import { pushoverMigration } from "./0009_pushover.ts";
 
+import { mobileDevicesMigration } from "./0010_mobile_devices.ts";
+
 export interface Migration {
   version: number;
   name: string;
@@ -31,6 +33,7 @@ const migrations: Migration[] = [
   completionLogResolutionMigration,
   personalQuietHoursMigration,
   pushoverMigration,
+  mobileDevicesMigration,
 ];
 
 function assertValidRegistry(registry: Migration[]) {

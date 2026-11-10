@@ -35,7 +35,7 @@ export async function verifyGoogleToken(token: string): Promise<UserPayload> {
 
   if (
     typeof payload.sub !== "string" || typeof payload.email !== "string" ||
-    typeof payload.name !== "string"
+    typeof payload.name !== "string" || payload.email_verified !== true
   ) {
     throw new Error("Invalid token payload: missing required fields");
   }
@@ -48,7 +48,10 @@ export async function verifyGoogleToken(token: string): Promise<UserPayload> {
   };
 }
 
-export async function createSession(user: UserPayload): Promise<string> {
+export async function createSession(
+  user: UserPayload,
+  mobile = false,
+): Promise<string> {
   const secretStr = Deno.env.get("SESSION_SECRET");
   if (!secretStr) {
     throw new Error("SESSION_SECRET environment variable is missing");
@@ -58,12 +61,16 @@ export async function createSession(user: UserPayload): Promise<string> {
 
   return await new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
+    .setAudience(mobile ? "tow-android" : "tow-web")
     .setIssuedAt()
     .setExpirationTime("30d")
     .sign(secret);
 }
 
-export async function getSession(token: string): Promise<UserPayload | null> {
+export async function getSession(
+  token: string,
+  mobile = false,
+): Promise<UserPayload | null> {
   if (!token) return null;
 
   const secretStr = Deno.env.get("SESSION_SECRET");
@@ -74,7 +81,15 @@ export async function getSession(token: string): Promise<UserPayload | null> {
   const secret = new TextEncoder().encode(secretStr);
 
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
+    // Accept pre-migration browser sessions, but never as mobile credentials.
+    if (
+      mobile
+        ? payload.aud !== "tow-android"
+        : (payload.aud !== undefined && payload.aud !== "tow-web")
+    ) return null;
     if (
       typeof payload.id !== "string" || typeof payload.email !== "string" ||
       typeof payload.name !== "string"

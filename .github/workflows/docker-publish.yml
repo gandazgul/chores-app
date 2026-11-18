@@ -25,12 +25,14 @@ jobs:
       - run: deno task ci
       # Playwright's browser archive extraction hangs under Deno on a fresh runner.
       # Use Node only for the installer; application and tests still run on Deno.
+      # Ubuntu 24.04 hosted runners include Chromium's system libraries. Avoid
+      # --with-deps: it upgrades Mesa and downloads optional fonts from slow mirrors.
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install Chromium
         timeout-minutes: 5
-        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        run: node node_modules/@playwright/test/cli.js install --only-shell chromium
       - run: deno task test:e2e
         env:
           DB_PATH: /tmp/tow-e2e.db

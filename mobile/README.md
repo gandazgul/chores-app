@@ -19,12 +19,16 @@ synthetic household evidence does not establish live authentication or delivery.
 ## Configure and run
 
 Use **`ravelo.carlos@gmail.com`** for Tow's Firebase/Google Cloud setup. Cloud
-provisioning is pending that account's login; do not use the unrelated BrandChef
-account currently configured in the local CLI.
+provisioning must use that account. Its gcloud and Drive authentication was
+verified on 2026-11-17. Firebase project `chores-25a18` now has the Android app
+registered, with the permanent release SHA-1/SHA-256 and native OAuth client.
+Server credentials passed an FCM validation-only request, and a temporary emulator
+probe received a real remote notification while backgrounded. Production rollout
+and real-phone Google sign-in/remote delivery still need verification.
 
 1. Create/select a Firebase project and register the Android application
    **`uk.dumbhome.tow`**. Download its `google-services.json` to
-   `android/app/google-services.json` (gitignored). Enable the Firebase Cloud
+   `android/app/src/production/google-services.json` (gitignored). Enable the Firebase Cloud
    Messaging HTTP v1 API. Firebase Authentication and Firestore are not required.
 2. Copy `config.example.json` to `config.json` (gitignored). Set
    `GOOGLE_SERVER_CLIENT_ID` to the **web** OAuth client ID already configured as
@@ -89,6 +93,22 @@ manufacturer restrictions still govern presentation. The in-app test bypasses To
 quiet hours, is limited to one attempt per member per 30 seconds, and confirms
 provider acceptance rather than actual phone receipt.
 
+## Local release setup
+
+The permanent signing keystore is at
+`~/.local/share/tow/signing/tow-release.jks`; its passwords and alias are in the
+ignored `android/key.properties`. Keep a secure backup of both. The release
+certificate SHA-1 is `062D3A02428937C3529129A6BD1538533C444986`.
+Do not replace this key when making future updates. The demo keeps its separate
+debug certificate even when production signing is configured.
+
+The server-only FCM key is stored locally at
+`~/.local/share/tow/server/fcm-service-account.json` and in the infrastructure
+repository's ignored secrets file as `TOW_FCM_SERVICE_ACCOUNT_JSON`. Its dedicated
+service account `tow-fcm@chores-25a18.iam.gserviceaccount.com` has only the FCM API
+Admin role. Kubernetes mounts the sealed secret read-only into Tow. Neither the
+private server key nor the signing key belongs in an APK or Git.
+
 ## Builds and signing
 
 ```sh
@@ -113,16 +133,37 @@ Register this certificate's SHA-1 with Google before building a signed APK:
 flutter build apk --release --dart-define-from-file=config.json
 ```
 
-Back up the keystore securely; future updates must use the same key. Release builds
+Back up the keystore securely; future updates must use the same key. Production release builds
 without `key.properties` are unsigned. CI analyzes, tests, and compiles an
 unconfigured debug APK without production secrets. `flutter_local_notifications`
 is constrained to 22.x for SDK 36 compatibility; 23.x requires SDK 37.
 The FCM client uses registration-token APIs for the server's HTTP v1 transport;
 Firebase Messaging 17's newer FID transport is intentionally not mixed into it.
 
+## Phone demo
+
+The default flavor is `production`. The separate `demo` flavor installs as
+**Tow Demo** (`uk.dumbhome.tow.demo`) alongside the production app. Build it with:
+
+```sh
+flutter build apk --release --flavor demo --target test_driver/preview.dart
+```
+
+The output is `build/app/outputs/flutter-apk/app-demo-release.apk`. The demo
+uses the local debug signing certificate for direct installation and does not
+require `config.json`, Google login, or Firebase. It is not a Play release.
+Download the APK on Android, open it, and allow installation from the downloading
+app if Android prompts. In Settings, tap **Connect this phone**, grant notification
+permission, then **Send test notification** to check a real local notification.
+
+Chores can be added, edited, claimed/released, completed/skipped, undone, and
+deleted. Settings persist in memory. Restarting the app or signing out resets
+the sample household. Recurrence and quiet hours can be edited but no scheduler
+runs in this demo. Family sync and remote FCM delivery are not connected.
+
 ## Visual QA
 
-`flutter run -t test_driver/preview.dart` opens an explicitly synthetic household
+`flutter run --flavor demo -t test_driver/preview.dart` opens an explicitly synthetic household
 for emulator layout inspection. It uses the same production widgets and an
 in-memory HTTP fixture; it does not connect to the live server and is never
 imported by the production entrypoint. Use normal and dark themes, 1.3 font scale,

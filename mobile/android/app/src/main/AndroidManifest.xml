@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:allowBackup="false"
-        android:label="Tow"
+        android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@drawable/tow_icon">
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />

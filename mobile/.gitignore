@@ -53,3 +53,5 @@ config.json
 key.properties
 *.jks
 *.keystore
+
+android/app/src/production/google-services.json

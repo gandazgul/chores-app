@@ -6,7 +6,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-if (file("google-services.json").exists()) { apply(plugin = "com.google.gms.google-services") }
+if (file("src/production/google-services.json").exists() || file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    // The offline demo has no Firebase app and must remain buildable without one.
+    tasks.matching { it.name.startsWith("processDemo") && it.name.endsWith("GoogleServices") }
+        .configureEach { enabled = false }
+}
 
 val signingProperties = Properties()
 val signingFile = rootProject.file("key.properties")
@@ -47,9 +52,21 @@ android {
             }
         }
     }
-    buildTypes {
-        release {
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("production") {
+            dimension = "environment"
+            manifestPlaceholders["appLabel"] = "Tow"
             signingConfig = if (signingFile.exists()) signingConfigs.getByName("release") else null
+        }
+        create("demo") {
+            dimension = "environment"
+            applicationIdSuffix = ".demo"
+            versionNameSuffix = "-demo"
+            manifestPlaceholders["appLabel"] = "Tow Demo"
+            // Distributable preview only; production still requires its own key.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
